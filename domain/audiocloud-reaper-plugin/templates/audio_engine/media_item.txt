@@ -1,0 +1,22 @@
+<ITEM
+    POSITION {{ media.spec.timeline_segment.start }}
+    LENGTH {{ media.spec.timeline_segment.length }}
+    MUTE 0
+    IGUID {{ media.item_id.hyphenated().to_string()|upper }}
+    NAME "{{ media.media_id.to_string() }}"
+    {% match media.path %}
+        {% when Some with (path) %}
+        GUID {{ media.take_id.braced().to_string()|upper }}
+        <SOURCE SECTION
+            STARTPOS {{ media.spec.media_segment.start }}
+            LENGTH {{ media.spec.media_segment.length }}
+            MODE 0
+            OVERLAP 0.010
+            <SOURCE {{ media.spec.format.to_string()|upper }}
+                FILE "{{ path }}"
+                LOOP 0
+            >
+        >
+        {% when None %}
+    {% endmatch %}
+>

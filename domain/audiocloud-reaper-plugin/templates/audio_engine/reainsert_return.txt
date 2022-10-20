@@ -1,0 +1,25 @@
+<TRACK
+    NAME "{{ instance.return_pad_id.to_string() }}"
+    NCHAN 2
+    VOLPAN 1.0 0.0 -1.0
+    MUTESOLO 0 0 0
+    SHOWINMIX 1 0.6 0.5 0 0.5 -1 -1 -1
+    TRACKID {{ instance.return_id.braced().to_string()|upper }}
+    MAINSEND 0
+    {% match self.project.fixed_input_track_index(instance.fixed_id) %}
+    {% when Some with (index) %}
+    AUXRECV {{ index }} 0 0 1 0 0 0 0 0 0 1 80 -1
+    {% when None %}
+    {% endmatch %}
+    <FXCHAIN
+        SHOW 0
+        BYPASS 0 0
+        <VST "VST: ReaInsert (Cockos)" reainsert.vst.dylib 0 "" 1919250281<56535472656F69726561696E73657274> ""
+            aW9lcu5e7f4CAAAAAQAAAAAAAAACAAAAAAAAAAIAAAABAAAAAAAAAAIAAAAAAAAAOAAAAAEAAAAAABCA
+            7u7dDRgAAAACAAAAAwAAAAIAAAADAAAA/////wAAEAAAAAAAAAAAAAAAAAAAAPA/AAAAAAAA8D8=
+            AAAQAAAA
+        >
+        FXID {{ instance.reainsert_id.hyphenated().to_string()|upper }}
+        WET {{ instance.spec.wet }}
+    >
+>

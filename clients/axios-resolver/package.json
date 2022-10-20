@@ -1,0 +1,16 @@
+{
+  "name": "@audiocloud/axios-resolver",
+  "version": "0.1.1",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "scripts": {
+    "build": "tsc && tsc -p tsconfig-cjs.json && tsc -p tsconfig-types.json"
+  },
+  "dependencies": {
+    "axios": "^1"
+  },
+  "devDependencies": {
+    "typescript": "^4"
+  }
+}
