@@ -1,6 +1,5 @@
-use std::ops::Range;
-
 use audiocloud_api::{ModelParameter, ModelValue, ModelValueOption, ToggleOr};
+use std::ops::Range;
 
 pub fn rescale(value: f64, options: &[ModelValueOption], scale: f64) -> f64 {
     for (i, value_opt) in options.iter().enumerate() {
@@ -59,4 +58,51 @@ fn rescale_range(value: f64, from: Range<f64>, to: Range<f64>) -> f64 {
     let from_len = from.end - from.start;
     let to_len = to.end - to.start;
     (value_from / from_len) * to_len + to.start
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_clamp() {
+        assert_eq!(clamp(0.0, 0.0..1.0), 0.0);
+        assert_eq!(clamp(1.0, 0.0..1.0), 1.0);
+
+        assert_eq!(clamp(-0.5, 0.0..1.0), 0.0);
+        assert_eq!(clamp(1.5, 0.0..1.0), 1.0);
+    }
+
+    #[test]
+    fn test_swap_u16() {
+        assert_eq!(swap_u16(0x1234), 0x3412);
+    }
+
+    #[test]
+    fn test_db_to_gain_factor() {
+        assert_eq!(db_to_gain_factor(0.0), 1.0);
+        assert_eq!(db_to_gain_factor(20.0), 10.0);
+        assert_eq!(db_to_gain_factor(-20.0), 0.1);
+    }
+
+    #[test]
+    fn test_repoint() {
+        let options = vec![
+            ModelValueOption::Single(ModelValue::Bool(true)),
+            ModelValueOption::Single(ModelValue::Bool(false)),
+        ];
+        assert_eq!(repoint(ToggleOr::Toggle(true), &options), 0);
+        assert_eq!(repoint(ToggleOr::Toggle(false), &options), 1);
+    }
+
+    #[test]
+    fn test_rescale() {
+        let options = vec![
+            ModelValueOption::Single(ModelValue::Number(0.0)),
+            ModelValueOption::Single(ModelValue::Number(1.0)),
+        ];
+        assert_eq!(rescale(0.0, &options, 1.0), 0.0);
+        assert_eq!(rescale(0.5, &options, 1.0), 0.5);
+        assert_eq!(rescale(1.0, &options, 4.0), 4.0);
+    }
 }
