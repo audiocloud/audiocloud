@@ -15,13 +15,11 @@ pub async fn init(commands: DomainCommandSource, events: DomainEventSink) -> any
         DomainCommandSource::Disabled => {
             // nothing to do
         }
-        DomainCommandSource::Kafka {
-            topic,
-            brokers,
-            username,
-            password,
-            offset,
-        } => {
+        DomainCommandSource::Kafka { topic,
+                                     brokers,
+                                     username,
+                                     password,
+                                     offset, } => {
             kafka::commands::init(topic, brokers, username, password, offset).await?;
         }
     }
@@ -33,12 +31,10 @@ pub async fn init(commands: DomainCommandSource, events: DomainEventSink) -> any
         DomainEventSink::Log => {
             log_events::init().await?;
         }
-        DomainEventSink::Kafka {
-            topic,
-            brokers,
-            username,
-            password,
-        } => {
+        DomainEventSink::Kafka { topic,
+                                 brokers,
+                                 username,
+                                 password, } => {
             kafka::events::init(topic, brokers, username, password).await?;
         }
     }

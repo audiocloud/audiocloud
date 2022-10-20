@@ -14,22 +14,20 @@ use crate::{MixerNodeId, TimeSegment};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct MediaJobState {
-    pub progress: f64,
-    pub retry: usize,
-    pub error: Option<String>,
+    pub progress:    f64,
+    pub retry:       usize,
+    pub error:       Option<String>,
     pub in_progress: bool,
-    pub updated_at: Timestamp,
+    pub updated_at:  Timestamp,
 }
 
 impl Default for MediaJobState {
     fn default() -> Self {
-        Self {
-            progress: 0.0,
-            retry: 0,
-            error: None,
-            in_progress: false,
-            updated_at: now(),
-        }
+        Self { progress:    0.0,
+               retry:       0,
+               error:       None,
+               in_progress: false,
+               updated_at:  now(), }
     }
 }
 
@@ -41,65 +39,61 @@ impl MediaJobState {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaMetadata {
-    pub channels: MediaChannels,
-    pub format: TrackMediaFormat,
-    pub seconds: f64,
+    pub channels:    MediaChannels,
+    pub format:      TrackMediaFormat,
+    pub seconds:     f64,
     pub sample_rate: usize,
-    pub bytes: u64,
+    pub bytes:       u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UploadToDomain {
-    pub channels: MediaChannels,
-    pub format: TrackMediaFormat,
-    pub seconds: f64,
+    pub channels:    MediaChannels,
+    pub format:      TrackMediaFormat,
+    pub seconds:     f64,
     pub sample_rate: usize,
-    pub bytes: u64,
-    pub url: String,
-    pub notify_url: Option<String>,
+    pub bytes:       u64,
+    pub url:         String,
+    pub notify_url:  Option<String>,
     // typescript: any
-    pub context: Option<Value>,
+    pub context:     Option<Value>,
 }
 
 impl UploadToDomain {
     pub fn metadata(&self) -> MediaMetadata {
-        MediaMetadata {
-            channels: self.channels,
-            format: self.format,
-            seconds: self.seconds,
-            sample_rate: self.sample_rate,
-            bytes: self.bytes,
-        }
+        MediaMetadata { channels:    self.channels,
+                        format:      self.format,
+                        seconds:     self.seconds,
+                        sample_rate: self.sample_rate,
+                        bytes:       self.bytes, }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DownloadFromDomain {
-    pub url: String,
+    pub url:        String,
     pub notify_url: Option<String>,
     // typescript: any
-    pub context: Option<Value>,
+    pub context:    Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ImportToDomain {
-    pub path: String,
-    pub channels: MediaChannels,
-    pub format: TrackMediaFormat,
-    pub seconds: f64,
+    pub path:        String,
+    pub channels:    MediaChannels,
+    pub format:      TrackMediaFormat,
+    pub seconds:     f64,
     pub sample_rate: usize,
-    pub bytes: u64,
+    pub bytes:       u64,
 }
 
 impl ImportToDomain {
     pub fn metadata(&self) -> MediaMetadata {
-        MediaMetadata {
-            channels: self.channels,
-            format: self.format,
-            seconds: self.seconds,
-            sample_rate: self.sample_rate,
-            bytes: self.bytes,
-        }
+        MediaMetadata { channels:    self.channels,
+                        format:      self.format,
+                        seconds:     self.seconds,
+                        sample_rate: self.sample_rate,
+                        bytes:       self.bytes, }
     }
 }
 
@@ -107,7 +101,7 @@ impl ImportToDomain {
 pub struct MediaDownload {
     pub media_id: AppMediaObjectId,
     pub download: DownloadFromDomain,
-    pub state: MediaJobState,
+    pub state:    MediaJobState,
 }
 
 impl MediaDownload {
@@ -119,44 +113,42 @@ impl MediaDownload {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaUpload {
     pub media_id: AppMediaObjectId,
-    pub upload: UploadToDomain,
-    pub state: MediaJobState,
+    pub upload:   UploadToDomain,
+    pub state:    MediaJobState,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaObject {
-    pub id: AppMediaObjectId,
+    pub id:       AppMediaObjectId,
     pub metadata: Option<MediaMetadata>,
-    pub path: Option<String>,
+    pub path:     Option<String>,
     pub download: Option<MediaDownload>,
-    pub upload: Option<MediaUpload>,
+    pub upload:   Option<MediaUpload>,
     pub revision: u64,
 }
 
 impl MediaObject {
     pub fn new(id: &AppMediaObjectId) -> Self {
-        Self {
-            id: id.clone(),
-            metadata: None,
-            path: None,
-            download: None,
-            upload: None,
-            revision: 0,
-        }
+        Self { id:       id.clone(),
+               metadata: None,
+               path:     None,
+               download: None,
+               upload:   None,
+               revision: 0, }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct UpdateMediaSession {
     pub media_objects: HashSet<AppMediaObjectId>,
-    pub ends_at: Timestamp,
+    pub ends_at:       Timestamp,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum MediaServiceCommand {
     SetSessionMedia {
         session_id: AppTaskId,
-        media: HashSet<AppMediaObjectId>,
+        media:      HashSet<AppMediaObjectId>,
     },
     DeleteSession {
         session_id: AppTaskId,
@@ -210,27 +202,27 @@ impl Into<usize> for SampleRate {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RequestPlay {
-    pub play_id: PlayId,
-    pub mixer_id: MixerNodeId,
-    pub segment: TimeSegment,
-    pub start_at: f64,
-    pub looping: bool,
+    pub play_id:     PlayId,
+    pub mixer_id:    MixerNodeId,
+    pub segment:     TimeSegment,
+    pub start_at:    f64,
+    pub looping:     bool,
     pub sample_rate: SampleRate,
-    pub bit_depth: PlayBitDepth,
+    pub bit_depth:   PlayBitDepth,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RequestChangeMixer {
-    pub play_id: PlayId,
+    pub play_id:  PlayId,
     pub mixer_id: MixerNodeId,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RequestSeek {
-    pub play_id: PlayId,
-    pub segment: TimeSegment,
+    pub play_id:  PlayId,
+    pub segment:  TimeSegment,
     pub start_at: f64,
-    pub looping: bool,
+    pub looping:  bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -246,41 +238,15 @@ pub struct RequestCancelRender {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct RequestRender {
     pub render_id: RenderId,
-    pub mixer_id: MixerNodeId,
-    pub segment: TimeSegment,
+    pub mixer_id:  MixerNodeId,
+    pub segment:   TimeSegment,
     pub object_id: AppMediaObjectId,
 }
 
-#[derive(
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Debug,
-    From,
-    Into,
-    Hash,
-    Display,
-    Constructor,
-)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Debug, From, Into, Hash, Display, Constructor)]
 #[repr(transparent)]
 pub struct PlayId(u64);
 
-#[derive(
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Debug,
-    From,
-    Into,
-    Hash,
-    Display,
-    Constructor,
-)]
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Debug, From, Into, Hash, Display, Constructor)]
 #[repr(transparent)]
 pub struct RenderId(u64);

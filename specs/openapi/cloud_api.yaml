@@ -1,3 +1,847 @@
+openapi: 3.1.0
+info:
+  contact:
+    email: bojan@distopik.com
+    name: Bojan Šernek
+  description: ''
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Audio Cloud Orchestrator
+  version: 0.1.0
+paths:
+  /v1/apps/{app_id}:
+    get:
+      deprecated: false
+      description: |
+        Get app details
+
+        Get details of a registered app. Only administrators and app owners may do this.
+      operationId: get_app
+      parameters:
+      - deprecated: false
+        description: App to get
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAppResponse'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Get app details
+      tags:
+      - apps
+    patch:
+      deprecated: false
+      description: |
+        Update app details
+
+        Update details of a registered app. Only administrators and app owners may do this. If the media
+        URL is changed, it will only be used for newly submitted upload and download jobs.
+      operationId: update_app
+      parameters:
+      - deprecated: false
+        description: App to update
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApp'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Update app details
+      tags:
+      - apps
+  /v1/apps/{app_id}/media/{object_id}:
+    delete:
+      deprecated: false
+      description: |
+        Delete a media object
+
+        Delete a media object form all domains that have a copy.
+      operationId: delete_media_object
+      parameters:
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadToDomain'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaObjectDeleted'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or task not found
+      summary: Delete a media object
+      tags:
+      - media
+  /v1/apps/{app_id}/tasks:
+    post:
+      deprecated: false
+      description: |
+        Create a task
+
+        The task will be checked against exclusivity with other tasks, as well as resources and other
+        limits imposed by the domain configuration.
+      operationId: create_task
+      parameters:
+      - deprecated: false
+        description: The app for which we are creating a task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Overlapping task exists
+      summary: Create a task
+      tags:
+      - tasks
+  /v1/apps/{app_id}/tasks/{task_id}:
+    delete:
+      deprecated: false
+      description: |
+        Delete a task
+
+        Delete a task and release all referenced resources.
+      operationId: delete_task
+      parameters:
+      - deprecated: false
+        description: App owning the task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task to be deleted
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDeleted'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App not found
+      summary: Delete a task
+      tags:
+      - tasks
+  /v1/apps/{app_id}/tasks/{task_id}/spec:
+    put:
+      deprecated: false
+      description: |
+        Modify existing task spec
+
+        Submit modifications to the task. This generic request can be used to update most aspects of the
+        session: adjusting parameters, creating, deleting, reconnecting nodes, changing media, etc.
+      operationId: modify_task_spec
+      parameters:
+      - deprecated: false
+        description: App owning the task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task to be updated
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version for
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyTaskList'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App or task not found
+      summary: Modify existing task spec
+      tags:
+      - tasks
+  /v1/apps/{app_id}/tasks/{task_id}/time:
+    put:
+      deprecated: false
+      description: |
+        Modify existing task time
+
+        Submit modifications to the task reservation time. Can be used to extend, move start or end early.
+      operationId: adjust_task_time
+      parameters:
+      - deprecated: false
+        description: App owning the task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task to be updated
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version for
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustTaskTime'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App or task not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Overlapping task exists
+      summary: Modify existing task time
+      tags:
+      - tasks
+  /v1/domains/{domain_id}:
+    get:
+      deprecated: false
+      description: |
+        Get domain details
+
+        Get details about a domain. Available to owners, administrators and apps where the app has
+        permission to access domain details.
+      operationId: get_domain
+      parameters:
+      - deprecated: false
+        description: Domain to get
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetDomainResponse'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Get domain details
+      tags:
+      - domains
+  /v1/domains/{domain_id}/config:
+    get:
+      deprecated: false
+      description: |
+        Domain requests to get its configuration
+
+        When a domain starts in cloud mode, it will get the details of its configuration from the cloud.
+        This endpoint delivers all of the cloud information about the domain, including instances,
+        audio engines and cloud synchronization endpoints.
+      operationId: get_domain_config
+      parameters:
+      - deprecated: false
+        description: Domain to get config for
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainConfig'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Domain requests to get its configuration
+      tags:
+      - domains
+  /v1/domains/{domain_id}/instances/{manufacturer}/{name}/{instance}/maintenance:
+    delete:
+      deprecated: false
+      description: |
+        Clear instance maintenance time
+
+        Clear any maitnenance on the instance that matches the time predicates provided.
+      operationId: clear_fixed_instance_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain hosting the instance
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Instance manufacturer
+        in: path
+        name: manufacturer
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance (product) name
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance unique identifier
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Clear instance maintenance time
+      tags:
+      - domains
+    post:
+      deprecated: false
+      description: |
+        Add maitenance time to instance
+
+        Add a designated time of maitnenance to an instance in a domain. When an instance is in
+        maintenance, it cannot process tasks. Apps will not be able to create bookings against the
+        instance that intersect with maintenance windows.
+      operationId: add_fixed_instance_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain hosting the instance
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Instance manufacturer
+        in: path
+        name: manufacturer
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance (product) name
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance unique identifier
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Add maitenance time to instance
+      tags:
+      - domains
+  /v1/domains/{domain_id}/maintenance:
+    delete:
+      deprecated: false
+      description: |
+        Clear domain maintenance time
+
+        Clear any maitnenance on the domain that matches the time predicates provided.
+      operationId: clear_domain_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain to clear maitnenance on
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Clear domain maintenance time
+      tags:
+      - domains
+    post:
+      deprecated: false
+      description: |
+        Add maitenance time to domain
+
+        Add a designated time of maitnenance to the whole domain. When a domain is in maintenance, it
+        cannot serve API requests or process tasks. Apps will not be able to create bookings against the
+        domain that intersect with maintenance windows.
+      operationId: add_domain_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain to add maintenance to
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Add maitenance time to domain
+      tags:
+      - domains
+  /v1/domains/{domain_id}/media/{app_id}/{object_id}/download:
+    put:
+      deprecated: false
+      description: |
+        Download a media object
+
+        Download a media object from a domain to an app's private storage.
+      operationId: download_media_object
+      parameters:
+      - deprecated: false
+        description: Domain to download the file from
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadFromDomain'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or task not found
+      summary: Download a media object
+      tags:
+      - media
+  /v1/domains/{domain_id}/media/{app_id}/{object_id}/report:
+    put:
+      deprecated: false
+      description: |
+        Update upload/download progress
+
+        Used by domains to communicate upload or download progress.
+      operationId: report_media_job_progress
+      parameters:
+      - deprecated: false
+        description: Domain to download the file from
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportMediaJobProgress'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or object not found
+      summary: Update upload/download progress
+      tags:
+      - media
+  /v1/domains/{domain_id}/media/{app_id}/{object_id}/upload:
+    put:
+      deprecated: false
+      description: |
+        Uplod a media object
+
+        Upload or replace content of a domain object from an app's private storage.
+      operationId: upload_media_object
+      parameters:
+      - deprecated: false
+        description: Domain to upload the file to
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadToDomain'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or task not found
+      summary: Uplod a media object
+      tags:
+      - media
+servers:
+- description: Production
+  url: https://api.audiocloud.io
+- description: Local development
+  url: http://localhost:7100
 components:
   schemas:
     AddMaintenance:
@@ -2656,847 +3500,3 @@ components:
           format: double
         url:
           type: string
-info:
-  contact:
-    email: bojan@distopik.com
-    name: Bojan Šernek
-  description: ''
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
-  title: Audio Cloud Orchestrator
-  version: 0.1.0
-openapi: 3.1.0
-paths:
-  /v1/apps/{app_id}:
-    get:
-      deprecated: false
-      description: |
-        Get app details
-
-        Get details of a registered app. Only administrators and app owners may do this.
-      operationId: get_app
-      parameters:
-      - deprecated: false
-        description: App to get
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetAppResponse'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Get app details
-      tags:
-      - apps
-    patch:
-      deprecated: false
-      description: |
-        Update app details
-
-        Update details of a registered app. Only administrators and app owners may do this. If the media
-        URL is changed, it will only be used for newly submitted upload and download jobs.
-      operationId: update_app
-      parameters:
-      - deprecated: false
-        description: App to update
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateApp'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AppUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Update app details
-      tags:
-      - apps
-  /v1/apps/{app_id}/media/{object_id}:
-    delete:
-      deprecated: false
-      description: |
-        Delete a media object
-
-        Delete a media object form all domains that have a copy.
-      operationId: delete_media_object
-      parameters:
-      - deprecated: false
-        description: Owner of the file
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: File object ID
-        in: path
-        name: object_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/MediaObjectId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadToDomain'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaObjectDeleted'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Domain, app or task not found
-      summary: Delete a media object
-      tags:
-      - media
-  /v1/apps/{app_id}/tasks:
-    post:
-      deprecated: false
-      description: |
-        Create a task
-
-        The task will be checked against exclusivity with other tasks, as well as resources and other
-        limits imposed by the domain configuration.
-      operationId: create_task
-      parameters:
-      - deprecated: false
-        description: The app for which we are creating a task
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateTask'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskCreated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: App not found
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Overlapping task exists
-      summary: Create a task
-      tags:
-      - tasks
-  /v1/apps/{app_id}/tasks/{task_id}:
-    delete:
-      deprecated: false
-      description: |
-        Delete a task
-
-        Delete a task and release all referenced resources.
-      operationId: delete_task
-      parameters:
-      - deprecated: false
-        description: App owning the task
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task to be deleted
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskDeleted'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: App not found
-      summary: Delete a task
-      tags:
-      - tasks
-  /v1/apps/{app_id}/tasks/{task_id}/spec:
-    put:
-      deprecated: false
-      description: |
-        Modify existing task spec
-
-        Submit modifications to the task. This generic request can be used to update most aspects of the
-        session: adjusting parameters, creating, deleting, reconnecting nodes, changing media, etc.
-      operationId: modify_task_spec
-      parameters:
-      - deprecated: false
-        description: App owning the task
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task to be updated
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: The task version for
-        in: header
-        name: If-Match
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ModifyTaskList'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: App or task not found
-      summary: Modify existing task spec
-      tags:
-      - tasks
-  /v1/apps/{app_id}/tasks/{task_id}/time:
-    put:
-      deprecated: false
-      description: |
-        Modify existing task time
-
-        Submit modifications to the task reservation time. Can be used to extend, move start or end early.
-      operationId: adjust_task_time
-      parameters:
-      - deprecated: false
-        description: App owning the task
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task to be updated
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: The task version for
-        in: header
-        name: If-Match
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AdjustTaskTime'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: App or task not found
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Overlapping task exists
-      summary: Modify existing task time
-      tags:
-      - tasks
-  /v1/domains/{domain_id}:
-    get:
-      deprecated: false
-      description: |
-        Get domain details
-
-        Get details about a domain. Available to owners, administrators and apps where the app has
-        permission to access domain details.
-      operationId: get_domain
-      parameters:
-      - deprecated: false
-        description: Domain to get
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GetDomainResponse'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Get domain details
-      tags:
-      - domains
-  /v1/domains/{domain_id}/config:
-    get:
-      deprecated: false
-      description: |
-        Domain requests to get its configuration
-
-        When a domain starts in cloud mode, it will get the details of its configuration from the cloud.
-        This endpoint delivers all of the cloud information about the domain, including instances,
-        audio engines and cloud synchronization endpoints.
-      operationId: get_domain_config
-      parameters:
-      - deprecated: false
-        description: Domain to get config for
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainConfig'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Domain requests to get its configuration
-      tags:
-      - domains
-  /v1/domains/{domain_id}/instances/{manufacturer}/{name}/{instance}/maintenance:
-    delete:
-      deprecated: false
-      description: |
-        Clear instance maintenance time
-
-        Clear any maitnenance on the instance that matches the time predicates provided.
-      operationId: clear_fixed_instance_maintenance
-      parameters:
-      - deprecated: false
-        description: Domain hosting the instance
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      - deprecated: false
-        description: Instance manufacturer
-        in: path
-        name: manufacturer
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Instance (product) name
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Instance unique identifier
-        in: path
-        name: instance
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ClearMaintenance'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Clear instance maintenance time
-      tags:
-      - domains
-    post:
-      deprecated: false
-      description: |
-        Add maitenance time to instance
-
-        Add a designated time of maitnenance to an instance in a domain. When an instance is in
-        maintenance, it cannot process tasks. Apps will not be able to create bookings against the
-        instance that intersect with maintenance windows.
-      operationId: add_fixed_instance_maintenance
-      parameters:
-      - deprecated: false
-        description: Domain hosting the instance
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      - deprecated: false
-        description: Instance manufacturer
-        in: path
-        name: manufacturer
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Instance (product) name
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Instance unique identifier
-        in: path
-        name: instance
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddMaintenance'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Add maitenance time to instance
-      tags:
-      - domains
-  /v1/domains/{domain_id}/maintenance:
-    delete:
-      deprecated: false
-      description: |
-        Clear domain maintenance time
-
-        Clear any maitnenance on the domain that matches the time predicates provided.
-      operationId: clear_domain_maintenance
-      parameters:
-      - deprecated: false
-        description: Domain to clear maitnenance on
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ClearMaintenance'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Clear domain maintenance time
-      tags:
-      - domains
-    post:
-      deprecated: false
-      description: |
-        Add maitenance time to domain
-
-        Add a designated time of maitnenance to the whole domain. When a domain is in maintenance, it
-        cannot serve API requests or process tasks. Apps will not be able to create bookings against the
-        domain that intersect with maintenance windows.
-      operationId: add_domain_maintenance
-      parameters:
-      - deprecated: false
-        description: Domain to add maintenance to
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AddMaintenance'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not found
-      summary: Add maitenance time to domain
-      tags:
-      - domains
-  /v1/domains/{domain_id}/media/{app_id}/{object_id}/download:
-    put:
-      deprecated: false
-      description: |
-        Download a media object
-
-        Download a media object from a domain to an app's private storage.
-      operationId: download_media_object
-      parameters:
-      - deprecated: false
-        description: Domain to download the file from
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      - deprecated: false
-        description: Owner of the file
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: File object ID
-        in: path
-        name: object_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/MediaObjectId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DownloadFromDomain'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DownloadCreated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Domain, app or task not found
-      summary: Download a media object
-      tags:
-      - media
-  /v1/domains/{domain_id}/media/{app_id}/{object_id}/report:
-    put:
-      deprecated: false
-      description: |
-        Update upload/download progress
-
-        Used by domains to communicate upload or download progress.
-      operationId: report_media_job_progress
-      parameters:
-      - deprecated: false
-        description: Domain to download the file from
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      - deprecated: false
-        description: Owner of the file
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: File object ID
-        in: path
-        name: object_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/MediaObjectId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReportMediaJobProgress'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DownloadCreated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Domain, app or object not found
-      summary: Update upload/download progress
-      tags:
-      - media
-  /v1/domains/{domain_id}/media/{app_id}/{object_id}/upload:
-    put:
-      deprecated: false
-      description: |
-        Uplod a media object
-
-        Upload or replace content of a domain object from an app's private storage.
-      operationId: upload_media_object
-      parameters:
-      - deprecated: false
-        description: Domain to upload the file to
-        in: path
-        name: domain_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/DomainId'
-      - deprecated: false
-        description: Owner of the file
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: File object ID
-        in: path
-        name: object_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/MediaObjectId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UploadToDomain'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UploadCreated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/CloudError'
-          description: Domain, app or task not found
-      summary: Uplod a media object
-      tags:
-      - media
-servers:
-- description: Production
-  url: https://api.audiocloud.io
-- description: Local development
-  url: http://localhost:7100

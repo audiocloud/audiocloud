@@ -23,9 +23,7 @@ impl TaskActor {
 
     pub(crate) fn push_compressed_audio(&mut self, audio: CompressedAudio) {
         if self.engine.should_be_playing(&audio.play_id) {
-            self.packet
-                .audio
-                .push(DiffStamped::new(self.packet.created_at, audio));
+            self.packet.audio.push(DiffStamped::new(self.packet.created_at, audio));
         }
     }
 
@@ -34,14 +32,10 @@ impl TaskActor {
         let packet_num_audio_frames = self.packet.audio.len();
         let max_packet_age = chrono::Duration::milliseconds(self.opts.max_packet_age_ms as i64);
 
-        if packet_age >= max_packet_age
-            || packet_num_audio_frames >= self.opts.max_packet_audio_frames
-        {
+        if packet_age >= max_packet_age || packet_num_audio_frames >= self.opts.max_packet_audio_frames {
             let packet = mem::take(&mut self.packet);
-            self.issue_system_async(NotifyStreamingPacket {
-                task_id: { self.id.clone() },
-                packet: { packet },
-            });
+            self.issue_system_async(NotifyStreamingPacket { task_id: { self.id.clone() },
+                                                            packet:  { packet }, });
         }
     }
 }

@@ -29,10 +29,7 @@ struct DriverOpts {
 async fn main() -> anyhow::Result<()> {
     let _ = dotenv::dotenv();
     if env::var("RUST_LOG").is_err() {
-        env::set_var(
-            "RUST_LOG",
-            "info,audiocloud_api=debug,audiocloud_driver=debug",
-        );
+        env::set_var("RUST_LOG", "info,audiocloud_api=debug,audiocloud_driver=debug");
     }
 
     tracing_subscriber::fmt::init();
@@ -45,16 +42,11 @@ async fn main() -> anyhow::Result<()> {
 
     supervisor::init(opts.nats, instances).await?;
 
-    info!(
-        bind = opts.bind,
-        port = opts.port,
-        " ==== AudioCloud Driver server ==== "
-    );
+    info!(bind = opts.bind, port = opts.port, " ==== AudioCloud Driver server ==== ");
 
-    HttpServer::new(move || App::new().configure(rest_api::configure))
-        .bind((opts.bind.as_str(), opts.port))?
-        .run()
-        .await?;
+    HttpServer::new(move || App::new().configure(rest_api::configure)).bind((opts.bind.as_str(), opts.port))?
+                                                                      .run()
+                                                                      .await?;
 
     Ok(())
 }

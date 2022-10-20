@@ -14,17 +14,13 @@ impl Handler<GetTaskWithStatusAndSpec> for TasksSupervisor {
         use DomainError::*;
 
         if let Some(task) = self.tasks.get(&msg.task_id) {
-            Ok(TaskWithStatusAndSpec {
-                play_state: { task.state.play_state.value().clone() },
-                task_id: { msg.task_id.clone() },
-                instances: { Default::default() },
-                media: { Default::default() },
-                spec: { Default::default() },
-            })
+            Ok(TaskWithStatusAndSpec { play_state: { task.state.play_state.value().clone() },
+                                       task_id:    { msg.task_id.clone() },
+                                       instances:  { Default::default() },
+                                       media:      { Default::default() },
+                                       spec:       { Default::default() }, })
         } else {
-            Err(TaskNotFound {
-                task_id: msg.task_id,
-            })
+            Err(TaskNotFound { task_id: msg.task_id })
         }
     }
 }

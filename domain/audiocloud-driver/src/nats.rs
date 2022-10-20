@@ -35,15 +35,13 @@ pub async fn init(opts: NatsOpts, instances: HashSet<FixedInstanceId>) -> anyhow
         let model = &instance_id.name;
         let instance = &instance_id.instance;
         info!("ac.inst.{manufacturer}.{model}.{instance}.cmds");
-        let subscription = connection
-            .subscribe(&format!("ac.inst.{manufacturer}.{model}.{instance}.cmds"))
-            .await?;
+        let subscription = connection.subscribe(&format!("ac.inst.{manufacturer}.{model}.{instance}.cmds"))
+                                     .await?;
 
         spawn(handle_commands(subscription, instance_id));
     }
 
-    NATS.set(connection)
-        .map_err(|_| anyhow!("State init already called!"))?;
+    NATS.set(connection).map_err(|_| anyhow!("State init already called!"))?;
 
     Ok(())
 }
@@ -60,10 +58,8 @@ async fn handle_commands(subscription: nats_aflowt::Subscription, instance_id: F
                 trace!("Received command: {cmd:?}");
                 let supervisor = get_driver_supervisor();
 
-                let cmd = Command {
-                    instance_id: instance_id.clone(),
-                    command: cmd,
-                };
+                let cmd = Command { instance_id: instance_id.clone(),
+                                    command:     cmd, };
 
                 match supervisor.send(cmd).await {
                     Ok(response) => {
@@ -120,18 +116,10 @@ impl Handler<Event> for NatsService {
 
     fn handle(&mut self, msg: Event, ctx: &mut Self::Context) -> Self::Result {
         let id = &msg.instance_id;
-        info!(
-            "ac.inst.{}.{}.{}.evts",
-            id.manufacturer, id.name, id.instance
-        );
-        ctx.notify(Publish {
-            subject: format!(
-                "ac.inst.{}.{}.{}.evts",
-                id.manufacturer, id.name, id.instance
-            ),
-            message: msg.event,
-            codec: Json,
-        });
+        info!("ac.inst.{}.{}.{}.evts", id.manufacturer, id.name, id.instance);
+        ctx.notify(Publish { subject: format!("ac.inst.{}.{}.{}.evts", id.manufacturer, id.name, id.instance),
+                             message: msg.event,
+                             codec:   Json, });
     }
 }
 
@@ -140,5 +128,5 @@ impl Handler<Event> for NatsService {
 pub struct Publish<S: Serialize, C: Codec> {
     pub subject: String,
     pub message: S,
-    pub codec: C,
+    pub codec:   C,
 }

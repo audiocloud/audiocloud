@@ -7,7 +7,7 @@ pub type Timestamp = DateTime<Utc>;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, Hash, JsonSchema)]
 pub struct TimeRange {
     pub from: Timestamp,
-    pub to: Timestamp,
+    pub to:   Timestamp,
 }
 
 pub fn now() -> Timestamp {
@@ -89,18 +89,14 @@ impl<T> Timestamped<T> {
     }
 }
 
-impl<T> Timestamped<T>
-where
-    T: Copy,
+impl<T> Timestamped<T> where T: Copy
 {
     pub fn value_copy(&self) -> T {
         self.1
     }
 }
 
-impl<T> Default for Timestamped<T>
-where
-    T: Default,
+impl<T> Default for Timestamped<T> where T: Default
 {
     fn default() -> Self {
         Timestamped::new(T::default())

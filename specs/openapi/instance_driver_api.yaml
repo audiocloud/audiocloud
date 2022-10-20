@@ -1,3 +1,140 @@
+openapi: 3.1.0
+info:
+  contact:
+    email: bojan@distopik.com
+    name: Bojan Šernek
+  description: ''
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Audio Cloud Instance Driver
+  version: 0.1.0
+paths:
+  /v1/instances:
+    get:
+      deprecated: false
+      description: |
+        List running instances
+
+        List instances running on this driver enddpoint.
+      operationId: list_instances
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceWithStatusList'
+          description: Success
+      summary: List running instances
+      tags:
+      - driver
+  /v1/instances/{manufacturer}/{name}/{instance}/parameters:
+    patch:
+      deprecated: false
+      description: |
+        Set parameters
+
+        Update instance parameter values.
+      operationId: set_parameters
+      parameters:
+      - deprecated: false
+        description: Model manufacturer
+        in: path
+        name: manufacturer
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Model product name
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Unique instance identifier
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetInstanceParameters'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceParametersUpdated'
+          description: Success
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceDriverError'
+          description: Not found
+      summary: Set parameters
+      tags:
+      - instance
+  /v1/instances/{manufacturer}/{name}/{instance}/play-state:
+    put:
+      deprecated: false
+      description: |
+        Set desired play state
+
+        If the instance has media capabilities, set an instance's desired play state.
+      operationId: accept_command
+      parameters:
+      - deprecated: false
+        description: Model manufacturer
+        in: path
+        name: manufacturer
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Model product name
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Unique instance identifier
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstanceDriverCommand'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceCommandAccepted'
+          description: Success
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceDriverError'
+          description: Not found
+      summary: Set desired play state
+      tags:
+      - instance
+servers:
+- description: Local development
+  url: http://localhost:7400
 components:
   schemas:
     FixedInstanceId:
@@ -269,140 +406,3 @@ components:
       - parameters
       properties:
         parameters: true
-info:
-  contact:
-    email: bojan@distopik.com
-    name: Bojan Šernek
-  description: ''
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
-  title: Audio Cloud Instance Driver
-  version: 0.1.0
-openapi: 3.1.0
-paths:
-  /v1/instances:
-    get:
-      deprecated: false
-      description: |
-        List running instances
-
-        List instances running on this driver enddpoint.
-      operationId: list_instances
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceWithStatusList'
-          description: Success
-      summary: List running instances
-      tags:
-      - driver
-  /v1/instances/{manufacturer}/{name}/{instance}/parameters:
-    patch:
-      deprecated: false
-      description: |
-        Set parameters
-
-        Update instance parameter values.
-      operationId: set_parameters
-      parameters:
-      - deprecated: false
-        description: Model manufacturer
-        in: path
-        name: manufacturer
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Model product name
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Unique instance identifier
-        in: path
-        name: instance
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SetInstanceParameters'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceParametersUpdated'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceDriverError'
-          description: Not found
-      summary: Set parameters
-      tags:
-      - instance
-  /v1/instances/{manufacturer}/{name}/{instance}/play-state:
-    put:
-      deprecated: false
-      description: |
-        Set desired play state
-
-        If the instance has media capabilities, set an instance's desired play state.
-      operationId: accept_command
-      parameters:
-      - deprecated: false
-        description: Model manufacturer
-        in: path
-        name: manufacturer
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Model product name
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Unique instance identifier
-        in: path
-        name: instance
-        required: true
-        schema:
-          type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InstanceDriverCommand'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceCommandAccepted'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstanceDriverError'
-          description: Not found
-      summary: Set desired play state
-      tags:
-      - instance
-servers:
-- description: Local development
-  url: http://localhost:7400

@@ -10,9 +10,7 @@ use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
 
 use crate::nats::NatsOpts;
-use crate::{
-    nats, Command, ConfigFile, GetInstances, GetValues, InstanceConfig, NotifyInstanceValues,
-};
+use crate::{nats, Command, ConfigFile, GetInstances, GetValues, InstanceConfig, NotifyInstanceValues};
 
 static SUPERVISOR_ADDR: OnceCell<Addr<DriverSupervisor>> = OnceCell::new();
 
@@ -28,9 +26,8 @@ pub fn get_driver_supervisor() -> Addr<DriverSupervisor> {
 pub async fn init(nats_opts: NatsOpts, config: ConfigFile) -> anyhow::Result<()> {
     let supervisor = DriverSupervisor::new(nats_opts, config).await?;
 
-    SUPERVISOR_ADDR
-        .set(supervisor.start())
-        .expect("Driver supervisor already initialized");
+    SUPERVISOR_ADDR.set(supervisor.start())
+                   .expect("Driver supervisor already initialized");
 
     info!("Driver supervisor initialized");
 
@@ -41,7 +38,7 @@ pub async fn init(nats_opts: NatsOpts, config: ConfigFile) -> anyhow::Result<()>
 
 pub struct DriverSupervisor {
     instances: HashMap<FixedInstanceId, Recipient<Command>>,
-    values: HashMap<FixedInstanceId, NotifyInstanceValues>,
+    values:    HashMap<FixedInstanceId, NotifyInstanceValues>,
 }
 
 impl Handler<Command> for DriverSupervisor {
@@ -50,20 +47,16 @@ impl Handler<Command> for DriverSupervisor {
     fn handle(&mut self, msg: Command, _ctx: &mut Context<Self>) -> Self::Result {
         let instance_id = msg.instance_id.clone();
         if let Some(instance) = self.instances.get(&instance_id) {
-            instance
-                .send(msg)
-                .into_actor(self)
-                .map(move |res, _, _| match res {
-                    Err(_) => Err(InstanceDriverError::InstanceNotFound(instance_id)),
-                    Ok(res) => res,
-                })
-                .boxed_local()
+            instance.send(msg)
+                    .into_actor(self)
+                    .map(move |res, _, _| match res {
+                        Err(_) => Err(InstanceDriverError::InstanceNotFound(instance_id)),
+                        Ok(res) => res,
+                    })
+                    .boxed_local()
         } else {
-            fut::err(InstanceDriverError::InstanceNotFound(
-                msg.instance_id.clone(),
-            ))
-            .into_actor(self)
-            .boxed_local()
+            fut::err(InstanceDriverError::InstanceNotFound(msg.instance_id.clone())).into_actor(self)
+                                                                                    .boxed_local()
         }
     }
 }
@@ -89,9 +82,7 @@ impl Handler<GetValues> for DriverSupervisor {
 
     fn handle(&mut self, msg: GetValues, _ctx: &mut Self::Context) -> Self::Result {
         match self.values.get(&msg.instance_id) {
-            None => Err(InstanceDriverError::InstanceNotFound(
-                msg.instance_id.clone(),
-            )),
+            None => Err(InstanceDriverError::InstanceNotFound(msg.instance_id.clone())),
             Some(values) => Ok(values.clone()),
         }
     }
@@ -109,10 +100,8 @@ impl DriverSupervisor {
         let instance_ids = instances.keys().cloned().collect::<HashSet<_>>();
         nats::init(nats_opts, instance_ids).await?;
 
-        Ok(Self {
-            instances,
-            values: Default::default(),
-        })
+        Ok(Self { instances,
+                  values: Default::default() })
     }
 }
 

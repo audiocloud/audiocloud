@@ -2,10 +2,7 @@
 
 use std::time::Duration;
 
-use actix::{
-    Actor, ActorContext, ActorFutureExt, AsyncContext, ContextFutureSpawner, Handler,
-    StreamHandler, WrapFuture,
-};
+use actix::{Actor, ActorContext, ActorFutureExt, AsyncContext, ContextFutureSpawner, Handler, StreamHandler, WrapFuture};
 use actix_web::{get, web, HttpRequest, Responder};
 use actix_web_actors::ws;
 use actix_web_actors::ws::WebsocketContext;
@@ -29,11 +26,7 @@ struct AuthParams {
 }
 
 #[get("/ws/{client_id}/{socket_id}")]
-async fn ws_handler(
-    req: HttpRequest,
-    id: web::Path<ClientSocketId>,
-    stream: web::Payload,
-) -> impl Responder {
+async fn ws_handler(req: HttpRequest, id: web::Path<ClientSocketId>, stream: web::Payload) -> impl Responder {
     let id = id.into_inner();
     debug!(%id, "connected web_socket with");
 
@@ -52,21 +45,18 @@ impl Actor for WebSocketActor {
     fn started(&mut self, ctx: &mut Self::Context) {
         debug!(id = %self.id, "WebSocket started");
 
-        let register_cmd = RegisterWebSocket {
-            address: ctx.address(),
-            socket_id: self.id.clone(),
-        };
+        let register_cmd = RegisterWebSocket { address:   ctx.address(),
+                                               socket_id: self.id.clone(), };
 
-        get_sockets_supervisor()
-            .send(register_cmd)
-            .into_actor(self)
-            .map(|res, act, ctx| {
-                if res.is_err() {
-                    warn!(id = %act.id, "Failed to register websocket actor, giving up");
-                    ctx.stop();
-                }
-            })
-            .wait(ctx);
+        get_sockets_supervisor().send(register_cmd)
+                                .into_actor(self)
+                                .map(|res, act, ctx| {
+                                    if res.is_err() {
+                                        warn!(id = %act.id, "Failed to register websocket actor, giving up");
+                                        ctx.stop();
+                                    }
+                                })
+                                .wait(ctx);
     }
 
     fn stopped(&mut self, ctx: &mut Self::Context) {
@@ -82,18 +72,16 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
                 ctx.pong(&msg)
             }
             Ok(ws::Message::Text(text)) => {
-                get_sockets_supervisor()
-                    .send(SocketReceived::Text(self.id.clone(), text.to_string()))
-                    .map(drop)
-                    .into_actor(self)
-                    .spawn(ctx);
+                get_sockets_supervisor().send(SocketReceived::Text(self.id.clone(), text.to_string()))
+                                        .map(drop)
+                                        .into_actor(self)
+                                        .spawn(ctx);
             }
             Ok(ws::Message::Binary(bytes)) => {
-                get_sockets_supervisor()
-                    .send(SocketReceived::Bytes(self.id.clone(), bytes))
-                    .map(drop)
-                    .into_actor(self)
-                    .spawn(ctx);
+                get_sockets_supervisor().send(SocketReceived::Bytes(self.id.clone(), bytes))
+                                        .map(drop)
+                                        .into_actor(self)
+                                        .spawn(ctx);
             }
             Err(error) => {
                 warn!(%error, "WebSocket reported error");

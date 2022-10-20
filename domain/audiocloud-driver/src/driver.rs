@@ -5,9 +5,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tracing::*;
 
-use audiocloud_api::instance_driver::{
-    InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent,
-};
+use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent};
 use audiocloud_api::{FixedInstanceId, PlayId, RenderId};
 
 use crate::{emit_event, Command};
@@ -59,10 +57,7 @@ pub trait Driver: Unpin + Sized + 'static {
 
     #[instrument(skip(reports), err)]
     fn emit_reports(instance_id: FixedInstanceId, reports: Self::Reports) -> Result {
-        let reports =
-            serde_json::to_value(&reports).map_err(|e| InstanceDriverError::ReportsMalformed {
-                error: e.to_string(),
-            })?;
+        let reports = serde_json::to_value(&reports).map_err(|e| InstanceDriverError::ReportsMalformed { error: e.to_string() })?;
 
         emit_event(instance_id, InstanceDriverEvent::Reports { reports });
 
@@ -71,15 +66,12 @@ pub trait Driver: Unpin + Sized + 'static {
 }
 
 pub struct DriverActor<D>
-where
-    D: Driver,
+    where D: Driver
 {
     driver: D,
 }
 
-impl<D> DriverActor<D>
-where
-    D: Driver,
+impl<D> DriverActor<D> where D: Driver
 {
     pub fn start_recipient(driver: D) -> Recipient<Command> {
         Self { driver }.start().recipient()
@@ -92,9 +84,7 @@ where
     }
 }
 
-impl<D> Actor for DriverActor<D>
-where
-    D: Driver,
+impl<D> Actor for DriverActor<D> where D: Driver
 {
     type Context = Context<Self>;
 
@@ -103,9 +93,7 @@ where
     }
 }
 
-impl<D> Supervised for DriverActor<D>
-where
-    D: Driver,
+impl<D> Supervised for DriverActor<D> where D: Driver
 {
     fn restarting(&mut self, ctx: &mut <Self as Actor>::Context) {
         self.driver.restarted();
@@ -113,9 +101,7 @@ where
     }
 }
 
-impl<D> Handler<Command> for DriverActor<D>
-where
-    D: Driver,
+impl<D> Handler<Command> for DriverActor<D> where D: Driver
 {
     type Result = Result;
 
@@ -137,11 +123,8 @@ where
                 self.driver.rewind(to)?;
             }
             InstanceDriverCommand::SetParameters(parameters) => {
-                let parameters = serde_json::from_value(parameters).map_err(|e| {
-                    InstanceDriverError::ParametersMalformed {
-                        error: e.to_string(),
-                    }
-                })?;
+                let parameters =
+                    serde_json::from_value(parameters).map_err(|e| InstanceDriverError::ParametersMalformed { error: e.to_string() })?;
                 self.driver.on_parameters_changed(parameters)?;
             }
             InstanceDriverCommand::SetPowerChannel { channel, power } => {

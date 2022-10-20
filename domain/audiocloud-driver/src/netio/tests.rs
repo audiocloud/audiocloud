@@ -1,16 +1,8 @@
-
-
-
 use anyhow::anyhow;
 
 use trim_margin::MarginTrimmable;
 
-
-
-
-use crate::netio::power_pdu_4c::{
-    NetioPowerOutputAction, NetioPowerRequest, NetioPowerResponse, PowerAction,
-};
+use crate::netio::power_pdu_4c::{NetioPowerOutputAction, NetioPowerRequest, NetioPowerResponse, PowerAction};
 
 #[test]
 fn deserialize_captured_response() -> anyhow::Result<()> {
@@ -77,12 +69,13 @@ fn deserialize_captured_response() -> anyhow::Result<()> {
                       |			"Load":	0,
                       |			"Energy":	8
                       |		}]
-                      |}"#
-    .trim_margin()
-    .ok_or_else(|| anyhow!("Failed to trim margin from captured JSON"))?;
+                      |}"#.trim_margin()
+                          .ok_or_else(|| anyhow!("Failed to trim margin from captured JSON"))?;
 
-    let _netio_response = serde_json::from_str::<NetioPowerResponse>(raw_json.as_str())
-        .map_err(|error| anyhow!("Captured response should deserialize: {error}"))?;
+    let _netio_response =
+        serde_json::from_str::<NetioPowerResponse>(raw_json.as_str()).map_err(|error| {
+                                                                         anyhow!("Captured response should deserialize: {error}")
+                                                                     })?;
 
     // TODO: assert values
 
@@ -93,24 +86,15 @@ fn deserialize_captured_response() -> anyhow::Result<()> {
 fn serialize_request() -> anyhow::Result<()> {
     // TODO: add test when implementation exists
 
-    let request = NetioPowerRequest {
-        outputs: vec![
-            NetioPowerOutputAction {
-                id: { 0 },
-                action: { PowerAction::Off },
-            },
-            NetioPowerOutputAction {
-                id: { 1 },
-                action: { PowerAction::On },
-            },
-        ],
-    };
+    let request = NetioPowerRequest { outputs: vec![NetioPowerOutputAction { id:     { 0 },
+                                                                             action: { PowerAction::Off }, },
+                                                    NetioPowerOutputAction { id:     { 1 },
+                                                                             action: { PowerAction::On }, },], };
 
     let json = serde_json::to_string_pretty(&request).expect("Request should serialize");
 
-    assert_eq!(
-        json,
-        r#"|{
+    assert_eq!(json,
+               r#"|{
                   |  "Outputs": [
                   |    {
                   |      "ID": 0,
@@ -121,10 +105,8 @@ fn serialize_request() -> anyhow::Result<()> {
                   |      "Action": 1
                   |    }
                   |  ]
-                  |}"#
-        .trim_margin()
-        .ok_or_else(|| anyhow!("Failed to extract margins from comparison JSON"))?
-    );
+                  |}"#.trim_margin()
+                      .ok_or_else(|| anyhow!("Failed to extract margins from comparison JSON"))?);
 
     Ok(())
 }
@@ -132,19 +114,13 @@ fn serialize_request() -> anyhow::Result<()> {
 #[cfg(feature = "test_distopik_hq")]
 #[actix::test]
 async fn test_integration_distopik_hq() -> anyhow::Result<()> {
-    let config = Config {
-        address: "http://10.1.3.100".to_string(),
-        auth: None,
-    };
+    let config = Config { address: "http://10.1.3.100".to_string(),
+                          auth:    None, };
 
-    let mut pdu = PowerPdu4c::new(
-        FixedInstanceId {
-            manufacturer: "netio".to_owned(),
-            name: "power_pdu_4c".to_owned(),
-            instance: "rack1-up-right".to_owned(),
-        },
-        config,
-    )?;
+    let mut pdu = PowerPdu4c::new(FixedInstanceId { manufacturer: "netio".to_owned(),
+                                                    name:         "power_pdu_4c".to_owned(),
+                                                    instance:     "rack1-up-right".to_owned(), },
+                                  config)?;
 
     pdu.set_power_channel(3, false);
     sleep(Duration::from_secs(15)).await;

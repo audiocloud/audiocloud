@@ -13,7 +13,7 @@ pub struct RestartPendingUploadsDownloads;
 #[derive(Message)]
 #[rtype(result = "anyhow::Result<()>")]
 pub struct QueueDownload {
-    pub job_id: DownloadJobId,
+    pub job_id:   DownloadJobId,
     pub media_id: AppMediaObjectId,
     pub download: DownloadFromDomain,
 }
@@ -21,23 +21,23 @@ pub struct QueueDownload {
 #[derive(Message)]
 #[rtype(result = "anyhow::Result<()>")]
 pub struct QueueUpload {
-    pub job_id: UploadJobId,
+    pub job_id:     UploadJobId,
     pub session_id: Option<AppTaskId>,
-    pub media_id: AppMediaObjectId,
-    pub upload: Option<UploadToDomain>,
+    pub media_id:   AppMediaObjectId,
+    pub upload:     Option<UploadToDomain>,
 }
 
 #[derive(Message)]
 #[rtype(result = "anyhow::Result<()>")]
 pub struct ImportMedia {
     pub media_id: AppMediaObjectId,
-    pub import: ImportToDomain,
+    pub import:   ImportToDomain,
 }
 
 #[derive(Message, Clone)]
 #[rtype(result = "()")]
 pub struct NotifyDownloadProgress {
-    pub job_id: DownloadJobId,
+    pub job_id:   DownloadJobId,
     pub download: MediaDownload,
 }
 

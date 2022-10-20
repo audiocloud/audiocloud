@@ -10,10 +10,7 @@ use tracing::*;
 use audiocloud_api::cloud::domains::{DomainConfig, DomainEngineConfig, FixedInstanceRoutingMap};
 use audiocloud_api::common::change::TaskState;
 use audiocloud_api::newtypes::{AppTaskId, EngineId};
-use audiocloud_api::{
-    DomainId, FixedInstanceId, PlayId, StreamingPacket, Task, TaskReservation, TaskSecurity,
-    TaskSpec, Timestamped,
-};
+use audiocloud_api::{DomainId, FixedInstanceId, PlayId, StreamingPacket, Task, TaskReservation, TaskSecurity, TaskSpec, Timestamped};
 
 use crate::db::Db;
 
@@ -39,25 +36,25 @@ mod stop_play;
 mod task_timers;
 
 pub struct TasksSupervisor {
-    db: Db,
-    opts: TaskOpts,
-    domain_config: DomainConfig,
-    tasks: HashMap<AppTaskId, SupervisedTask>,
-    engines: HashMap<EngineId, ReferencedEngine>,
+    db:                        Db,
+    opts:                      TaskOpts,
+    domain_config:             DomainConfig,
+    tasks:                     HashMap<AppTaskId, SupervisedTask>,
+    engines:                   HashMap<EngineId, ReferencedEngine>,
     fixed_instance_membership: HashMap<FixedInstanceId, AppTaskId>,
-    fixed_instance_routing: FixedInstanceRoutingMap,
-    num_tasks: ObservableGauge<u64>,
-    num_active_tasks: ObservableGauge<u64>,
-    online: bool,
+    fixed_instance_routing:    FixedInstanceRoutingMap,
+    num_tasks:                 ObservableGauge<u64>,
+    num_active_tasks:          ObservableGauge<u64>,
+    online:                    bool,
 }
 
 struct SupervisedTask {
-    pub domain_id: DomainId,
+    pub domain_id:    DomainId,
     pub reservations: TaskReservation,
-    pub spec: TaskSpec,
-    pub security: TaskSecurity,
-    pub state: TaskState,
-    pub actor: Option<Addr<TaskActor>>,
+    pub spec:         TaskSpec,
+    pub security:     TaskSecurity,
+    pub state:        TaskState,
+    pub actor:        Option<Addr<TaskActor>>,
     pub packet_cache: HashMap<PlayId, HashMap<u64, Timestamped<StreamingPacket>>>,
 }
 
@@ -66,22 +63,13 @@ struct ReferencedEngine {
 }
 
 impl TasksSupervisor {
-    pub fn new(
-        db: Db,
-        opts: &TaskOpts,
-        cfg: &DomainConfig,
-        routing: FixedInstanceRoutingMap,
-    ) -> anyhow::Result<Self> {
+    pub fn new(db: Db, opts: &TaskOpts, cfg: &DomainConfig, routing: FixedInstanceRoutingMap) -> anyhow::Result<Self> {
         let meter = global::meter("audiocloud.io/tasks_total");
-        let num_tasks = meter
-            .u64_observable_gauge("tasks")
-            .with_description("Total number of tasks")
-            .init();
+        let num_tasks = meter.u64_observable_gauge("tasks").with_description("Total number of tasks").init();
 
-        let num_active_tasks = meter
-            .u64_observable_gauge("active_tasks")
-            .with_description("Total number of active tasks")
-            .init();
+        let num_active_tasks = meter.u64_observable_gauge("active_tasks")
+                                    .with_description("Total number of active tasks")
+                                    .init();
 
         let tasks = cfg.tasks
             .iter()
@@ -96,46 +84,32 @@ impl TasksSupervisor {
             .map(Self::create_task_actor)
             .collect();
 
-        let engines = cfg
-            .engines
-            .iter()
-            .map(|(id, config)| {
-                (
-                    id.clone(),
-                    ReferencedEngine {
-                        config: config.clone(),
-                    },
-                )
-            })
-            .collect();
+        let engines = cfg.engines
+                         .iter()
+                         .map(|(id, config)| (id.clone(), ReferencedEngine { config: config.clone() }))
+                         .collect();
 
-        Ok(Self {
-            db: { db },
-            opts: { opts.clone() },
-            domain_config: { cfg.clone() },
-            fixed_instance_membership: { HashMap::new() },
-            fixed_instance_routing: { routing },
-            tasks: { tasks },
-            engines: { engines },
-            num_tasks: { num_tasks },
-            num_active_tasks: { num_active_tasks },
-            online: { false },
-        })
+        Ok(Self { db:                        { db },
+                  opts:                      { opts.clone() },
+                  domain_config:             { cfg.clone() },
+                  fixed_instance_membership: { HashMap::new() },
+                  fixed_instance_routing:    { routing },
+                  tasks:                     { tasks },
+                  engines:                   { engines },
+                  num_tasks:                 { num_tasks },
+                  num_active_tasks:          { num_active_tasks },
+                  online:                    { false }, })
     }
 
     fn create_task_actor((id, task): (&AppTaskId, &Task)) -> (AppTaskId, SupervisedTask) {
-        (
-            id.clone(),
-            SupervisedTask {
-                domain_id: { task.domain_id.clone() },
-                reservations: { task.reservations.clone() },
-                spec: { task.spec.clone() },
-                security: { task.security.clone() },
-                state: { Default::default() },
-                actor: { None },
-                packet_cache: { Default::default() },
-            },
-        )
+        (id.clone(),
+         SupervisedTask { domain_id:    { task.domain_id.clone() },
+                          reservations: { task.reservations.clone() },
+                          spec:         { task.spec.clone() },
+                          security:     { task.security.clone() },
+                          state:        { Default::default() },
+                          actor:        { None },
+                          packet_cache: { Default::default() }, })
     }
 
     fn allocate_engine(&self, id: &AppTaskId, spec: &TaskSpec) -> Option<EngineId> {

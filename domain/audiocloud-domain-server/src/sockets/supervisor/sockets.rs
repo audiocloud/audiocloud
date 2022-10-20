@@ -18,8 +18,8 @@ use crate::ResponseMedia;
 
 #[derive(Debug)]
 pub struct SupervisedSocket {
-    pub actor_addr: SocketActorAddr,
-    pub last_pong_at: Instant,
+    pub actor_addr:    SocketActorAddr,
+    pub last_pong_at:  Instant,
     pub init_complete: Timestamped<bool>,
 }
 
@@ -76,8 +76,7 @@ impl SupervisedSocket {
             false
         } else {
             let since_init_started = self.init_complete.elapsed();
-            let init_started_too_old =
-                since_init_started > chrono::Duration::milliseconds(max_init_wait_time as i64);
+            let init_started_too_old = since_init_started > chrono::Duration::milliseconds(max_init_wait_time as i64);
 
             if init_started_too_old {
                 debug!(%since_init_started, "Init timed out");
@@ -90,13 +89,12 @@ impl SupervisedSocket {
 
 impl SocketsSupervisor {
     #[instrument(skip(self, ctx), err)]
-    pub(crate) fn send_to_socket_by_id(
-        &mut self,
-        id: &ClientSocketId,
-        message: DomainServerMessage,
-        media: ResponseMedia,
-        ctx: &mut <Self as Actor>::Context,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn send_to_socket_by_id(&mut self,
+                                       id: &ClientSocketId,
+                                       message: DomainServerMessage,
+                                       media: ResponseMedia,
+                                       ctx: &mut <Self as Actor>::Context)
+                                       -> anyhow::Result<()> {
         debug!(?message, %id, "send");
 
         match self.clients.get(&id.client_id) {
@@ -111,13 +109,12 @@ impl SocketsSupervisor {
     }
 
     #[instrument(skip_all, err)]
-    pub(crate) fn send_to_socket(
-        &self,
-        socket: &SupervisedSocket,
-        message: DomainServerMessage,
-        media: ResponseMedia,
-        ctx: &mut Context<SocketsSupervisor>,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn send_to_socket(&self,
+                                 socket: &SupervisedSocket,
+                                 message: DomainServerMessage,
+                                 media: ResponseMedia,
+                                 ctx: &mut Context<SocketsSupervisor>)
+                                 -> anyhow::Result<()> {
         let cmd = match media {
             ResponseMedia::MsgPack => SocketSend::Bytes(MsgPack.serialize(&message)?.into()),
             ResponseMedia::Json => SocketSend::Text(serde_json::to_string(&message)?),
@@ -139,10 +136,9 @@ impl SocketsSupervisor {
 
     #[instrument(skip(self))]
     pub(crate) fn remove_socket(&mut self, id: &ClientSocketId) {
-        if let Some(_) = self
-            .clients
-            .get_mut(&id.client_id)
-            .and_then(|client| client.sockets.remove(&id.socket_id))
+        if let Some(_) = self.clients
+                             .get_mut(&id.client_id)
+                             .and_then(|client| client.sockets.remove(&id.socket_id))
         {
             debug!("removed");
         } else {
@@ -151,20 +147,14 @@ impl SocketsSupervisor {
     }
 
     #[instrument(skip(self, ctx, msg), err)]
-    pub(crate) fn send_to_client(
-        &self,
-        client_id: &ClientId,
-        msg: DomainServerMessage,
-        ctx: &mut Context<Self>,
-    ) -> anyhow::Result<()> {
+    pub(crate) fn send_to_client(&self, client_id: &ClientId, msg: DomainServerMessage, ctx: &mut Context<Self>) -> anyhow::Result<()> {
         if let Some(client) = self.clients.get(client_id) {
-            let best_socket = client
-                .sockets
-                .values()
-                .filter(|socket| *socket.init_complete.value())
-                .filter(|socket| socket.is_valid(self.opts.socket_drop_timeout))
-                .sorted_by_key(|socket| socket.score())
-                .next();
+            let best_socket = client.sockets
+                                    .values()
+                                    .filter(|socket| *socket.init_complete.value())
+                                    .filter(|socket| socket.is_valid(self.opts.socket_drop_timeout))
+                                    .sorted_by_key(|socket| socket.score())
+                                    .next();
 
             if let Some(socket) = best_socket {
                 if let Err(error) = self.send_to_socket(socket, msg, ResponseMedia::MsgPack, ctx) {
@@ -193,11 +183,7 @@ impl Handler<SendToClient> for SocketsSupervisor {
     type Result = ();
 
     fn handle(&mut self, msg: SendToClient, ctx: &mut Self::Context) -> Self::Result {
-        let SendToClient {
-            client_id,
-            message,
-            media,
-        } = msg;
+        let SendToClient { client_id, message, media } = msg;
 
         if let Err(error) = self.send_to_client(&client_id, message, ctx) {
             warn!(%error, "Failed");

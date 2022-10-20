@@ -11,7 +11,8 @@ fn update_schemas_of_openapi_file(api_file: PathBuf, schemas: RootSchema) -> Res
     let mut yaml: Value = serde_yaml::from_reader(File::open(&api_file)?)?;
     yaml.get_mut("components")
         .ok_or_else(|| anyhow!("no components in openapi file"))?
-        .as_mapping_mut().ok_or_else(|| anyhow!("components is not a mapping"))?
+        .as_mapping_mut()
+        .ok_or_else(|| anyhow!("components is not a mapping"))?
         .insert(Value::String("schemas".to_owned()), serde_yaml::to_value(schemas.definitions)?);
 
     let as_string = serde_yaml::to_string(&yaml)?.replace("#/definitions/", "#/components/schemas/");

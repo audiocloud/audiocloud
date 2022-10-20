@@ -31,11 +31,7 @@ pub struct O11yOpts {
     /// The OTLP collector or Grafana agent OTLP endpoint
     ///
     /// GRPC and HTTP endpoints should be supported.
-    #[clap(
-        long,
-        env = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT",
-        default_value = "grpc://localhost:4317"
-    )]
+    #[clap(long, env = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", default_value = "grpc://localhost:4317")]
     otlp_endpoint: String,
 
     /// Timeout to write metrics and traces to OTLP, in milliseconds
@@ -90,47 +86,45 @@ pub fn init_tracing(opts: &O11yOpts) -> anyhow::Result<Box<dyn Any>> {
 
     let filter = || EnvFilter::from_default_env();
 
+    let registry = Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter()));
+
     let registry =
-        Registry::default().with(tracing_subscriber::fmt::layer().with_filter(filter()));
+        registry.with(match &opts.loki_url {
+                          None => {
+                              eprintln!("Loki logs NOT enabled");
 
-    let registry = registry.with(match &opts.loki_url {
-        None => {
-            eprintln!("Loki logs NOT enabled");
+                              None
+                          }
+                          Some(loki_url) => {
+                              eprintln!("Loki logs shipping to: {}", loki_url);
+                              let (layer, bg_task) = tracing_loki::layer(Url::from_str(&loki_url)?,
+                                                                         hashmap! {
+                                                                             "source".to_owned() => "audiocloud-io-domain".to_owned(),
+                                                                             "domain_id".to_owned() => opts.domain_id.as_str().to_owned(),
+                                                                         },
+                                                                         HashMap::new())?;
 
-            None
-        }
-        Some(loki_url) => {
-            eprintln!("Loki logs shipping to: {}", loki_url);
-            let (layer, bg_task) = tracing_loki::layer(
-                Url::from_str(&loki_url)?,
-                hashmap! {
-                    "source".to_owned() => "audiocloud-io-domain".to_owned(),
-                    "domain_id".to_owned() => opts.domain_id.as_str().to_owned(),
-                },
-                HashMap::new(),
-            )?;
+                              tokio::spawn(bg_task);
 
-            tokio::spawn(bg_task);
-
-            Some(layer.with_filter(filter()))
-        }
-    });
+                              Some(layer.with_filter(filter()))
+                          }
+                      });
 
     let mut guard: Box<dyn Any> = Box::new(());
 
     let registry = registry.with(if let TracingMode::Sentry = opts.tracing {
-        let (layer, g) = sentry::sentry_tracing_layer(opts)?;
-        guard = g;
-        Some(layer)
-    } else {
-        None
-    });
+                                     let (layer, g) = sentry::sentry_tracing_layer(opts)?;
+                                     guard = g;
+                                     Some(layer)
+                                 } else {
+                                     None
+                                 });
 
     let registry = registry.with(if let TracingMode::OpenTracing = opts.tracing {
-        Some(otlp::otlp_tracing_layer(opts)?)
-    } else {
-        None
-    });
+                                     Some(otlp::otlp_tracing_layer(opts)?)
+                                 } else {
+                                     None
+                                 });
 
     registry.init();
 

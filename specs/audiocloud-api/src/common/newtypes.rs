@@ -10,7 +10,6 @@ use regex::Regex;
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-
 use crate::cloud::CloudError;
 use crate::{InputPadId, OutputPadId};
 
@@ -21,33 +20,25 @@ pub struct FixedInstanceId {
     /// manufacturer name, may not contain ':' or whitespace
     pub manufacturer: String,
     /// product name, may not contain ':' or whitespace
-    pub name: String,
+    pub name:         String,
     /// unique instance name (given the same manufacturer and product name), may not contain ':' or whitespace
-    pub instance: String,
+    pub instance:     String,
 }
 
 impl FixedInstanceId {
     pub fn driver_command_subject(&self) -> String {
-        format!(
-            "ac.inst.{}.{}.{}.cmds",
-            &self.manufacturer, &self.name, &self.instance
-        )
+        format!("ac.inst.{}.{}.{}.cmds", &self.manufacturer, &self.name, &self.instance)
     }
 
     pub fn driver_event_subject(&self) -> String {
-        format!(
-            "ac.inst.{}.{}.{}.evts",
-            &self.manufacturer, &self.name, &self.instance
-        )
+        format!("ac.inst.{}.{}.{}.evts", &self.manufacturer, &self.name, &self.instance)
     }
 }
 
 impl FixedInstanceId {
     pub fn model_id(&self) -> ModelId {
-        ModelId {
-            manufacturer: self.manufacturer.to_string(),
-            name: self.name.to_string(),
-        }
+        ModelId { manufacturer: self.manufacturer.to_string(),
+                  name:         self.name.to_string(), }
     }
 
     pub fn from_model_id(model_id: ModelId, instance: String) -> Self {
@@ -58,8 +49,7 @@ impl FixedInstanceId {
 
 impl<'de> Deserialize<'de> for FixedInstanceId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
+        where D: Deserializer<'de>
     {
         let err = |msg| serde::de::Error::custom(msg);
 
@@ -69,23 +59,17 @@ impl<'de> Deserialize<'de> for FixedInstanceId {
         let name = s.next().ok_or(err("expected manufacturer"))?;
         let instance = s.next().ok_or(err("expected instance"))?;
 
-        Ok(Self {
-            manufacturer: manufacturer.to_string(),
-            name: name.to_string(),
-            instance: instance.to_string(),
-        })
+        Ok(Self { manufacturer: manufacturer.to_string(),
+                  name:         name.to_string(),
+                  instance:     instance.to_string(), })
     }
 }
 
 impl Serialize for FixedInstanceId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where S: Serializer
     {
-        serializer.serialize_str(&format!(
-            "{}/{}/{}",
-            &self.manufacturer, &self.name, &self.instance
-        ))
+        serializer.serialize_str(&format!("{}/{}/{}", &self.manufacturer, &self.name, &self.instance))
     }
 }
 
@@ -96,7 +80,7 @@ pub struct ModelId {
     /// manufacturer name, may not contain ':' or whitespace
     pub manufacturer: String,
     /// product name, may not contain ':' or whitespace
-    pub name: String,
+    pub name:         String,
 }
 
 impl ModelId {
@@ -113,8 +97,7 @@ impl From<(String, String)> for ModelId {
 
 impl<'de> Deserialize<'de> for ModelId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
+        where D: Deserializer<'de>
     {
         deserializer.deserialize_str(Tuple2Visitor::new())
     }
@@ -122,17 +105,14 @@ impl<'de> Deserialize<'de> for ModelId {
 
 impl Serialize for ModelId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where S: Serializer
     {
         serializer.serialize_str(&self.to_string())
     }
 }
 
 /// What kind of filter
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FilterId {
     HighPass,
@@ -156,10 +136,9 @@ impl<K, V, T> Tuple2Visitor<K, V, T> {
 }
 
 impl<'de, K, V, T> serde::de::Visitor<'de> for Tuple2Visitor<K, V, T>
-where
-    T: From<(K, V)>,
-    K: From<String>,
-    V: From<String>,
+    where T: From<(K, V)>,
+          K: From<String>,
+          V: From<String>
 {
     type Value = T;
 
@@ -168,41 +147,18 @@ where
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
+        where E: serde::de::Error
     {
         let mut split = v.split(':');
-        let first = split
-            .next()
-            .ok_or(E::custom("could not extract first string"))?;
-        let second = split
-            .next()
-            .ok_or(E::custom("could not extract second string"))?;
+        let first = split.next().ok_or(E::custom("could not extract first string"))?;
+        let second = split.next().ok_or(E::custom("could not extract second string"))?;
 
-        Ok(T::from((
-            K::from(first.to_string()),
-            V::from(second.to_string()),
-        )))
+        Ok(T::from((K::from(first.to_string()), V::from(second.to_string()))))
     }
 }
 
 /// Id of a media track node in a task
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct TrackNodeId(String);
 
@@ -213,42 +169,12 @@ impl TrackNodeId {
 }
 
 /// Media item on a track
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct TrackMediaId(String);
 
 /// Id of a mixer node in a task
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct MixerNodeId(String);
 
@@ -262,22 +188,7 @@ impl MixerNodeId {
 }
 
 /// Id of a dynamic instance node in a task
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct DynamicInstanceNodeId(String);
 
@@ -291,22 +202,7 @@ impl DynamicInstanceNodeId {
 }
 
 /// Id of a fixed instance node in a task
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct FixedInstanceNodeId(String);
 
@@ -319,41 +215,12 @@ impl FixedInstanceNodeId {
     }
 }
 
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct NodeConnectionId(String);
 
 /// Id of an app registered with the cloud
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From)]
 #[repr(transparent)]
 pub struct AppId(String);
 
@@ -372,62 +239,17 @@ impl AppId {
 }
 
 /// Id of a task
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct TaskId(String);
 
 /// Id of a request
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct RequestId(String);
 
 /// Id of an audio engine (there may be more than one in a domain)
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct EngineId(String);
 
@@ -442,59 +264,16 @@ impl EngineId {
 }
 
 /// Id of a socket (there may be more than one streaming connection per task in a domain)
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct SocketId(String);
 
 /// A client identifier to group sockets belonging to the same client
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct ClientId(String);
 
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Constructor,
-    Hash,
-    JsonSchema,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Constructor, Hash, JsonSchema)]
 #[display(fmt = "{client_id}.{socket_id}")]
 pub struct ClientSocketId {
     pub client_id: ClientId,
@@ -505,12 +284,9 @@ impl TaskId {
     pub fn validate(self) -> Result<Self, CloudError> {
         static VALIDATION: OnceCell<Regex> = OnceCell::new();
 
-        VALIDATION
-            .get_or_init(|| Regex::new(r"^[a-zA-Z0-9_\-]+$").unwrap())
-            .find(&self.0)
-            .ok_or_else(|| CloudError::InvalidAppTaskId {
-                task_id: self.to_string(),
-            })?;
+        VALIDATION.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_\-]+$").unwrap())
+                  .find(&self.0)
+                  .ok_or_else(|| CloudError::InvalidAppTaskId { task_id: self.to_string() })?;
 
         Ok(self)
     }
@@ -521,7 +297,7 @@ impl TaskId {
 #[display(fmt = "{app_id}:{task_id}")]
 pub struct AppTaskId {
     /// App registering the task
-    pub app_id: AppId,
+    pub app_id:  AppId,
     /// Task id
     pub task_id: TaskId,
 }
@@ -536,8 +312,7 @@ impl FromStr for AppTaskId {
 
 impl<'de> Deserialize<'de> for AppTaskId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
+        where D: Deserializer<'de>
     {
         deserializer.deserialize_str(Tuple2Visitor::new())
     }
@@ -545,50 +320,28 @@ impl<'de> Deserialize<'de> for AppTaskId {
 
 impl Serialize for AppTaskId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where S: Serializer
     {
         serializer.serialize_str(&self.to_string())
     }
 }
 
 /// Id of a media object
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct MediaObjectId(String);
 
 impl MediaObjectId {
     pub fn for_app(self, app_id: AppId) -> AppMediaObjectId {
-        AppMediaObjectId {
-            app_id,
-            media_id: self,
-        }
+        AppMediaObjectId { app_id, media_id: self }
     }
 
     pub fn validate(self) -> Result<Self, CloudError> {
         static VALIDATION: OnceCell<Regex> = OnceCell::new();
 
-        VALIDATION
-            .get_or_init(|| Regex::new(r"^[a-zA-Z0-9_\-]+$").unwrap())
-            .find(&self.0)
-            .ok_or_else(|| CloudError::InvalidAppMediaObjectId {
-                object_id: self.to_string(),
-            })?;
+        VALIDATION.get_or_init(|| Regex::new(r"^[a-zA-Z0-9_\-]+$").unwrap())
+                  .find(&self.0)
+                  .ok_or_else(|| CloudError::InvalidAppMediaObjectId { object_id: self.to_string(), })?;
 
         Ok(self)
     }
@@ -599,7 +352,7 @@ impl MediaObjectId {
 #[display(fmt = "{app_id}:{media_id}")]
 pub struct AppMediaObjectId {
     /// App owner
-    pub app_id: AppId,
+    pub app_id:   AppId,
     /// Media object Id
     pub media_id: MediaObjectId,
 }
@@ -620,8 +373,7 @@ impl FromStr for AppMediaObjectId {
 
 impl Serialize for AppMediaObjectId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
+        where S: Serializer
     {
         serializer.serialize_str(&self.to_string())
     }
@@ -629,70 +381,24 @@ impl Serialize for AppMediaObjectId {
 
 impl<'de> Deserialize<'de> for AppMediaObjectId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
+        where D: Deserializer<'de>
     {
         deserializer.deserialize_str(Tuple2Visitor::new())
     }
 }
 
 /// A password for direct task control on the domain
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct SecureKey(String);
 
 /// Domain Id
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct DomainId(String);
 
 /// Parameter Id within a model
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct ParameterId(String);
 
@@ -703,22 +409,7 @@ impl From<&str> for ParameterId {
 }
 
 /// Report Id within a model
-#[derive(
-    Clone,
-    Debug,
-    Serialize,
-    Deserialize,
-    Eq,
-    PartialEq,
-    Ord,
-    PartialOrd,
-    Display,
-    Deref,
-    Constructor,
-    Hash,
-    From,
-    FromStr,
-)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]
 pub struct ReportId(String);
 
@@ -746,25 +437,23 @@ macro_rules! json_schema_new_type {
     }
 }
 
-json_schema_new_type!(
-    AppId,
-    AppTaskId,
-    MediaObjectId,
-    AppMediaObjectId,
-    FixedInstanceId,
-    TrackNodeId,
-    TrackMediaId,
-    MixerNodeId,
-    DynamicInstanceNodeId,
-    FixedInstanceNodeId,
-    SecureKey,
-    DomainId,
-    ParameterId,
-    ReportId,
-    ModelId,
-    TaskId,
-    ClientId,
-    SocketId,
-    RequestId,
-    EngineId
-);
+json_schema_new_type!(AppId,
+                      AppTaskId,
+                      MediaObjectId,
+                      AppMediaObjectId,
+                      FixedInstanceId,
+                      TrackNodeId,
+                      TrackMediaId,
+                      MixerNodeId,
+                      DynamicInstanceNodeId,
+                      FixedInstanceNodeId,
+                      SecureKey,
+                      DomainId,
+                      ParameterId,
+                      ReportId,
+                      ModelId,
+                      TaskId,
+                      ClientId,
+                      SocketId,
+                      RequestId,
+                      EngineId);

@@ -1,3 +1,471 @@
+openapi: 3.1.0
+info:
+  contact:
+    url: https://github.com/audiocloud
+    email: bojan@distopik.com
+    name: Bojan Šernek
+  description: |
+    Audio cloud audio engine API specification
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Audio Cloud Audio Engine
+  version: 0.1.0
+paths:
+  /v1/instances:
+    put:
+      deprecated: false
+      description: |
+        Set instance I/O mapping
+
+        The Audio Engine needs to map FixedInstanceNode to I/O on the audio interface it is bound
+        to. For example, an instance may be bound to channels 0 and 1 or to channels 5 and 6 and
+        the Audio Engine needs to know to route the audio correctly.
+      operationId: set_instances
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetInstances"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InstancesUpdated"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not found
+      summary: Set instance I/O mapping
+      tags:
+        - environment
+  /v1/media:
+    put:
+      deprecated: false
+      description: |
+        Set media presence
+
+        The Audio Engine needs to map AppMediaObjectId on track items to
+      operationId: set_media
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetMedia"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaUpdated"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not found
+      summary: Set media presence
+      tags:
+        - environment
+  /v1/tasks:
+    get:
+      deprecated: false
+      description: |
+        List tasks
+
+        Return a list of all current tasks and their play status.
+      operationId: list
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskWithStatusList"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not found
+      summary: List tasks
+      tags:
+        - tasks
+  /v1/tasks/{app_id}/{task_id}:
+    delete:
+      deprecated: false
+      description: |
+        Delete a task
+
+        Delete an existing task spec. This will interrupt any playback or rendering and will free
+        resources associated with the task (such as instances or locks on media files).
+      operationId: delete
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskDeleted"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not found
+      summary: Delete a task
+      tags:
+        - tasks
+    patch:
+      deprecated: false
+      description: |
+        Modify task spec
+
+        Apply a modification to an existing spec. Changing the spec even trivially could result in a
+        rendering or playback interruption. The task must exist in order to be modified.
+      operationId: modify_spec
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModifyTaskSpec"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskModified"
+          description: Success
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Modification failed
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not found
+      summary: Modify task spec
+      tags:
+        - tasks
+    put:
+      deprecated: false
+      description: |
+        Create or update task spec
+
+        Create or update a task by providing its spec. Changing the spec even trivially could result
+        in a rendering or playback interruption.
+      operationId: set_spec
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskSpec"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskReplaced"
+          description: Success
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not authorized
+      summary: Create or update task spec
+      tags:
+        - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/cancel:
+    post:
+      deprecated: false
+      description: |
+        Cancel rendering a task
+
+        Request to stop (cancel) rendering if the task is rendering.
+      operationId: cancel_render
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestCancelRender"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskRenderCancelled"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Task or mixer Not found
+      summary: Cancel rendering a task
+      tags:
+        - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/play:
+    post:
+      deprecated: false
+      description: |
+        Start playing a task
+
+        Start playing a task that is stopped. The request will return when the task has started to play
+        or with an error.
+      operationId: play
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestPlay"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPlaying"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Not found
+      summary: Start playing a task
+      tags:
+        - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/render:
+    post:
+      deprecated: false
+      description: |
+        Render a task to a new file
+
+        Start rendering a task. Note that unlike the orchestration or domain API, the audio engine
+        does not care if the media files are present and will happily execute a render even when no
+        files (or instances) are ready. The caller to this API should make sure that any such
+        preconditions are met.
+      operationId: render
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestRender"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskRendering"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Task or mixer Not found
+      summary: Render a task to a new file
+      tags:
+        - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/seek:
+    post:
+      deprecated: false
+      description: |
+        Seek while task is playing
+
+        If the task is playing, change the playing position.
+      operationId: seek
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestSeek"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskSought"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Task Not found
+      summary: Seek while task is playing
+      tags:
+        - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/stop:
+    post:
+      deprecated: false
+      description: |
+        Stop playing a task
+
+        Request to stop a track if the task is playing.
+      operationId: stop_playing
+      parameters:
+        - deprecated: false
+          description: App id
+          in: path
+          name: app_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/AppId"
+        - deprecated: false
+          description: Task id
+          in: path
+          name: task_id
+          required: true
+          schema:
+            $ref: "#/components/schemas/TaskId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestStopPlay"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskPlayStopped"
+          description: Success
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EngineError"
+          description: Task or mixer Not found
+      summary: Stop playing a task
+      tags:
+        - tasks
+servers:
+  - description: Local development
+    url: http://localhost:7300
 components:
   schemas:
     AppId:
@@ -33,12 +501,12 @@ components:
         pan:
           type:
             - number
-            - 'null'
+            - "null"
           format: double
         volume:
           type:
             - number
-            - 'null'
+            - "null"
           format: double
     DownloadFromDomain:
       type: object
@@ -49,7 +517,7 @@ components:
         notify_url:
           type:
             - string
-            - 'null'
+            - "null"
         url:
           type: string
     DynamicInstanceNode:
@@ -62,7 +530,7 @@ components:
         model_id:
           description: The manufacturer and name of the processing software
           allOf:
-            - $ref: '#/components/schemas/ModelId'
+            - $ref: "#/components/schemas/ModelId"
         parameters:
           description: Parameter values
     DynamicInstanceNodeId:
@@ -102,8 +570,8 @@ components:
             modify_task:
               type: array
               items:
-                - $ref: '#/components/schemas/AppTaskId'
-                - $ref: '#/components/schemas/ModifyTaskError'
+                - $ref: "#/components/schemas/AppTaskId"
+                - $ref: "#/components/schemas/ModifyTaskError"
               maxItems: 2
               minItems: 2
           additionalProperties: false
@@ -158,7 +626,7 @@ components:
         instance_id:
           description: The manufacturer, name and instance identifier of the hardware device doing the processing
           allOf:
-            - $ref: '#/components/schemas/FixedInstanceId'
+            - $ref: "#/components/schemas/FixedInstanceId"
         parameters:
           description: parameters
         wet:
@@ -179,7 +647,7 @@ components:
             - mixer
           properties:
             mixer:
-              $ref: '#/components/schemas/MixerNodeId'
+              $ref: "#/components/schemas/MixerNodeId"
           additionalProperties: false
         - description: Fixed instance node input
           type: object
@@ -187,7 +655,7 @@ components:
             - fixed
           properties:
             fixed:
-              $ref: '#/components/schemas/FixedInstanceNodeId'
+              $ref: "#/components/schemas/FixedInstanceNodeId"
           additionalProperties: false
         - description: Dynamic instance node input
           type: object
@@ -195,7 +663,7 @@ components:
             - dynamic
           properties:
             dynamic:
-              $ref: '#/components/schemas/DynamicInstanceNodeId'
+              $ref: "#/components/schemas/DynamicInstanceNodeId"
           additionalProperties: false
     InstancesUpdated:
       title: InstancesUpdated
@@ -243,11 +711,11 @@ components:
         - state
       properties:
         download:
-          $ref: '#/components/schemas/DownloadFromDomain'
+          $ref: "#/components/schemas/DownloadFromDomain"
         media_id:
-          $ref: '#/components/schemas/AppMediaObjectId'
+          $ref: "#/components/schemas/AppMediaObjectId"
         state:
-          $ref: '#/components/schemas/MediaJobState'
+          $ref: "#/components/schemas/MediaJobState"
     MediaJobState:
       type: object
       required:
@@ -259,7 +727,7 @@ components:
         error:
           type:
             - string
-            - 'null'
+            - "null"
         in_progress:
           type: boolean
         progress:
@@ -286,9 +754,9 @@ components:
           format: uint64
           minimum: 0.0
         channels:
-          $ref: '#/components/schemas/MediaChannels'
+          $ref: "#/components/schemas/MediaChannels"
         format:
-          $ref: '#/components/schemas/TrackMediaFormat'
+          $ref: "#/components/schemas/TrackMediaFormat"
         sample_rate:
           type: integer
           format: uint
@@ -304,26 +772,26 @@ components:
       properties:
         download:
           anyOf:
-            - $ref: '#/components/schemas/MediaDownload'
-            - type: 'null'
+            - $ref: "#/components/schemas/MediaDownload"
+            - type: "null"
         id:
-          $ref: '#/components/schemas/AppMediaObjectId'
+          $ref: "#/components/schemas/AppMediaObjectId"
         metadata:
           anyOf:
-            - $ref: '#/components/schemas/MediaMetadata'
-            - type: 'null'
+            - $ref: "#/components/schemas/MediaMetadata"
+            - type: "null"
         path:
           type:
             - string
-            - 'null'
+            - "null"
         revision:
           type: integer
           format: uint64
           minimum: 0.0
         upload:
           anyOf:
-            - $ref: '#/components/schemas/MediaUpload'
-            - type: 'null'
+            - $ref: "#/components/schemas/MediaUpload"
+            - type: "null"
     MediaObjectId:
       type: string
     MediaUpdated:
@@ -361,11 +829,11 @@ components:
         - upload
       properties:
         media_id:
-          $ref: '#/components/schemas/AppMediaObjectId'
+          $ref: "#/components/schemas/AppMediaObjectId"
         state:
-          $ref: '#/components/schemas/MediaJobState'
+          $ref: "#/components/schemas/MediaJobState"
         upload:
-          $ref: '#/components/schemas/UploadToDomain'
+          $ref: "#/components/schemas/UploadToDomain"
     MixerNode:
       description: Mixer node specification
       type: object
@@ -395,7 +863,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/TrackNodeId'
+              $ref: "#/components/schemas/TrackNodeId"
             type:
               type: string
               enum:
@@ -406,7 +874,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/FixedInstanceNodeId'
+              $ref: "#/components/schemas/FixedInstanceNodeId"
             type:
               type: string
               enum:
@@ -417,7 +885,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/DynamicInstanceNodeId'
+              $ref: "#/components/schemas/DynamicInstanceNodeId"
             type:
               type: string
               enum:
@@ -428,7 +896,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/MixerNodeId'
+              $ref: "#/components/schemas/MixerNodeId"
             type:
               type: string
               enum:
@@ -439,7 +907,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/TrackNodeId'
+              $ref: "#/components/schemas/TrackNodeId"
             type:
               type: string
               enum:
@@ -450,7 +918,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/FixedInstanceNodeId'
+              $ref: "#/components/schemas/FixedInstanceNodeId"
             type:
               type: string
               enum:
@@ -461,7 +929,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/DynamicInstanceNodeId'
+              $ref: "#/components/schemas/DynamicInstanceNodeId"
             type:
               type: string
               enum:
@@ -472,7 +940,7 @@ components:
             - type
           properties:
             node_id:
-              $ref: '#/components/schemas/MixerNodeId'
+              $ref: "#/components/schemas/MixerNodeId"
             type:
               type: string
               enum:
@@ -483,7 +951,7 @@ components:
             - type
           properties:
             connection_id:
-              $ref: '#/components/schemas/NodeConnectionId'
+              $ref: "#/components/schemas/NodeConnectionId"
             type:
               type: string
               enum:
@@ -494,7 +962,7 @@ components:
             - type
           properties:
             connection_id:
-              $ref: '#/components/schemas/NodeConnectionId'
+              $ref: "#/components/schemas/NodeConnectionId"
             type:
               type: string
               enum:
@@ -506,7 +974,7 @@ components:
             - type
           properties:
             connection_id:
-              $ref: '#/components/schemas/NodeConnectionId'
+              $ref: "#/components/schemas/NodeConnectionId"
             message:
               type: string
             type:
@@ -520,9 +988,9 @@ components:
             - type
           properties:
             media_id:
-              $ref: '#/components/schemas/TrackMediaId'
+              $ref: "#/components/schemas/TrackMediaId"
             node_id:
-              $ref: '#/components/schemas/TrackNodeId'
+              $ref: "#/components/schemas/TrackNodeId"
             type:
               type: string
               enum:
@@ -534,9 +1002,9 @@ components:
             - type
           properties:
             media_id:
-              $ref: '#/components/schemas/TrackMediaId'
+              $ref: "#/components/schemas/TrackMediaId"
             node_id:
-              $ref: '#/components/schemas/TrackNodeId'
+              $ref: "#/components/schemas/TrackNodeId"
             type:
               type: string
               enum:
@@ -567,11 +1035,11 @@ components:
                 channels:
                   description: Number of channels for the track node
                   allOf:
-                    - $ref: '#/components/schemas/MediaChannels'
+                    - $ref: "#/components/schemas/MediaChannels"
                 track_id:
                   description: New track node id
                   allOf:
-                    - $ref: '#/components/schemas/TrackNodeId'
+                    - $ref: "#/components/schemas/TrackNodeId"
           additionalProperties: false
         - description: Add media to a track node
           type: object
@@ -588,15 +1056,15 @@ components:
                 media_id:
                   description: Media id within the track node
                   allOf:
-                    - $ref: '#/components/schemas/TrackMediaId'
+                    - $ref: "#/components/schemas/TrackMediaId"
                 spec:
                   description: Media object specification
                   allOf:
-                    - $ref: '#/components/schemas/TrackMedia'
+                    - $ref: "#/components/schemas/TrackMedia"
                 track_id:
                   description: Track node id
                   allOf:
-                    - $ref: '#/components/schemas/TrackNodeId'
+                    - $ref: "#/components/schemas/TrackNodeId"
           additionalProperties: false
         - description: Update track media on a track node
           type: object
@@ -613,15 +1081,15 @@ components:
                 media_id:
                   description: Media id within the track node
                   allOf:
-                    - $ref: '#/components/schemas/TrackMediaId'
+                    - $ref: "#/components/schemas/TrackMediaId"
                 track_id:
                   description: Track node id
                   allOf:
-                    - $ref: '#/components/schemas/TrackNodeId'
+                    - $ref: "#/components/schemas/TrackNodeId"
                 update:
                   description: Media object update
                   allOf:
-                    - $ref: '#/components/schemas/UpdateTaskTrackMedia'
+                    - $ref: "#/components/schemas/UpdateTaskTrackMedia"
           additionalProperties: false
         - description: Delete track media from a track node
           type: object
@@ -637,11 +1105,11 @@ components:
                 media_id:
                   description: Media id within the track node
                   allOf:
-                    - $ref: '#/components/schemas/TrackMediaId'
+                    - $ref: "#/components/schemas/TrackMediaId"
                 track_id:
                   description: Track node id
                   allOf:
-                    - $ref: '#/components/schemas/TrackNodeId'
+                    - $ref: "#/components/schemas/TrackNodeId"
           additionalProperties: false
         - description: Delete a track node from the task (including all media and referencing connections)
           type: object
@@ -656,7 +1124,7 @@ components:
                 track_id:
                   description: Track node id
                   allOf:
-                    - $ref: '#/components/schemas/TrackNodeId'
+                    - $ref: "#/components/schemas/TrackNodeId"
           additionalProperties: false
         - description: Add a fixed instance node to the task
           type: object
@@ -672,11 +1140,11 @@ components:
                 fixed_id:
                   description: Fixed instance node id
                   allOf:
-                    - $ref: '#/components/schemas/FixedInstanceNodeId'
+                    - $ref: "#/components/schemas/FixedInstanceNodeId"
                 spec:
                   description: Fixed instance node processing specification
                   allOf:
-                    - $ref: '#/components/schemas/FixedInstanceNode'
+                    - $ref: "#/components/schemas/FixedInstanceNode"
           additionalProperties: false
         - description: Add a dynamic instance node to the task
           type: object
@@ -692,11 +1160,11 @@ components:
                 dynamic_id:
                   description: Dynamic instance node id
                   allOf:
-                    - $ref: '#/components/schemas/DynamicInstanceNodeId'
+                    - $ref: "#/components/schemas/DynamicInstanceNodeId"
                 spec:
                   description: Dynamic instance node processing specification
                   allOf:
-                    - $ref: '#/components/schemas/DynamicInstanceNode'
+                    - $ref: "#/components/schemas/DynamicInstanceNode"
           additionalProperties: false
         - description: Add a mixer node to the task
           type: object
@@ -712,11 +1180,11 @@ components:
                 mixer_id:
                   description: Mixer node id
                   allOf:
-                    - $ref: '#/components/schemas/MixerNodeId'
+                    - $ref: "#/components/schemas/MixerNodeId"
                 spec:
                   description: Mixer node processing specification
                   allOf:
-                    - $ref: '#/components/schemas/MixerNode'
+                    - $ref: "#/components/schemas/MixerNode"
           additionalProperties: false
         - description: Delete a mixer node from the task (including all referencing connections)
           type: object
@@ -731,7 +1199,7 @@ components:
                 mixer_id:
                   description: Moxer node id
                   allOf:
-                    - $ref: '#/components/schemas/MixerNodeId'
+                    - $ref: "#/components/schemas/MixerNodeId"
           additionalProperties: false
         - description: Delete a fixed instance node from the task (including all referencing connections)
           type: object
@@ -746,7 +1214,7 @@ components:
                 fixed_id:
                   description: Fixed instance node id
                   allOf:
-                    - $ref: '#/components/schemas/FixedInstanceNodeId'
+                    - $ref: "#/components/schemas/FixedInstanceNodeId"
           additionalProperties: false
         - description: Delete dynamic instance node from the task (including all referencing connections)
           type: object
@@ -761,7 +1229,7 @@ components:
                 dynamic_id:
                   description: Dynamic instance node id
                   allOf:
-                    - $ref: '#/components/schemas/DynamicInstanceNodeId'
+                    - $ref: "#/components/schemas/DynamicInstanceNodeId"
           additionalProperties: false
         - description: Delete a connection from the task (preserving the referenced nodes even if they are now unconnected)
           type: object
@@ -776,7 +1244,7 @@ components:
                 connection_id:
                   description: Connection id
                   allOf:
-                    - $ref: '#/components/schemas/NodeConnectionId'
+                    - $ref: "#/components/schemas/NodeConnectionId"
           additionalProperties: false
         - description: Add a connection to the task
           type: object
@@ -797,15 +1265,15 @@ components:
                 connection_id:
                   description: Connection id
                   allOf:
-                    - $ref: '#/components/schemas/NodeConnectionId'
+                    - $ref: "#/components/schemas/NodeConnectionId"
                 from:
                   description: Source node pad
                   allOf:
-                    - $ref: '#/components/schemas/OutputPadId'
+                    - $ref: "#/components/schemas/OutputPadId"
                 from_channels:
                   description: Source channel mask
                   allOf:
-                    - $ref: '#/components/schemas/ChannelMask'
+                    - $ref: "#/components/schemas/ChannelMask"
                 pan:
                   description: Panning adjustment on the audio passing through the connection
                   type: number
@@ -813,11 +1281,11 @@ components:
                 to:
                   description: Destination node pad
                   allOf:
-                    - $ref: '#/components/schemas/InputPadId'
+                    - $ref: "#/components/schemas/InputPadId"
                 to_channels:
                   description: Destination channel mask
                   allOf:
-                    - $ref: '#/components/schemas/ChannelMask'
+                    - $ref: "#/components/schemas/ChannelMask"
                 volume:
                   description: Volume adjustment on audio passing through the connection
                   type: number
@@ -837,11 +1305,11 @@ components:
                 connection_id:
                   description: Connection id
                   allOf:
-                    - $ref: '#/components/schemas/NodeConnectionId'
+                    - $ref: "#/components/schemas/NodeConnectionId"
                 values:
                   description: Values (parameters) on the connection
                   allOf:
-                    - $ref: '#/components/schemas/ConnectionValues'
+                    - $ref: "#/components/schemas/ConnectionValues"
           additionalProperties: false
         - description: Set fixed instance node values
           type: object
@@ -857,7 +1325,7 @@ components:
                 fixed_id:
                   description: Fixed instance node id
                   allOf:
-                    - $ref: '#/components/schemas/FixedInstanceNodeId'
+                    - $ref: "#/components/schemas/FixedInstanceNodeId"
                 values:
                   description: Values to set
           additionalProperties: false
@@ -875,7 +1343,7 @@ components:
                 dynamic_id:
                   description: Dynamic instance node id
                   allOf:
-                    - $ref: '#/components/schemas/DynamicInstanceNodeId'
+                    - $ref: "#/components/schemas/DynamicInstanceNodeId"
                 values:
                   description: Values to set
           additionalProperties: false
@@ -893,11 +1361,11 @@ components:
         from:
           description: Source node pad
           allOf:
-            - $ref: '#/components/schemas/OutputPadId'
+            - $ref: "#/components/schemas/OutputPadId"
         from_channels:
           description: Source channel mask
           allOf:
-            - $ref: '#/components/schemas/ChannelMask'
+            - $ref: "#/components/schemas/ChannelMask"
         pan:
           description: |-
             Panning adjustment
@@ -908,11 +1376,11 @@ components:
         to:
           description: Destination node pad
           allOf:
-            - $ref: '#/components/schemas/InputPadId'
+            - $ref: "#/components/schemas/InputPadId"
         to_channels:
           description: Destination channel mask
           allOf:
-            - $ref: '#/components/schemas/ChannelMask'
+            - $ref: "#/components/schemas/ChannelMask"
         volume:
           description: Volume adjustment as a factor
           type: number
@@ -928,7 +1396,7 @@ components:
             - mixer
           properties:
             mixer:
-              $ref: '#/components/schemas/MixerNodeId'
+              $ref: "#/components/schemas/MixerNodeId"
           additionalProperties: false
         - description: Fixed instance node output
           type: object
@@ -936,7 +1404,7 @@ components:
             - fixed
           properties:
             fixed:
-              $ref: '#/components/schemas/FixedInstanceNodeId'
+              $ref: "#/components/schemas/FixedInstanceNodeId"
           additionalProperties: false
         - description: Dynamic instance node output
           type: object
@@ -944,7 +1412,7 @@ components:
             - dynamic
           properties:
             dynamic:
-              $ref: '#/components/schemas/DynamicInstanceNodeId'
+              $ref: "#/components/schemas/DynamicInstanceNodeId"
           additionalProperties: false
         - description: Track node output
           type: object
@@ -952,13 +1420,13 @@ components:
             - track
           properties:
             track:
-              $ref: '#/components/schemas/TrackNodeId'
+              $ref: "#/components/schemas/TrackNodeId"
           additionalProperties: false
     PlayBitDepth:
       type: string
       enum:
-        - '24'
-        - '16'
+        - "24"
+        - "16"
     PlayId:
       type: string
     RenderId:
@@ -970,7 +1438,7 @@ components:
         - render_id
       properties:
         render_id:
-          $ref: '#/components/schemas/RenderId'
+          $ref: "#/components/schemas/RenderId"
     RequestChangeMixer:
       title: RequestChangeMixer
       type: object
@@ -979,9 +1447,9 @@ components:
         - play_id
       properties:
         mixer_id:
-          $ref: '#/components/schemas/MixerNodeId'
+          $ref: "#/components/schemas/MixerNodeId"
         play_id:
-          $ref: '#/components/schemas/PlayId'
+          $ref: "#/components/schemas/PlayId"
     RequestPlay:
       title: RequestPlay
       type: object
@@ -995,17 +1463,17 @@ components:
         - start_at
       properties:
         bit_depth:
-          $ref: '#/components/schemas/PlayBitDepth'
+          $ref: "#/components/schemas/PlayBitDepth"
         looping:
           type: boolean
         mixer_id:
-          $ref: '#/components/schemas/MixerNodeId'
+          $ref: "#/components/schemas/MixerNodeId"
         play_id:
-          $ref: '#/components/schemas/PlayId'
+          $ref: "#/components/schemas/PlayId"
         sample_rate:
-          $ref: '#/components/schemas/SampleRate'
+          $ref: "#/components/schemas/SampleRate"
         segment:
-          $ref: '#/components/schemas/TimeSegment'
+          $ref: "#/components/schemas/TimeSegment"
         start_at:
           type: number
           format: double
@@ -1018,13 +1486,13 @@ components:
         - segment
       properties:
         mixer_id:
-          $ref: '#/components/schemas/MixerNodeId'
+          $ref: "#/components/schemas/MixerNodeId"
         object_id:
-          $ref: '#/components/schemas/AppMediaObjectId'
+          $ref: "#/components/schemas/AppMediaObjectId"
         render_id:
-          $ref: '#/components/schemas/RenderId'
+          $ref: "#/components/schemas/RenderId"
         segment:
-          $ref: '#/components/schemas/TimeSegment'
+          $ref: "#/components/schemas/TimeSegment"
     RequestSeek:
       title: RequestSeek
       type: object
@@ -1037,9 +1505,9 @@ components:
         looping:
           type: boolean
         play_id:
-          $ref: '#/components/schemas/PlayId'
+          $ref: "#/components/schemas/PlayId"
         segment:
-          $ref: '#/components/schemas/TimeSegment'
+          $ref: "#/components/schemas/TimeSegment"
         start_at:
           type: number
           format: double
@@ -1050,15 +1518,15 @@ components:
         - play_id
       properties:
         play_id:
-          $ref: '#/components/schemas/PlayId'
+          $ref: "#/components/schemas/PlayId"
     SampleRate:
       type: string
       enum:
-        - '192'
-        - '96'
-        - '88.2'
-        - '48'
-        - '44.1'
+        - "192"
+        - "96"
+        - "88.2"
+        - "48"
+        - "44.1"
     SetInstances:
       title: SetInstances
       type: object
@@ -1068,7 +1536,7 @@ components:
         instances:
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/EngineFixedInstance'
+            $ref: "#/components/schemas/EngineFixedInstance"
     SetMedia:
       title: SetMedia
       type: object
@@ -1078,7 +1546,7 @@ components:
         media:
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/MediaObject'
+            $ref: "#/components/schemas/MediaObject"
     TaskDeleted:
       title: TaskDeleted
       oneOf:
@@ -1092,7 +1560,7 @@ components:
                 - task_id
               properties:
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskId:
       title: TaskId
@@ -1110,7 +1578,7 @@ components:
                 - task_id
               properties:
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskPlayState:
       oneOf:
@@ -1122,42 +1590,42 @@ components:
             - preparing_to_play
           properties:
             preparing_to_play:
-              $ref: '#/components/schemas/RequestPlay'
+              $ref: "#/components/schemas/RequestPlay"
           additionalProperties: false
         - type: object
           required:
             - preparing_to_render
           properties:
             preparing_to_render:
-              $ref: '#/components/schemas/RequestRender'
+              $ref: "#/components/schemas/RequestRender"
           additionalProperties: false
         - type: object
           required:
             - playing
           properties:
             playing:
-              $ref: '#/components/schemas/RequestPlay'
+              $ref: "#/components/schemas/RequestPlay"
           additionalProperties: false
         - type: object
           required:
             - rendering
           properties:
             rendering:
-              $ref: '#/components/schemas/RequestRender'
+              $ref: "#/components/schemas/RequestRender"
           additionalProperties: false
         - type: object
           required:
             - stopping_play
           properties:
             stopping_play:
-              $ref: '#/components/schemas/PlayId'
+              $ref: "#/components/schemas/PlayId"
           additionalProperties: false
         - type: object
           required:
             - stopping_render
           properties:
             stopping_render:
-              $ref: '#/components/schemas/RenderId'
+              $ref: "#/components/schemas/RenderId"
           additionalProperties: false
     TaskPlayStopped:
       title: TaskPlayStopped
@@ -1173,9 +1641,9 @@ components:
                 - task_id
               properties:
                 play_id:
-                  $ref: '#/components/schemas/PlayId'
+                  $ref: "#/components/schemas/PlayId"
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskPlaying:
       title: TaskPlaying
@@ -1191,9 +1659,9 @@ components:
                 - task_id
               properties:
                 play_id:
-                  $ref: '#/components/schemas/PlayId'
+                  $ref: "#/components/schemas/PlayId"
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskRenderCancelled:
       title: TaskRenderCancelled
@@ -1209,9 +1677,9 @@ components:
                 - task_id
               properties:
                 render_id:
-                  $ref: '#/components/schemas/RenderId'
+                  $ref: "#/components/schemas/RenderId"
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskRendering:
       title: TaskRendering
@@ -1227,9 +1695,9 @@ components:
                 - task_id
               properties:
                 render_id:
-                  $ref: '#/components/schemas/RenderId'
+                  $ref: "#/components/schemas/RenderId"
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskReplaced:
       title: TaskReplaced
@@ -1244,7 +1712,7 @@ components:
                 - task_id
               properties:
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
         - type: object
           required:
@@ -1256,7 +1724,7 @@ components:
                 - task_id
               properties:
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskSought:
       title: TaskSought
@@ -1272,9 +1740,9 @@ components:
                 - task_id
               properties:
                 play_id:
-                  $ref: '#/components/schemas/PlayId'
+                  $ref: "#/components/schemas/PlayId"
                 task_id:
-                  $ref: '#/components/schemas/AppTaskId'
+                  $ref: "#/components/schemas/AppTaskId"
           additionalProperties: false
     TaskSpec:
       title: TaskSpec
@@ -1286,25 +1754,25 @@ components:
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/NodeConnection'
+            $ref: "#/components/schemas/NodeConnection"
         dynamic:
           description: Dynamic instance nodes of the task
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/DynamicInstanceNode'
+            $ref: "#/components/schemas/DynamicInstanceNode"
         fixed:
           description: Fixed instance nodes of the task
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/FixedInstanceNode'
+            $ref: "#/components/schemas/FixedInstanceNode"
         mixers:
           description: Mixer nodes of the task
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/MixerNode'
+            $ref: "#/components/schemas/MixerNode"
         revision:
           description: The revision number of the specification (starts at zero, increments for every change)
           default: 0
@@ -1316,7 +1784,7 @@ components:
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/TrackNode'
+            $ref: "#/components/schemas/TrackNode"
     TaskWithStatus:
       title: TaskWithStatus
       type: object
@@ -1326,16 +1794,16 @@ components:
         - spec
       properties:
         id:
-          $ref: '#/components/schemas/AppTaskId'
+          $ref: "#/components/schemas/AppTaskId"
         play_state:
-          $ref: '#/components/schemas/TaskPlayState'
+          $ref: "#/components/schemas/TaskPlayState"
         spec:
-          $ref: '#/components/schemas/TaskSpec'
+          $ref: "#/components/schemas/TaskSpec"
     TaskWithStatusList:
       title: Array_of_TaskWithStatus
       type: array
       items:
-        $ref: '#/components/schemas/TaskWithStatus'
+        $ref: "#/components/schemas/TaskWithStatus"
     TimeSegment:
       type: object
       required:
@@ -1361,23 +1829,23 @@ components:
         channels:
           description: Number of channels
           allOf:
-            - $ref: '#/components/schemas/MediaChannels'
+            - $ref: "#/components/schemas/MediaChannels"
         format:
           description: Media format
           allOf:
-            - $ref: '#/components/schemas/TrackMediaFormat'
+            - $ref: "#/components/schemas/TrackMediaFormat"
         media_segment:
           description: Subset of media that is used
           allOf:
-            - $ref: '#/components/schemas/TimeSegment'
+            - $ref: "#/components/schemas/TimeSegment"
         object_id:
           description: Source media object id
           allOf:
-            - $ref: '#/components/schemas/MediaObjectId'
+            - $ref: "#/components/schemas/MediaObjectId"
         timeline_segment:
           description: Where to place the media in the task timeline
           allOf:
-            - $ref: '#/components/schemas/TimeSegment'
+            - $ref: "#/components/schemas/TimeSegment"
     TrackMediaFormat:
       type: string
       enum:
@@ -1397,12 +1865,12 @@ components:
         channels:
           description: Number of channels
           allOf:
-            - $ref: '#/components/schemas/MediaChannels'
+            - $ref: "#/components/schemas/MediaChannels"
         media:
           description: Media items present on the track
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/TrackMedia'
+            $ref: "#/components/schemas/TrackMedia"
     TrackNodeId:
       type: string
     UpdateTaskTrackMedia:
@@ -1410,20 +1878,20 @@ components:
       properties:
         channels:
           anyOf:
-            - $ref: '#/components/schemas/MediaChannels'
-            - type: 'null'
+            - $ref: "#/components/schemas/MediaChannels"
+            - type: "null"
         media_segment:
           anyOf:
-            - $ref: '#/components/schemas/TimeSegment'
-            - type: 'null'
+            - $ref: "#/components/schemas/TimeSegment"
+            - type: "null"
         object_id:
           anyOf:
-            - $ref: '#/components/schemas/MediaObjectId'
-            - type: 'null'
+            - $ref: "#/components/schemas/MediaObjectId"
+            - type: "null"
         timeline_segment:
           anyOf:
-            - $ref: '#/components/schemas/TimeSegment'
-            - type: 'null'
+            - $ref: "#/components/schemas/TimeSegment"
+            - type: "null"
     UploadToDomain:
       type: object
       required:
@@ -1439,14 +1907,14 @@ components:
           format: uint64
           minimum: 0.0
         channels:
-          $ref: '#/components/schemas/MediaChannels'
+          $ref: "#/components/schemas/MediaChannels"
         context: true
         format:
-          $ref: '#/components/schemas/TrackMediaFormat'
+          $ref: "#/components/schemas/TrackMediaFormat"
         notify_url:
           type:
             - string
-            - 'null'
+            - "null"
         sample_rate:
           type: integer
           format: uint
@@ -1456,471 +1924,3 @@ components:
           format: double
         url:
           type: string
-info:
-  contact:
-    url: https://github.com/audiocloud
-    email: bojan@distopik.com
-    name: Bojan Šernek
-  description: |
-    Audio cloud audio engine API specification
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
-  title: Audio Cloud Audio Engine
-  version: 0.1.0
-openapi: 3.1.0
-paths:
-  /v1/instances:
-    put:
-      deprecated: false
-      description: |
-        Set instance I/O mapping
-
-        The Audio Engine needs to map FixedInstanceNode to I/O on the audio interface it is bound
-        to. For example, an instance may be bound to channels 0 and 1 or to channels 5 and 6 and
-        the Audio Engine needs to know to route the audio correctly.
-      operationId: set_instances
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SetInstances'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/InstancesUpdated'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not found
-      summary: Set instance I/O mapping
-      tags:
-        - environment
-  /v1/media:
-    put:
-      deprecated: false
-      description: |
-        Set media presence
-
-        The Audio Engine needs to map AppMediaObjectId on track items to
-      operationId: set_media
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SetMedia'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MediaUpdated'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not found
-      summary: Set media presence
-      tags:
-        - environment
-  /v1/tasks:
-    get:
-      deprecated: false
-      description: |
-        List tasks
-
-        Return a list of all current tasks and their play status.
-      operationId: list
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskWithStatusList'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not found
-      summary: List tasks
-      tags:
-        - tasks
-  /v1/tasks/{app_id}/{task_id}:
-    delete:
-      deprecated: false
-      description: |
-        Delete a task
-
-        Delete an existing task spec. This will interrupt any playback or rendering and will free
-        resources associated with the task (such as instances or locks on media files).
-      operationId: delete
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskDeleted'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not found
-      summary: Delete a task
-      tags:
-        - tasks
-    patch:
-      deprecated: false
-      description: |
-        Modify task spec
-
-        Apply a modification to an existing spec. Changing the spec even trivially could result in a
-        rendering or playback interruption. The task must exist in order to be modified.
-      operationId: modify_spec
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ModifyTaskSpec'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskModified'
-          description: Success
-        '400':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Modification failed
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not found
-      summary: Modify task spec
-      tags:
-        - tasks
-    put:
-      deprecated: false
-      description: |
-        Create or update task spec
-
-        Create or update a task by providing its spec. Changing the spec even trivially could result
-        in a rendering or playback interruption.
-      operationId: set_spec
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TaskSpec'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskReplaced'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not authorized
-      summary: Create or update task spec
-      tags:
-        - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/cancel:
-    post:
-      deprecated: false
-      description: |
-        Cancel rendering a task
-
-        Request to stop (cancel) rendering if the task is rendering.
-      operationId: cancel_render
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestCancelRender'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskRenderCancelled'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Task or mixer Not found
-      summary: Cancel rendering a task
-      tags:
-        - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/play:
-    post:
-      deprecated: false
-      description: |
-        Start playing a task
-
-        Start playing a task that is stopped. The request will return when the task has started to play
-        or with an error.
-      operationId: play
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestPlay'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskPlaying'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Not found
-      summary: Start playing a task
-      tags:
-        - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/render:
-    post:
-      deprecated: false
-      description: |
-        Render a task to a new file
-
-        Start rendering a task. Note that unlike the orchestration or domain API, the audio engine
-        does not care if the media files are present and will happily execute a render even when no
-        files (or instances) are ready. The caller to this API should make sure that any such
-        preconditions are met.
-      operationId: render
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestRender'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskRendering'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Task or mixer Not found
-      summary: Render a task to a new file
-      tags:
-        - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/seek:
-    post:
-      deprecated: false
-      description: |
-        Seek while task is playing
-
-        If the task is playing, change the playing position.
-      operationId: seek
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestSeek'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskSought'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Task Not found
-      summary: Seek while task is playing
-      tags:
-        - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/stop:
-    post:
-      deprecated: false
-      description: |
-        Stop playing a task
-
-        Request to stop a track if the task is playing.
-      operationId: stop_playing
-      parameters:
-        - deprecated: false
-          description: App id
-          in: path
-          name: app_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/AppId'
-        - deprecated: false
-          description: Task id
-          in: path
-          name: task_id
-          required: true
-          schema:
-            $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestStopPlay'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskPlayStopped'
-          description: Success
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EngineError'
-          description: Task or mixer Not found
-      summary: Stop playing a task
-      tags:
-        - tasks
-servers:
-  - description: Local development
-    url: http://localhost:7300

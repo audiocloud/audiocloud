@@ -19,8 +19,7 @@ impl Handler<NotifyTaskSpec> for TasksSupervisor {
 
     fn handle(&mut self, msg: NotifyTaskSpec, ctx: &mut Self::Context) -> Self::Result {
         // clear all previous associations with the same task ID
-        self.fixed_instance_membership
-            .retain(|_, task_id| task_id != &msg.task_id);
+        self.fixed_instance_membership.retain(|_, task_id| task_id != &msg.task_id);
 
         // associate task ID with all the current fixed instance IDs
         for fixed_instance_id in msg.spec.get_fixed_instance_ids() {

@@ -15,33 +15,28 @@ use crate::media::upload::Uploader;
 use crate::media::{DownloadJobId, MediaOpts, UploadJobId};
 
 pub struct MediaSupervisor {
-    db: Db,
-    downloads: HashMap<DownloadJobId, Addr<Downloader>>,
-    uploads: HashMap<UploadJobId, Addr<Uploader>>,
-    client: Client,
-    opts: MediaOpts,
+    db:         Db,
+    downloads:  HashMap<DownloadJobId, Addr<Downloader>>,
+    uploads:    HashMap<UploadJobId, Addr<Uploader>>,
+    client:     Client,
+    opts:       MediaOpts,
     media_root: PathBuf,
 }
 
 impl MediaSupervisor {
     pub fn new(opts: MediaOpts, db: Db) -> anyhow::Result<Self> {
         let media_root = opts.media_root.clone();
-        Ok(Self {
-            db: { db },
-            opts: { opts },
-            downloads: { Default::default() },
-            uploads: { Default::default() },
-            client: { Default::default() },
-            media_root: { media_root },
-        })
+        Ok(Self { db:         { db },
+                  opts:       { opts },
+                  downloads:  { Default::default() },
+                  uploads:    { Default::default() },
+                  client:     { Default::default() },
+                  media_root: { media_root }, })
     }
 
     #[instrument(skip_all)]
     fn load_pending_downloads(&mut self, ctx: &mut Context<Self>) {
-        match block_on(
-            self.db
-                .fetch_pending_download_jobs(self.opts.max_downloads_batch),
-        ) {
+        match block_on(self.db.fetch_pending_download_jobs(self.opts.max_downloads_batch)) {
             Ok(downloads) => {
                 let mut created = 0;
                 for (id, download) in downloads {
@@ -51,13 +46,7 @@ impl MediaSupervisor {
 
                     created += 1;
 
-                    match Downloader::new(
-                        self.db.clone(),
-                        id.clone(),
-                        self.client.clone(),
-                        self.media_root.clone(),
-                        download,
-                    ) {
+                    match Downloader::new(self.db.clone(), id.clone(), self.client.clone(), self.media_root.clone(), download) {
                         Ok(downloader) => {
                             self.downloads.insert(id, downloader.start());
                         }
@@ -79,18 +68,11 @@ impl MediaSupervisor {
 
     #[instrument(skip_all)]
     fn load_pending_uploads(&mut self, ctx: &mut Context<Self>) {
-        let rv = block_on(
-            self.db
-                .fetch_pending_download_jobs(self.opts.max_uploads_batch),
-        );
+        let rv = block_on(self.db.fetch_pending_download_jobs(self.opts.max_uploads_batch));
     }
 
     #[instrument(skip_all)]
-    fn process_pending_uploads(
-        uploads: anyhow::Result<HashMap<UploadJobId, MediaUpload>>,
-        actor: &mut Self,
-        ctx: &mut Context<Self>,
-    ) {
+    fn process_pending_uploads(uploads: anyhow::Result<HashMap<UploadJobId, MediaUpload>>, actor: &mut Self, ctx: &mut Context<Self>) {
         match uploads {
             Ok(uploads) => {
                 let created = 0;
@@ -101,13 +83,7 @@ impl MediaSupervisor {
 
                     let path = actor.get_local_path(&upload.media_id);
 
-                    match Uploader::new(
-                        actor.db.clone(),
-                        id.clone(),
-                        actor.client.clone(),
-                        actor.media_root.clone(),
-                        upload,
-                    ) {
+                    match Uploader::new(actor.db.clone(), id.clone(), actor.client.clone(), actor.media_root.clone(), upload) {
                         Ok(uploader) => {
                             actor.uploads.insert(id, uploader.start());
                         }
@@ -146,32 +122,32 @@ impl MediaSupervisor {
 
     fn clear_stale_uploads(&mut self, ctx: &mut Context<Self>) {
         self.uploads.retain(|id, uploader| {
-            if uploader.connected() {
-                true
-            } else {
-                warn!(%id, "Uploader dropped");
-                if let Err(error) = block_on(self.db.delete_upload(&id)) {
-                    error!(%error, %id, "Failed to delete upload");
-                }
-                false
-            }
-        });
+                        if uploader.connected() {
+                            true
+                        } else {
+                            warn!(%id, "Uploader dropped");
+                            if let Err(error) = block_on(self.db.delete_upload(&id)) {
+                                error!(%error, %id, "Failed to delete upload");
+                            }
+                            false
+                        }
+                    });
     }
 
     fn clear_stale_downloads(&mut self, ctx: &mut Context<Self>) {
         self.downloads.retain(|id, downloader| {
-            if downloader.connected() {
-                true
-            } else {
-                warn!(%id, "Downloader dropped");
+                          if downloader.connected() {
+                              true
+                          } else {
+                              warn!(%id, "Downloader dropped");
 
-                if let Err(error) = block_on(self.db.delete_download(&id)) {
-                    error!(%error, %id, "Failed to delete download");
-                }
+                              if let Err(error) = block_on(self.db.delete_download(&id)) {
+                                  error!(%error, %id, "Failed to delete download");
+                              }
 
-                false
-            }
-        });
+                              false
+                          }
+                      });
     }
 }
 

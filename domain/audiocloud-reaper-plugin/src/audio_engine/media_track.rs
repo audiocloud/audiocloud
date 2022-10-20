@@ -12,32 +12,29 @@ use audiocloud_api::{NodePadId, OutputPadId, PadMetering};
 
 use crate::audio_engine;
 use crate::audio_engine::media_item::{EngineMediaItem, EngineMediaItemTemplate};
-use crate::audio_engine::project::{
-    get_track_peak_meters, EngineProject, EngineProjectTemplateSnapshot,
-};
+use crate::audio_engine::project::{get_track_peak_meters, EngineProject, EngineProjectTemplateSnapshot};
 use crate::audio_engine::{append_track, delete_track, set_track_chunk};
 
 #[derive(Debug)]
 pub struct EngineMediaTrack {
-    id: TrackNodeId,
-    track_id: Uuid,
-    app_id: AppId,
+    id:            TrackNodeId,
+    track_id:      Uuid,
+    app_id:        AppId,
     output_pad_id: OutputPadId,
-    track: MediaTrack,
-    media: HashMap<TrackMediaId, EngineMediaItem>,
-    spec: TrackNode,
-    root_dir: PathBuf,
+    track:         MediaTrack,
+    media:         HashMap<TrackMediaId, EngineMediaItem>,
+    spec:          TrackNode,
+    root_dir:      PathBuf,
 }
 
 impl EngineMediaTrack {
     #[instrument(skip_all, err)]
-    pub fn new(
-        project: &EngineProject,
-        app_id: AppId,
-        track_id: TrackNodeId,
-        spec: TrackNode,
-        existing_media: &HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<Self> {
+    pub fn new(project: &EngineProject,
+               app_id: AppId,
+               track_id: TrackNodeId,
+               spec: TrackNode,
+               existing_media: &HashMap<AppMediaObjectId, String>)
+               -> anyhow::Result<Self> {
         project.focus()?;
 
         let root_dir = project.shared_media_root_dir();
@@ -49,29 +46,18 @@ impl EngineMediaTrack {
         let mut media = HashMap::new();
 
         for (media_id, media_spec) in spec.media.clone() {
-            media.insert(
-                media_id.clone(),
-                EngineMediaItem::new(
-                    track,
-                    &root_dir,
-                    &app_id,
-                    media_id,
-                    media_spec,
-                    existing_media,
-                )?,
-            );
+            media.insert(media_id.clone(),
+                         EngineMediaItem::new(track, &root_dir, &app_id, media_id, media_spec, existing_media)?);
         }
 
-        let rv = Self {
-            track_id: { id },
-            app_id: { app_id },
-            id: { track_id },
-            output_pad_id: { output_pad_id },
-            track: { track },
-            media: { media },
-            spec: { spec },
-            root_dir: { root_dir },
-        };
+        let rv = Self { track_id:      { id },
+                        app_id:        { app_id },
+                        id:            { track_id },
+                        output_pad_id: { output_pad_id },
+                        track:         { track },
+                        media:         { media },
+                        spec:          { spec },
+                        root_dir:      { root_dir }, };
 
         Ok(rv)
     }
@@ -85,17 +71,8 @@ impl EngineMediaTrack {
         &self.output_pad_id
     }
 
-    pub fn get_state_chunk(
-        &self,
-        project: &EngineProjectTemplateSnapshot,
-    ) -> anyhow::Result<String> {
-        Ok(audio_engine::beautify_chunk(
-            EngineMediaTrackTemplate {
-                project,
-                track: self,
-            }
-            .render()?,
-        ))
+    pub fn get_state_chunk(&self, project: &EngineProjectTemplateSnapshot) -> anyhow::Result<String> {
+        Ok(audio_engine::beautify_chunk(EngineMediaTrackTemplate { project, track: self }.render()?))
     }
 
     pub fn on_media_updated(&mut self, available: &HashMap<AppMediaObjectId, String>) -> bool {
@@ -110,12 +87,11 @@ impl EngineMediaTrack {
     }
 
     #[instrument(skip_all, err)]
-    pub fn set_media_values(
-        &mut self,
-        media_id: TrackMediaId,
-        update: UpdateTaskTrackMedia,
-        media: &HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<bool> {
+    pub fn set_media_values(&mut self,
+                            media_id: TrackMediaId,
+                            update: UpdateTaskTrackMedia,
+                            media: &HashMap<AppMediaObjectId, String>)
+                            -> anyhow::Result<bool> {
         if let Some(media) = self.spec.media.get_mut(&media_id) {
             media.update(update.clone());
         }
@@ -129,25 +105,15 @@ impl EngineMediaTrack {
     }
 
     #[instrument(skip_all, err)]
-    pub fn add_media(
-        &mut self,
-        media_id: TrackMediaId,
-        spec: TrackMedia,
-        media: &HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<bool> {
+    pub fn add_media(&mut self,
+                     media_id: TrackMediaId,
+                     spec: TrackMedia,
+                     media: &HashMap<AppMediaObjectId, String>)
+                     -> anyhow::Result<bool> {
         self.delete_media(&media_id)?;
 
-        self.media.insert(
-            media_id.clone(),
-            EngineMediaItem::new(
-                self.track,
-                &self.root_dir,
-                &self.app_id,
-                media_id,
-                spec,
-                media,
-            )?,
-        );
+        self.media.insert(media_id.clone(),
+                          EngineMediaItem::new(self.track, &self.root_dir, &self.app_id, media_id, spec, media)?);
 
         Ok(true)
     }
@@ -163,24 +129,15 @@ impl EngineMediaTrack {
     }
 
     #[instrument(skip_all, err, fields(id = %self.id))]
-    pub fn update_state_chunk(
-        &self,
-        project: &EngineProjectTemplateSnapshot,
-    ) -> anyhow::Result<()> {
-        set_track_chunk(
-            project.context(),
-            self.track,
-            &self.get_state_chunk(project)?,
-        )?;
+    pub fn update_state_chunk(&self, project: &EngineProjectTemplateSnapshot) -> anyhow::Result<()> {
+        set_track_chunk(project.context(), self.track, &self.get_state_chunk(project)?)?;
 
         Ok(())
     }
 
     pub fn fill_peak_meters(&self, peaks: &mut HashMap<NodePadId, PadMetering>) {
-        peaks.insert(
-            self.output_pad_id.clone().into(),
-            get_track_peak_meters(self.track, self.spec.channels.num_channels()),
-        );
+        peaks.insert(self.output_pad_id.clone().into(),
+                     get_track_peak_meters(self.track, self.spec.channels.num_channels()));
     }
 }
 
@@ -188,5 +145,5 @@ impl EngineMediaTrack {
 #[template(path = "audio_engine/media_track.txt")]
 struct EngineMediaTrackTemplate<'a> {
     project: &'a EngineProjectTemplateSnapshot,
-    track: &'a EngineMediaTrack,
+    track:   &'a EngineMediaTrack,
 }

@@ -1,9 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{AppId, CreateTaskReservation, CreateTaskSecurity, CreateTaskSpec, DomainId, TaskId};
 use crate::common::change::ModifyTask;
 use crate::time::Timestamp;
+use crate::{AppId, CreateTaskReservation, CreateTaskSecurity, CreateTaskSpec, DomainId, TaskId};
 
 /// Create a task
 ///
@@ -14,15 +14,15 @@ use crate::time::Timestamp;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct CreateTask {
     /// Domain that will be executing the task
-    pub domain_id: DomainId,
+    pub domain_id:    DomainId,
     /// Task reservations
     pub reservations: CreateTaskReservation,
     /// Task specification
-    pub spec: CreateTaskSpec,
+    pub spec:         CreateTaskSpec,
     /// Security keys and associateds permissions
-    pub security: CreateTaskSecurity,
+    pub security:     CreateTaskSecurity,
     /// When true, do not actually create a task, just validate the process
-    pub dry_run: bool,
+    pub dry_run:      bool,
 }
 
 /// Task created successfully
@@ -32,14 +32,14 @@ pub enum TaskCreated {
     /// Created normally
     Created {
         /// App creating the task
-        app_id: AppId,
+        app_id:  AppId,
         /// Task Id
         task_id: TaskId,
     },
     /// Validated successfully, but not created
     DryRun {
         /// App creating the task
-        app_id: AppId,
+        app_id:  AppId,
         /// Task Id
         task_id: TaskId,
     },
@@ -52,7 +52,7 @@ pub enum TaskUpdated {
     /// Updated normally
     Updated {
         /// App creating the task
-        app_id: AppId,
+        app_id:  AppId,
         /// Task Id
         task_id: TaskId,
         /// New version to be used with `If-Matches` when submitting further modifications
@@ -67,7 +67,7 @@ pub enum TaskDeleted {
     /// Deleted normally
     Deleted {
         /// App creating the task
-        app_id: AppId,
+        app_id:  AppId,
         /// Task Id
         task_id: TaskId,
         /// Version when deleted
@@ -81,7 +81,7 @@ pub struct AdjustTaskTime {
     /// If not null, overwrite the starting time
     pub from: Option<Timestamp>,
     /// If not null, overwrite the ending time
-    pub to: Option<Timestamp>,
+    pub to:   Option<Timestamp>,
 }
 
 /// A list of tasks

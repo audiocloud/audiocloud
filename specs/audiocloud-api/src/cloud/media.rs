@@ -1,25 +1,25 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::AppMediaObjectId;
-use crate::common::{AppId, DomainId, MediaObjectId, TaskId};
 use crate::common::media::MediaJobState;
+use crate::common::{AppId, DomainId, MediaObjectId, TaskId};
+use crate::AppMediaObjectId;
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ReportMediaJobProgress {
     /// Reporting upload progress
     UploadFromDomain {
-        app_id: AppId,
+        app_id:   AppId,
         media_id: MediaObjectId,
-        state: MediaJobState,
+        state:    MediaJobState,
     },
     /// Reporting download progress
     DownloadToDomain {
-        app_id: AppId,
-        task_id: Option<TaskId>,
+        app_id:   AppId,
+        task_id:  Option<TaskId>,
         media_id: MediaObjectId,
-        state: MediaJobState,
+        state:    MediaJobState,
     },
 }
 
@@ -27,20 +27,14 @@ pub enum ReportMediaJobProgress {
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UploadCreated {
-    Created {
-        media_id: AppMediaObjectId,
-        domain_id: DomainId,
-    },
+    Created { media_id: AppMediaObjectId, domain_id: DomainId },
 }
 
 /// Confirming download is created
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DownloadCreated {
-    Created {
-        media_id: AppMediaObjectId,
-        domain_id: DomainId,
-    },
+    Created { media_id: AppMediaObjectId, domain_id: DomainId },
 }
 
 /// Confirming media object is scheduled for deletion

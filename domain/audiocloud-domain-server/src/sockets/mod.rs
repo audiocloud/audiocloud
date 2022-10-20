@@ -42,7 +42,7 @@ fn get_next_socket_id() -> SocketId {
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 struct SocketMembership {
     secure_key: SecureKey,
-    socket_id: SocketId,
+    socket_id:  SocketId,
 }
 
 #[instrument(skip_all, err)]
@@ -52,15 +52,12 @@ pub fn init(cfg: SocketsOpts) -> anyhow::Result<()> {
 
     web_rtc::init(&web_rtc_cfg)?;
 
-    SOCKETS_SUPERVISOR
-        .set(supervisor.start())
-        .map_err(|_| anyhow!("Sockets supervisor already initialized"))?;
+    SOCKETS_SUPERVISOR.set(supervisor.start())
+                      .map_err(|_| anyhow!("Sockets supervisor already initialized"))?;
 
     Ok(())
 }
 
 pub fn get_sockets_supervisor() -> &'static Addr<SocketsSupervisor> {
-    SOCKETS_SUPERVISOR
-        .get()
-        .expect("Sockets supervisor not initialized")
+    SOCKETS_SUPERVISOR.get().expect("Sockets supervisor not initialized")
 }

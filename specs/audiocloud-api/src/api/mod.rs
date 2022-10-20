@@ -4,14 +4,10 @@ pub use codec::*;
 
 pub mod codec;
 
-pub fn merge_schemas(x: impl Iterator<Item=RootSchema>) -> RootSchema {
+pub fn merge_schemas(x: impl Iterator<Item = RootSchema>) -> RootSchema {
     let mut root = RootSchema::default();
     for schema in x {
-        let RootSchema {
-            schema,
-            definitions,
-            ..
-        } = schema;
+        let RootSchema { schema, definitions, .. } = schema;
         let title = schema.metadata.as_ref().unwrap().title.clone().unwrap();
 
         let title = if title.starts_with("Array_of_") {

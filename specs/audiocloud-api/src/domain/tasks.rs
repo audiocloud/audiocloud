@@ -3,40 +3,38 @@ use std::collections::{HashMap, HashSet};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+pub use crate::audio_engine::{TaskPlayStopped, TaskPlaying, TaskRenderCancelled, TaskRendering, TaskSought};
 use crate::{
-    AppMediaObjectId, AppTaskId, CreateTaskReservation, CreateTaskSecurity, CreateTaskSpec,
-    FixedInstanceId, InstancePlayState, MediaObject, ModifyTaskSpec, TaskPlayState, TaskSpec,
-};
-pub use crate::audio_engine::{
-    TaskPlaying, TaskPlayStopped, TaskRenderCancelled, TaskRendering, TaskSought,
+    AppMediaObjectId, AppTaskId, CreateTaskReservation, CreateTaskSecurity, CreateTaskSpec, FixedInstanceId, InstancePlayState,
+    MediaObject, ModifyTaskSpec, TaskPlayState, TaskSpec,
 };
 
 /// A summary of a task
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct TaskSummary {
     /// Task Id
-    pub task_id: AppTaskId,
+    pub task_id:               AppTaskId,
     /// Current play sate
-    pub play_state: TaskPlayState,
+    pub play_state:            TaskPlayState,
     /// List of instances that are blocking play state change
     pub waiting_for_instances: HashSet<FixedInstanceId>,
     /// List of media that are blocking or influencing completeness of play state change
-    pub waiting_for_media: HashSet<AppMediaObjectId>,
+    pub waiting_for_media:     HashSet<AppMediaObjectId>,
 }
 
 /// A more complete information about a task
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct TaskWithStatusAndSpec {
     /// Task Id
-    pub task_id: AppTaskId,
+    pub task_id:    AppTaskId,
     /// Current play state
     pub play_state: TaskPlayState,
     /// State of attatched fixed instances
-    pub instances: HashMap<FixedInstanceId, InstancePlayState>,
+    pub instances:  HashMap<FixedInstanceId, InstancePlayState>,
     /// State of attached media objects
-    pub media: HashMap<AppMediaObjectId, MediaObject>,
+    pub media:      HashMap<AppMediaObjectId, MediaObject>,
     /// The current specification of the task
-    pub spec: TaskSpec,
+    pub spec:       TaskSpec,
 }
 
 pub type TaskSummaryList = Vec<TaskSummary>;
@@ -45,13 +43,13 @@ pub type TaskSummaryList = Vec<TaskSummary>;
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct CreateTask {
     /// The new app id
-    pub task_id: AppTaskId,
+    pub task_id:      AppTaskId,
     /// Task reservations
     pub reservations: CreateTaskReservation,
     /// Task specification
-    pub spec: CreateTaskSpec,
+    pub spec:         CreateTaskSpec,
     /// Security keys and associateds permissions
-    pub security: CreateTaskSecurity,
+    pub security:     CreateTaskSecurity,
 }
 
 /// Response to creating a task on the domain
@@ -79,14 +77,14 @@ pub enum TaskUpdated {
     /// Updated normally
     Updated {
         /// Task Id
-        task_id: AppTaskId,
+        task_id:  AppTaskId,
         /// New version to be used with `If-Matches` when submitting further modifications
         revision: u64,
     },
     /// Did not update because a newer revision was specified and update is optional
     Ignored {
         /// Task Id
-        task_id: AppTaskId,
+        task_id:  AppTaskId,
         /// Current version to be used with `If-Matches` when submitting further modifications
         revision: u64,
     },
@@ -97,4 +95,3 @@ pub enum TaskUpdated {
 pub enum TaskDeleted {
     Deleted { id: AppTaskId },
 }
-

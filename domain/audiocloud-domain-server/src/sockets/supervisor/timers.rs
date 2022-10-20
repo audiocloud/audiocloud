@@ -12,21 +12,20 @@ use crate::ResponseMedia;
 
 impl SocketsSupervisor {
     pub(crate) fn cleanup_stale_sockets(&mut self, ctx: &mut Context<Self>) {
-        let max_init_wait_time =
-            chrono::Duration::milliseconds(self.opts.socket_init_timeout as i64);
+        let max_init_wait_time = chrono::Duration::milliseconds(self.opts.socket_init_timeout as i64);
 
         for client in self.clients.values_mut() {
             client.sockets.retain(|id, socket| {
-                if socket.is_init_timed_out(self.opts.socket_init_timeout) {
-                    debug!(%id, "Supervisor cleaning up un-initialized socket");
-                    false
-                } else if !socket.is_valid(self.opts.socket_drop_timeout) {
-                    debug!(%id, "Supervisor cleaning up timed-out or disconnected socket");
-                    false
-                } else {
-                    true
-                }
-            });
+                              if socket.is_init_timed_out(self.opts.socket_init_timeout) {
+                                  debug!(%id, "Supervisor cleaning up un-initialized socket");
+                                  false
+                              } else if !socket.is_valid(self.opts.socket_drop_timeout) {
+                                  debug!(%id, "Supervisor cleaning up timed-out or disconnected socket");
+                                  false
+                              } else {
+                                  true
+                              }
+                          });
         }
 
         self.prune_unlinked_access();
@@ -41,21 +40,17 @@ impl SocketsSupervisor {
                     continue;
                 }
 
-                if let Err(error) = self.send_to_socket(
-                    socket,
-                    DomainServerMessage::Ping {
-                        challenge: nanoid!(),
-                    },
-                    ResponseMedia::MsgPack,
-                    ctx,
-                ) {
+                if let Err(error) = self.send_to_socket(socket,
+                                                        DomainServerMessage::Ping { challenge: nanoid!() },
+                                                        ResponseMedia::MsgPack,
+                                                        ctx)
+                {
                     warn!(%error, %socket_id, "Failed to ping socket");
                 }
             }
         }
 
-        self.clients
-            .retain(|_, clients| !clients.sockets.is_empty());
+        self.clients.retain(|_, clients| !clients.sockets.is_empty());
     }
 
     pub(crate) fn prune_unlinked_access(&mut self) {
@@ -64,9 +59,6 @@ impl SocketsSupervisor {
 
     pub(crate) fn register_timers(&mut self, ctx: &mut Context<Self>) {
         ctx.run_interval(Duration::from_millis(20), Self::cleanup_stale_sockets);
-        ctx.run_interval(
-            Duration::from_millis(self.opts.socket_ping_interval),
-            Self::ping_active_sockets,
-        );
+        ctx.run_interval(Duration::from_millis(self.opts.socket_ping_interval), Self::ping_active_sockets);
     }
 }

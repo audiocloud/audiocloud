@@ -1,3 +1,651 @@
+openapi: 3.1.0
+info:
+  contact:
+    email: bojan@distopik.com
+    name: Bojan Šernek
+  description: ''
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Audio Cloud Domain
+  version: 0.1.0
+paths:
+  /v1/streams/{app_id}/{task_id}/{play_id}:
+    get:
+      deprecated: false
+      description: |
+        Get stream statistics
+
+        Get statistics about cached packets available in the stream.
+      operationId: stream_stats
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: Play id
+        in: path
+        name: play_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/PlayId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamStats'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not found
+      summary: Get stream statistics
+      tags:
+      - streaming
+  /v1/streams/{app_id}/{task_id}/{play_id}/packet/{serial}:
+    get:
+      deprecated: false
+      description: |
+        Load packet data
+
+        For each PlayId, on a task, a stream is kept in memory with a history of packets, by ascending
+        serial number. For a sane amount of time, the packets may be requested by the clients. If a
+        packet is not yet models (but it is expected they will be, in the future) the request will
+        block (wait) for `Timeout` milliseconds before giving up and returning 408.
+      operationId: stream_packets
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: Play id
+        in: path
+        name: play_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/PlayId'
+      - deprecated: false
+        description: Packet serial number
+        in: path
+        name: serial
+        required: true
+        schema:
+          format: int64
+          type: integer
+      - deprecated: false
+        description: Milliseconds to wait for the packet to be ready
+        in: header
+        name: Timeout
+        required: true
+        schema:
+          format: int64
+          type: integer
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingPacket'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: App, task or stream not found
+        '408':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Timed out waiting for packet
+      summary: Load packet data
+      tags:
+      - streaming
+  /v1/tasks:
+    get:
+      deprecated: false
+      description: |
+        List tasks
+
+        Return a list of all current tasks and their status.
+      operationId: list_tasks
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskSummaryList'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+      summary: List tasks
+      tags:
+      - tasks
+    post:
+      deprecated: false
+      description: |
+        Create a task
+
+        In standalone mode, the task will be checked for mutual exclusivity with other tasks, otherwise
+        it will be created. This call could also fail if the referenced resources (such as fixed
+        instances) do not exist.
+      operationId: create_task
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Overlapping task exists
+      summary: Create a task
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}:
+    delete:
+      deprecated: false
+      description: |
+        Delete a task
+
+        Delete a task and release all referenced resources.
+      operationId: delete_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDeleted'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not found
+      summary: Delete a task
+      tags:
+      - tasks
+    get:
+      deprecated: false
+      description: |
+        Get task details
+
+        Get details of a task, including dependent media and instance statuses
+      operationId: get_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskWithStatusAndSpec'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not found
+      summary: Get task details
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}/modify:
+    post:
+      deprecated: false
+      description: |
+        Modify existing task
+
+        Submit modifications to the task. This generic request can be used to update most aspects of the
+        session: adjusting parameters, creating, deleting, reconnecting nodes, changing media, etc.
+      operationId: modify_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version to be changed
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyTask'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not allowed to change instances
+      summary: Modify existing task
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/cancel:
+    post:
+      deprecated: false
+      description: |
+        Cancel rendering a task
+
+        Request to stop (cancel) rendering if the task is rendering.
+      operationId: cancel_render_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestCancelRender'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRenderCancelled'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Task or mixer Not found
+      summary: Cancel rendering a task
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/play:
+    post:
+      deprecated: false
+      description: |
+        Start playing a task
+
+        Start playing a task that is stopped. The request will return when the task has started to play
+        or with an error.
+      operationId: play_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPlay'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPlaying'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Task or mixer Not found
+      summary: Start playing a task
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/render:
+    post:
+      deprecated: false
+      description: |
+        Render a task to a new file
+
+        The domain will check that
+      operationId: render_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestRender'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRendering'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Task or mixer Not found
+      summary: Render a task to a new file
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/seek:
+    post:
+      deprecated: false
+      description: |
+        Seek while task is playing
+
+        If the task is playing, change the playing position.
+      operationId: seek_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestSeek'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskSought'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Task Not found
+      summary: Seek while task is playing
+      tags:
+      - tasks
+  /v1/tasks/{app_id}/{task_id}/transport/stop:
+    post:
+      deprecated: false
+      description: |
+        Stop playing a task
+
+        Request to stop a track if the task is playing.
+      operationId: stop_playing_task
+      parameters:
+      - deprecated: false
+        description: App id
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task id
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestStopPlay'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPlayStopped'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainError'
+          description: Task or mixer Not found
+      summary: Stop playing a task
+      tags:
+      - tasks
+servers:
+- description: Distopik HQ
+  url: https://distopik-hq.eu.audiocloud.io
+- description: Local development
+  url: http://localhost:7200
 components:
   schemas:
     AppId:
@@ -3030,651 +3678,3 @@ components:
           format: double
         url:
           type: string
-info:
-  contact:
-    email: bojan@distopik.com
-    name: Bojan Šernek
-  description: ''
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0.html
-  title: Audio Cloud Domain
-  version: 0.1.0
-openapi: 3.1.0
-paths:
-  /v1/streams/{app_id}/{task_id}/{play_id}:
-    get:
-      deprecated: false
-      description: |
-        Get stream statistics
-
-        Get statistics about cached packets available in the stream.
-      operationId: stream_stats
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: Play id
-        in: path
-        name: play_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/PlayId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StreamStats'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not found
-      summary: Get stream statistics
-      tags:
-      - streaming
-  /v1/streams/{app_id}/{task_id}/{play_id}/packet/{serial}:
-    get:
-      deprecated: false
-      description: |
-        Load packet data
-
-        For each PlayId, on a task, a stream is kept in memory with a history of packets, by ascending
-        serial number. For a sane amount of time, the packets may be requested by the clients. If a
-        packet is not yet models (but it is expected they will be, in the future) the request will
-        block (wait) for `Timeout` milliseconds before giving up and returning 408.
-      operationId: stream_packets
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: Play id
-        in: path
-        name: play_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/PlayId'
-      - deprecated: false
-        description: Packet serial number
-        in: path
-        name: serial
-        required: true
-        schema:
-          format: int64
-          type: integer
-      - deprecated: false
-        description: Milliseconds to wait for the packet to be ready
-        in: header
-        name: Timeout
-        required: true
-        schema:
-          format: int64
-          type: integer
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/StreamingPacket'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: App, task or stream not found
-        '408':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Timed out waiting for packet
-      summary: Load packet data
-      tags:
-      - streaming
-  /v1/tasks:
-    get:
-      deprecated: false
-      description: |
-        List tasks
-
-        Return a list of all current tasks and their status.
-      operationId: list_tasks
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskSummaryList'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-      summary: List tasks
-      tags:
-      - tasks
-    post:
-      deprecated: false
-      description: |
-        Create a task
-
-        In standalone mode, the task will be checked for mutual exclusivity with other tasks, otherwise
-        it will be created. This call could also fail if the referenced resources (such as fixed
-        instances) do not exist.
-      operationId: create_task
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateTask'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskCreated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not found
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Overlapping task exists
-      summary: Create a task
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}:
-    delete:
-      deprecated: false
-      description: |
-        Delete a task
-
-        Delete a task and release all referenced resources.
-      operationId: delete_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskDeleted'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not found
-      summary: Delete a task
-      tags:
-      - tasks
-    get:
-      deprecated: false
-      description: |
-        Get task details
-
-        Get details of a task, including dependent media and instance statuses
-      operationId: get_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskWithStatusAndSpec'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not found
-      summary: Get task details
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}/modify:
-    post:
-      deprecated: false
-      description: |
-        Modify existing task
-
-        Submit modifications to the task. This generic request can be used to update most aspects of the
-        session: adjusting parameters, creating, deleting, reconnecting nodes, changing media, etc.
-      operationId: modify_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: The task version to be changed
-        in: header
-        name: If-Match
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ModifyTask'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskUpdated'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not found
-        '409':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not allowed to change instances
-      summary: Modify existing task
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/cancel:
-    post:
-      deprecated: false
-      description: |
-        Cancel rendering a task
-
-        Request to stop (cancel) rendering if the task is rendering.
-      operationId: cancel_render_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: The task version
-        in: header
-        name: If-Match
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestCancelRender'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskRenderCancelled'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Task or mixer Not found
-      summary: Cancel rendering a task
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/play:
-    post:
-      deprecated: false
-      description: |
-        Start playing a task
-
-        Start playing a task that is stopped. The request will return when the task has started to play
-        or with an error.
-      operationId: play_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: The task version
-        in: header
-        name: If-Match
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestPlay'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskPlaying'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Task or mixer Not found
-      summary: Start playing a task
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/render:
-    post:
-      deprecated: false
-      description: |
-        Render a task to a new file
-
-        The domain will check that
-      operationId: render_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestRender'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskRendering'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Task or mixer Not found
-      summary: Render a task to a new file
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/seek:
-    post:
-      deprecated: false
-      description: |
-        Seek while task is playing
-
-        If the task is playing, change the playing position.
-      operationId: seek_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestSeek'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskSought'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Task Not found
-      summary: Seek while task is playing
-      tags:
-      - tasks
-  /v1/tasks/{app_id}/{task_id}/transport/stop:
-    post:
-      deprecated: false
-      description: |
-        Stop playing a task
-
-        Request to stop a track if the task is playing.
-      operationId: stop_playing_task
-      parameters:
-      - deprecated: false
-        description: App id
-        in: path
-        name: app_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/AppId'
-      - deprecated: false
-        description: Task id
-        in: path
-        name: task_id
-        required: true
-        schema:
-          $ref: '#/components/schemas/TaskId'
-      - deprecated: false
-        description: The task version
-        in: header
-        name: If-Match
-        required: true
-        schema:
-          format: int64
-          type: integer
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RequestStopPlay'
-        required: true
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/TaskPlayStopped'
-          description: Success
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Not authorized
-        '404':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DomainError'
-          description: Task or mixer Not found
-      summary: Stop playing a task
-      tags:
-      - tasks
-servers:
-- description: Distopik HQ
-  url: https://distopik-hq.eu.audiocloud.io
-- description: Local development
-  url: http://localhost:7200

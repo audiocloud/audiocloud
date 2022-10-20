@@ -11,9 +11,7 @@ pub enum SerializableResult<T, E> {
     Error(E),
 }
 
-impl<T, E> Into<anyhow::Result<T>> for SerializableResult<T, E>
-where
-    E: Debug,
+impl<T, E> Into<anyhow::Result<T>> for SerializableResult<T, E> where E: Debug
 {
     fn into(self) -> anyhow::Result<T> {
         match self {
@@ -23,9 +21,7 @@ where
     }
 }
 
-impl<T, E> From<anyhow::Result<T>> for SerializableResult<T, E>
-where
-    E: From<anyhow::Error>,
+impl<T, E> From<anyhow::Result<T>> for SerializableResult<T, E> where E: From<anyhow::Error>
 {
     fn from(res: anyhow::Result<T>) -> Self {
         match res {

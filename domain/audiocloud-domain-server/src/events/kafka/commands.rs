@@ -13,29 +13,16 @@ use audiocloud_api::{Codec, Json};
 
 use crate::events::messages::NotifyDomainSessionCommand;
 
-static KAFKA_DOMAIN_COMMANDS_LISTENER: OnceCell<Addr<KafkaDomainCommandsListener>> =
-    OnceCell::new();
+static KAFKA_DOMAIN_COMMANDS_LISTENER: OnceCell<Addr<KafkaDomainCommandsListener>> = OnceCell::new();
 
 #[instrument(skip_all, err)]
-pub async fn init(
-    topic: String,
-    brokers: String,
-    username: String,
-    password: String,
-    maybe_offset: Option<i64>,
-) -> anyhow::Result<()> {
-    KAFKA_DOMAIN_COMMANDS_LISTENER
-        .set(
-            KafkaDomainCommandsListener {
-                topic,
-                brokers,
-                username,
-                password,
-                maybe_offset,
-            }
-            .start(),
-        )
-        .map_err(|_| anyhow!("KAFKA_DOMAIN_COMMANDS_LISTENER already initialized"))?;
+pub async fn init(topic: String, brokers: String, username: String, password: String, maybe_offset: Option<i64>) -> anyhow::Result<()> {
+    KAFKA_DOMAIN_COMMANDS_LISTENER.set(KafkaDomainCommandsListener { topic,
+                                                                     brokers,
+                                                                     username,
+                                                                     password,
+                                                                     maybe_offset }.start())
+                                  .map_err(|_| anyhow!("KAFKA_DOMAIN_COMMANDS_LISTENER already initialized"))?;
     Ok(())
 }
 
@@ -60,10 +47,10 @@ impl ConsumerContext for CustomContext {
 }
 
 struct KafkaDomainCommandsListener {
-    topic: String,
-    brokers: String,
-    username: String,
-    password: String,
+    topic:        String,
+    brokers:      String,
+    username:     String,
+    password:     String,
     maybe_offset: Option<i64>,
 }
 
@@ -114,14 +101,10 @@ impl KafkaDomainCommandsListener {
         let consumer = LoggingConsumer::from_config_and_context(&config, CustomContext)?;
 
         let mut topics = TopicPartitionList::new();
-        topics.add_partition_offset(
-            &self.topic,
-            0,
-            match self.maybe_offset {
-                None => Offset::OffsetTail(100),
-                Some(offset) => Offset::Offset(offset as i64),
-            },
-        )?;
+        topics.add_partition_offset(&self.topic, 0, match self.maybe_offset {
+                  None => Offset::OffsetTail(100),
+                  Some(offset) => Offset::Offset(offset as i64),
+              })?;
 
         consumer.assign(&topics)?;
 

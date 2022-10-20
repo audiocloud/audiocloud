@@ -7,10 +7,8 @@ use serde_json::json;
 use tempfile::NamedTempFile;
 use tokio::time::sleep;
 
-
 use audiocloud_api::{
-    AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaObjectId,
-    MediaUpload, TrackMediaFormat, UploadToDomain,
+    AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaObjectId, MediaUpload, TrackMediaFormat, UploadToDomain,
 };
 
 use crate::db;
@@ -33,17 +31,13 @@ async fn test_download_success() -> anyhow::Result<()> {
 
     // monitor at https://requestbin.com/r/en1205p765d7rp
 
-    let settings = DownloadFromDomain {
-        url: "https://en1205p765d7rp.x.pipedream.net".to_string(),
-        notify_url: Some("https://en1205p765d7rp.x.pipedream.net".to_string()),
-        context: Some(json!({"context": "is here"})),
-    };
+    let settings = DownloadFromDomain { url:        "https://en1205p765d7rp.x.pipedream.net".to_string(),
+                                        notify_url: Some("https://en1205p765d7rp.x.pipedream.net".to_string()),
+                                        context:    Some(json!({"context": "is here"})), };
 
-    let download_info = MediaDownload {
-        media_id: media_id.clone(),
-        download: settings,
-        state: Default::default(),
-    };
+    let download_info = MediaDownload { media_id: media_id.clone(),
+                                        download: settings,
+                                        state:    Default::default(), };
 
     let upload = Downloader::new(db.clone(), job_id, client, source, download_info)?;
 
@@ -83,32 +77,22 @@ async fn test_upload_success() -> anyhow::Result<()> {
 
     // monitor at https://requestbin.com/r/en1205p765d7rp
 
-    let settings = UploadToDomain {
-        channels: { MediaChannels::Mono },
-        format: { TrackMediaFormat::Wave },
-        seconds: { 10.0 },
-        sample_rate: { 44100 },
-        bytes: { 100_000 },
-        url: { source_url },
-        notify_url: { Some("https://en1205p765d7rp.x.pipedream.net".to_string()) },
-        context: { Some(json!({"context": "is here"})) },
-    };
+    let settings = UploadToDomain { channels:    { MediaChannels::Mono },
+                                    format:      { TrackMediaFormat::Wave },
+                                    seconds:     { 10.0 },
+                                    sample_rate: { 44100 },
+                                    bytes:       { 100_000 },
+                                    url:         { source_url },
+                                    notify_url:  { Some("https://en1205p765d7rp.x.pipedream.net".to_string()) },
+                                    context:     { Some(json!({"context": "is here"})) }, };
 
-    let upload_info = MediaUpload {
-        media_id: media_id.clone(),
-        upload: settings,
-        state: Default::default(),
-    };
+    let upload_info = MediaUpload { media_id: media_id.clone(),
+                                    upload:   settings,
+                                    state:    Default::default(), };
 
     let temp_file = NamedTempFile::new()?;
 
-    let upload = Uploader::new(
-        db.clone(),
-        job_id,
-        client,
-        temp_file.path().to_path_buf(),
-        upload_info,
-    )?;
+    let upload = Uploader::new(db.clone(), job_id, client, temp_file.path().to_path_buf(), upload_info)?;
 
     let addr = upload.start();
 

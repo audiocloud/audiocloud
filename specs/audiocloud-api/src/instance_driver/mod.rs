@@ -1,15 +1,15 @@
 //! Types used to communicate with the instance_driver
 
-use schemars::{JsonSchema, schema_for};
 use schemars::schema::RootSchema;
+use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::{merge_schemas, Request, SerializableResult};
 use crate::common::instance::{DesiredInstancePlayState, InstancePlayState};
 use crate::common::media::{PlayId, RenderId};
 use crate::common::task::InstanceReports;
 use crate::newtypes::FixedInstanceId;
+use crate::{merge_schemas, Request, SerializableResult};
 
 /// A command that can be sent to the instance driver
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -83,13 +83,13 @@ pub enum InstanceDriverEvent {
     PlayState {
         desired: DesiredInstancePlayState,
         current: InstancePlayState,
-        media: Option<f64>,
+        media:   Option<f64>,
     },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct InstanceWithStatus {
-    pub id: FixedInstanceId,
+    pub id:         FixedInstanceId,
     pub play_state: Option<InstancePlayState>,
 }
 
@@ -107,17 +107,11 @@ pub enum InstanceCommandAccepted {
     Updated { id: FixedInstanceId },
 }
 
-
 pub fn schemas() -> RootSchema {
-    merge_schemas(
-        [
-            schema_for!(InstanceDriverError),
-            schema_for!(InstanceDriverCommand),
-            schema_for!(InstanceCommandAccepted),
-            schema_for!(InstanceParametersUpdated),
-            schema_for!(SetInstanceParameters),
-            schema_for!(InstanceWithStatusList),
-        ]
-            .into_iter(),
-    )
+    merge_schemas([schema_for!(InstanceDriverError),
+                   schema_for!(InstanceDriverCommand),
+                   schema_for!(InstanceCommandAccepted),
+                   schema_for!(InstanceParametersUpdated),
+                   schema_for!(SetInstanceParameters),
+                   schema_for!(InstanceWithStatusList)].into_iter())
 }

@@ -13,16 +13,16 @@ use crate::DomainResult;
 
 impl TasksSupervisor {
     pub(crate) fn update_packet_cache(&mut self, ctx: &mut Context<Self>) {
-        let packet_cache_max_retention =
-            chrono::Duration::milliseconds(self.opts.packet_cache_max_retention_ms as i64);
+        let packet_cache_max_retention = chrono::Duration::milliseconds(self.opts.packet_cache_max_retention_ms as i64);
 
         self.tasks.values_mut().for_each(|task| {
-            task.packet_cache.values_mut().for_each(|play_id_cache| {
-                play_id_cache.retain(|_, packet| packet.elapsed() < packet_cache_max_retention);
-            });
-            task.packet_cache
-                .retain(|_, play_id_cache| !play_id_cache.is_empty());
-        });
+                                   task.packet_cache.values_mut().for_each(|play_id_cache| {
+                                                                     play_id_cache.retain(|_, packet| {
+                                                                                      packet.elapsed() < packet_cache_max_retention
+                                                                                  });
+                                                                 });
+                                   task.packet_cache.retain(|_, play_id_cache| !play_id_cache.is_empty());
+                               });
     }
 
     pub(crate) fn register_packet_cache_cleanup(&self, ctx: &mut Context<Self>) {
@@ -58,13 +58,11 @@ impl Handler<GenerateStreamStats> for TasksSupervisor {
                     let low = packet_cache.keys().min();
                     let high = packet_cache.keys().max();
 
-                    Ok(StreamStats {
-                        id: { task_id },
-                        play_id: { play_id },
-                        state: { task.state.play_state.value().clone() },
-                        low: { low.cloned() },
-                        high: { high.cloned() },
-                    })
+                    Ok(StreamStats { id:      { task_id },
+                                     play_id: { play_id },
+                                     state:   { task.state.play_state.value().clone() },
+                                     low:     { low.cloned() },
+                                     high:    { high.cloned() }, })
                 }
             },
         }
@@ -84,11 +82,7 @@ impl Handler<GetStreamPacket> for TasksSupervisor {
             Some(task) => match task.packet_cache.get(&play_id) {
                 None => Err(DomainError::TaskStreamNotFound { task_id, play_id }),
                 Some(packet_cache) => match packet_cache.get(&serial) {
-                    None => Err(DomainError::TaskPacketNotFound {
-                        task_id,
-                        play_id,
-                        serial,
-                    }),
+                    None => Err(DomainError::TaskPacketNotFound { task_id, play_id, serial }),
                     Some(packet) => Ok(packet.value().clone()),
                 },
             },

@@ -33,17 +33,13 @@ impl RequestTracker {
     pub fn retried(&mut self) {
         *self = match self {
             RequestTracker::Completed => Self::Completed,
-            RequestTracker::Pending { next_retry } => RequestTracker::Pending {
-                next_retry: *next_retry + Duration::seconds(1),
-            },
+            RequestTracker::Pending { next_retry } => RequestTracker::Pending { next_retry: *next_retry + Duration::seconds(1), },
         };
     }
 }
 
 impl Default for RequestTracker {
     fn default() -> Self {
-        Self::Pending {
-            next_retry: Utc::now(),
-        }
+        Self::Pending { next_retry: Utc::now() }
     }
 }

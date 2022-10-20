@@ -31,11 +31,9 @@ impl Handler<NotifyFixedInstanceRouting> for TaskActor {
 }
 
 impl TaskActor {
-    pub(crate) fn update_fixed_instance_state_inner(
-        &mut self,
-        result: HashMap<FixedInstanceId, NotifyInstanceState>,
-        ctx: &mut Context<Self>,
-    ) {
+    pub(crate) fn update_fixed_instance_state_inner(&mut self,
+                                                    result: HashMap<FixedInstanceId, NotifyInstanceState>,
+                                                    ctx: &mut Context<Self>) {
         for (id, notify) in result {
             self.fixed_instances.notify_instance_state_changed(notify);
         }

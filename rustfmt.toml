@@ -1,0 +1,17 @@
+max_width = 140
+# match_arm_leading_pipes = "Always"
+indent_style = "Visual"
+# inline_attribute_width = 50
+# match_arm_blocks = false
+# normalize_comments = true
+# normalize_doc_attributes = true
+# overflow_delimited_expr = true
+struct_field_align_threshold = 25
+# struct_lit_width = 25
+# tab_spaces = 2
+# struct_variant_width = 50
+# use_field_init_shorthand = true
+# use_try_shorthand = true
+# wrap_comments = false
+#
+#

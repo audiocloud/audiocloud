@@ -1,35 +1,31 @@
 use std::collections::VecDeque;
 
 use audiocloud_api::audio_engine::EngineCommand;
-use audiocloud_api::{
-    AppTaskId, DesiredTaskPlayState, PlayId, RenderId, TaskPlayState, Timestamped,
-};
+use audiocloud_api::{AppTaskId, DesiredTaskPlayState, PlayId, RenderId, TaskPlayState, Timestamped};
 
 use crate::tracker::RequestTracker;
 
 pub struct TaskEngine {
-    id: AppTaskId,
-    desired_play_state: Timestamped<DesiredTaskPlayState>,
-    actual_play_state: Timestamped<TaskPlayState>,
-    tracker: RequestTracker,
+    id:                  AppTaskId,
+    desired_play_state:  Timestamped<DesiredTaskPlayState>,
+    actual_play_state:   Timestamped<TaskPlayState>,
+    tracker:             RequestTracker,
     instances_are_ready: Timestamped<bool>,
-    media_is_ready: Timestamped<bool>,
-    commands: VecDeque<Timestamped<EngineCommand>>,
-    version: u64,
+    media_is_ready:      Timestamped<bool>,
+    commands:            VecDeque<Timestamped<EngineCommand>>,
+    version:             u64,
 }
 
 impl TaskEngine {
     pub fn new(id: AppTaskId) -> Self {
-        Self {
-            id: { id },
-            desired_play_state: { Timestamped::new(DesiredTaskPlayState::Stopped) },
-            actual_play_state: { Timestamped::new(TaskPlayState::Stopped) },
-            tracker: { Default::default() },
-            instances_are_ready: { Default::default() },
-            media_is_ready: { Default::default() },
-            commands: { Default::default() },
-            version: { 0 },
-        }
+        Self { id:                  { id },
+               desired_play_state:  { Timestamped::new(DesiredTaskPlayState::Stopped) },
+               actual_play_state:   { Timestamped::new(TaskPlayState::Stopped) },
+               tracker:             { Default::default() },
+               instances_are_ready: { Default::default() },
+               media_is_ready:      { Default::default() },
+               commands:            { Default::default() },
+               version:             { 0 }, }
     }
 
     pub fn enqueue(&mut self, cmd: EngineCommand) {
@@ -59,35 +55,18 @@ impl TaskEngine {
     }
 
     pub fn update(&mut self) -> Option<EngineCommand> {
-        if self
-            .actual_play_state
-            .value()
-            .satisfies(self.desired_play_state.value())
-        {
+        if self.actual_play_state.value().satisfies(self.desired_play_state.value()) {
             if self.tracker.should_retry() {
-                let engine_cmd = match (
-                    self.desired_play_state.value(),
-                    self.actual_play_state.value(),
-                ) {
-                    (_, TaskPlayState::Playing(play)) => Some(EngineCommand::StopPlay {
-                        task_id: self.id.clone(),
-                        play_id: play.play_id,
-                    }),
-                    (_, TaskPlayState::Rendering(render)) => Some(EngineCommand::CancelRender {
-                        task_id: self.id.clone(),
-                        render_id: render.render_id,
-                    }),
-                    (DesiredTaskPlayState::Play(play), TaskPlayState::Stopped) => {
-                        Some(EngineCommand::Play {
-                            task_id: self.id.clone(),
-                            play: play.clone(),
-                        })
-                    }
+                let engine_cmd = match (self.desired_play_state.value(), self.actual_play_state.value()) {
+                    (_, TaskPlayState::Playing(play)) => Some(EngineCommand::StopPlay { task_id: self.id.clone(),
+                                                                                        play_id: play.play_id, }),
+                    (_, TaskPlayState::Rendering(render)) => Some(EngineCommand::CancelRender { task_id:   self.id.clone(),
+                                                                                                render_id: render.render_id, }),
+                    (DesiredTaskPlayState::Play(play), TaskPlayState::Stopped) => Some(EngineCommand::Play { task_id: self.id.clone(),
+                                                                                                             play:    play.clone(), }),
                     (DesiredTaskPlayState::Render(render), TaskPlayState::Stopped) => {
-                        Some(EngineCommand::Render {
-                            task_id: self.id.clone(),
-                            render: render.clone(),
-                        })
+                        Some(EngineCommand::Render { task_id: self.id.clone(),
+                                                     render:  render.clone(), })
                     }
                     _ => None,
                 };

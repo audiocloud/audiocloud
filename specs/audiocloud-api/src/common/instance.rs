@@ -28,12 +28,8 @@ pub enum DesiredInstancePlayState {
 impl Into<InstanceDriverCommand> for DesiredInstancePlayState {
     fn into(self) -> InstanceDriverCommand {
         match self {
-            DesiredInstancePlayState::Playing { play_id } => {
-                InstanceDriverCommand::Play { play_id }
-            }
-            DesiredInstancePlayState::Rendering { length, render_id } => {
-                InstanceDriverCommand::Render { render_id, length }
-            }
+            DesiredInstancePlayState::Playing { play_id } => InstanceDriverCommand::Play { play_id },
+            DesiredInstancePlayState::Rendering { length, render_id } => InstanceDriverCommand::Render { render_id, length },
             DesiredInstancePlayState::Stopped => InstanceDriverCommand::Stop,
         }
     }
@@ -42,19 +38,10 @@ impl Into<InstanceDriverCommand> for DesiredInstancePlayState {
 impl InstancePlayState {
     pub fn satisfies(&self, required: &DesiredInstancePlayState) -> bool {
         match (self, required) {
-            (
-                Self::Playing { play_id },
-                DesiredInstancePlayState::Playing {
-                    play_id: desired_play_id,
-                },
-            ) => play_id == desired_play_id,
-            (
-                Self::Rendering { render_id, .. },
-                DesiredInstancePlayState::Rendering {
-                    render_id: desired_render_id,
-                    ..
-                },
-            ) => render_id == desired_render_id,
+            (Self::Playing { play_id }, DesiredInstancePlayState::Playing { play_id: desired_play_id }) => play_id == desired_play_id,
+            (Self::Rendering { render_id, .. },
+             DesiredInstancePlayState::Rendering { render_id: desired_render_id,
+                                                   .. }) => render_id == desired_render_id,
             (Self::Stopped, DesiredInstancePlayState::Stopped) => true,
             _ => false,
         }
@@ -110,22 +97,22 @@ impl DesiredInstancePowerState {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ReportInstancePowerState {
     pub desired: Timestamped<DesiredInstancePowerState>,
-    pub actual: Timestamped<InstancePowerState>,
+    pub actual:  Timestamped<InstancePowerState>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ReportInstancePlayState {
     pub desired: Timestamped<DesiredInstancePlayState>,
-    pub actual: Timestamped<InstancePlayState>,
-    pub media: Timestamped<Option<f64>>,
+    pub actual:  Timestamped<InstancePlayState>,
+    pub media:   Timestamped<Option<f64>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum InstanceEvent {
     State {
-        power: Option<ReportInstancePowerState>,
-        play: Option<ReportInstancePlayState>,
+        power:     Option<ReportInstancePowerState>,
+        play:      Option<ReportInstancePlayState>,
         connected: Timestamped<bool>,
     },
     Error {
