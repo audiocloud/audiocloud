@@ -11,9 +11,8 @@ use cstr::cstr;
 use lazy_static::lazy_static;
 use reaper_medium::ProjectContext::CurrentProject;
 use reaper_medium::{
-    AutoSeekBehavior, ChunkCacheHint, CommandId, EditMode, MediaTrack, PlayState,
-    PositionInSeconds, ProjectContext, ProjectRef, ReaProject, Reaper, ReaperPanValue,
-    ReaperVolumeValue, SetEditCurPosOptions, TimeRangeType, TrackAttributeKey, TrackSendCategory,
+    AutoSeekBehavior, ChunkCacheHint, CommandId, EditMode, MediaTrack, PlayState, PositionInSeconds, ProjectContext, ProjectRef,
+    ReaProject, Reaper, ReaperPanValue, ReaperVolumeValue, SetEditCurPosOptions, TimeRangeType, TrackAttributeKey, TrackSendCategory,
     TrackSendRef,
 };
 use tempdir::TempDir;
@@ -24,14 +23,10 @@ use audiocloud_api::cloud::domains::FixedInstanceRouting;
 use audiocloud_api::common::change::{ModifyTaskSpec, UpdateTaskPlay};
 use audiocloud_api::common::media::{PlayId, RenderId, RequestPlay, RequestRender};
 
-use audiocloud_api::common::task::{
-    ConnectionValues, FixedInstanceNode, MixerNode, NodeConnection, TaskSpec, TimeSegment,
-    TrackNode,
-};
+use audiocloud_api::common::task::{ConnectionValues, FixedInstanceNode, MixerNode, NodeConnection, TaskSpec, TimeSegment, TrackNode};
 use audiocloud_api::common::time::Timestamped;
 use audiocloud_api::newtypes::{
-    AppMediaObjectId, AppTaskId, FixedInstanceId, FixedInstanceNodeId, MixerNodeId,
-    NodeConnectionId, TrackNodeId,
+    AppMediaObjectId, AppTaskId, FixedInstanceId, FixedInstanceNodeId, MixerNodeId, NodeConnectionId, TrackNodeId,
 };
 use audiocloud_api::{InputPadId, NodePadId, OutputPadId, PadMetering};
 
@@ -50,48 +45,44 @@ pub enum ProjectPlayState {
 
 #[derive(Debug)]
 pub struct EngineProject {
-    id: AppTaskId,
-    project: ReaProject,
-    tracks: HashMap<TrackNodeId, EngineMediaTrack>,
-    fixed_instances: HashMap<FixedInstanceNodeId, EngineFixedInstance>,
-    mixers: HashMap<MixerNodeId, AudioMixer>,
-    spec: TaskSpec,
-    local_media_root: PathBuf,
-    shared_media_root: PathBuf,
-    pub play_state: Timestamped<ProjectPlayState>,
-    pub temp_dir: TempDir,
-    pub session_path: PathBuf,
+    id:                    AppTaskId,
+    project:               ReaProject,
+    tracks:                HashMap<TrackNodeId, EngineMediaTrack>,
+    fixed_instances:       HashMap<FixedInstanceNodeId, EngineFixedInstance>,
+    mixers:                HashMap<MixerNodeId, AudioMixer>,
+    spec:                  TaskSpec,
+    local_media_root:      PathBuf,
+    shared_media_root:     PathBuf,
+    pub play_state:        Timestamped<ProjectPlayState>,
+    pub temp_dir:          TempDir,
+    pub session_path:      PathBuf,
     pub reaper_play_state: Timestamped<PlayState>,
-    pub events: VecDeque<EngineEvent>,
+    pub events:            VecDeque<EngineEvent>,
 }
 
 #[derive(Debug, Clone)]
 pub struct EngineProjectTemplateSnapshot {
-    context: ProjectContext,
+    context:     ProjectContext,
     connections: HashMap<NodeConnectionId, NodeConnection>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct ReaperChunkId {
-    pub pad_id: NodePadId,
+    pub pad_id:          NodePadId,
     pub include_inserts: bool,
 }
 
 impl From<InputPadId> for ReaperChunkId {
     fn from(input_pad_id: InputPadId) -> Self {
-        Self {
-            pad_id: { NodePadId::from(input_pad_id) },
-            include_inserts: { false },
-        }
+        Self { pad_id:          { NodePadId::from(input_pad_id) },
+               include_inserts: { false }, }
     }
 }
 
 impl From<OutputPadId> for ReaperChunkId {
     fn from(output_pad_id: OutputPadId) -> Self {
-        Self {
-            pad_id: { NodePadId::from(output_pad_id) },
-            include_inserts: { false },
-        }
+        Self { pad_id:          { NodePadId::from(output_pad_id) },
+               include_inserts: { false }, }
     }
 }
 
@@ -106,11 +97,7 @@ impl EngineProjectTemplateSnapshot {
         let track_name = pad_id.to_string();
 
         while let Some(track) = reaper.get_track(self.context, index) {
-            let matches = unsafe {
-                reaper.get_set_media_track_info_get_name(track, |name| {
-                    name.to_str() == track_name.as_str()
-                })
-            };
+            let matches = unsafe { reaper.get_set_media_track_info_get_name(track, |name| name.to_str() == track_name.as_str()) };
 
             if matches.unwrap_or(false) {
                 return Some(index as usize);
@@ -134,13 +121,8 @@ impl EngineProjectTemplateSnapshot {
         self.track_index(&NodePadId::MixerInput(mixer_id.clone()))
     }
 
-    pub fn flows_to<'a>(
-        &'a self,
-        flow: &'a InputPadId,
-    ) -> impl Iterator<Item = (&NodeConnectionId, &NodeConnection)> + 'a {
-        self.connections
-            .iter()
-            .filter(move |(_, conn)| &conn.to == flow)
+    pub fn flows_to<'a>(&'a self, flow: &'a InputPadId) -> impl Iterator<Item = (&NodeConnectionId, &NodeConnection)> + 'a {
+        self.connections.iter().filter(move |(_, conn)| &conn.to == flow)
     }
 }
 
@@ -158,49 +140,41 @@ lazy_static! {
 #[derive(Template)]
 #[template(path = "audio_engine/project.txt")]
 struct EngineProjectTemplate<'a> {
-    spec: &'a TaskSpec,
+    spec:       &'a TaskSpec,
     session_id: &'a AppTaskId,
     media_root: String,
 }
 
 impl EngineProject {
     #[instrument(skip_all, err)]
-    pub fn new(
-        id: AppTaskId,
-        temp_dir: TempDir,
-        shared_media_root: PathBuf,
-        session_spec: TaskSpec,
-        instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
-        media: HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<Self> {
+    pub fn new(id: AppTaskId,
+               temp_dir: TempDir,
+               shared_media_root: PathBuf,
+               session_spec: TaskSpec,
+               instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
+               media: HashMap<AppMediaObjectId, String>)
+               -> anyhow::Result<Self> {
         let reaper = Reaper::get();
 
         // this is not OK we need to configure it
         let local_media_root = temp_dir.path().join("media");
         let session_path = temp_dir.path().join("session.rpp");
 
-        fs::write(
-            &session_path,
-            EngineProjectTemplate {
-                spec: &session_spec,
-                session_id: &id,
-                media_root: local_media_root.to_string_lossy().to_string(),
-            }
-            .render()?,
-        )?;
+        fs::write(&session_path,
+                  EngineProjectTemplate { spec:       &session_spec,
+                                          session_id: &id,
+                                          media_root: local_media_root.to_string_lossy().to_string(), }.render()?)?;
 
         reaper.main_on_command_ex(*CMD_CREATE_PROJECT_TAB, 0, CurrentProject);
 
         unsafe {
-            let path_as_cstr =
-                CString::new(format!("noprompt:{}", session_path.to_string_lossy()))?;
+            let path_as_cstr = CString::new(format!("noprompt:{}", session_path.to_string_lossy()))?;
             reaper.low().Main_openProject(path_as_cstr.as_ptr());
         }
 
-        let project = reaper
-            .enum_projects(ProjectRef::Current, 0)
-            .ok_or_else(|| anyhow!("No current project even though we just opened one"))?
-            .project;
+        let project = reaper.enum_projects(ProjectRef::Current, 0)
+                            .ok_or_else(|| anyhow!("No current project even though we just opened one"))?
+                            .project;
 
         let context = ProjectContext::Proj(project);
 
@@ -214,21 +188,19 @@ impl EngineProject {
         let reaper_play_state = Timestamped::from(Reaper::get().get_play_state_ex(context));
         let events = VecDeque::new();
 
-        let mut rv = Self {
-            id,
-            project,
-            tracks,
-            fixed_instances,
-            mixers,
-            spec,
-            local_media_root,
-            shared_media_root,
-            temp_dir,
-            session_path,
-            play_state,
-            reaper_play_state,
-            events,
-        };
+        let mut rv = Self { id,
+                            project,
+                            tracks,
+                            fixed_instances,
+                            mixers,
+                            spec,
+                            local_media_root,
+                            shared_media_root,
+                            temp_dir,
+                            session_path,
+                            play_state,
+                            reaper_play_state,
+                            events };
 
         rv.set_spec(session_spec, instances, media)?;
 
@@ -236,10 +208,8 @@ impl EngineProject {
     }
 
     pub fn template_snapshot(&self) -> EngineProjectTemplateSnapshot {
-        EngineProjectTemplateSnapshot {
-            context: self.context(),
-            connections: self.spec.connections.clone(),
-        }
+        EngineProjectTemplateSnapshot { context:     self.context(),
+                                        connections: self.spec.connections.clone(), }
     }
 
     pub fn play_ready(&mut self, play_id: PlayId) {
@@ -264,10 +234,8 @@ impl EngineProject {
                 debug!(play_id = %play.play_id, "waiting for plugin to be ready...");
                 if self.play_state.elapsed().num_seconds() > 1 {
                     self.play_state = ProjectPlayState::Stopped.into();
-                    self.events.push_back(EngineEvent::Error {
-                        task_id: self.id.clone(),
-                        error: format!("Timed out preparing resampling or compression"),
-                    });
+                    self.events.push_back(EngineEvent::Error { task_id: self.id.clone(),
+                                                               error:   format!("Timed out preparing resampling or compression"), });
                 }
             }
             ProjectPlayState::Playing(play) => {
@@ -300,18 +268,14 @@ impl EngineProject {
 
         if let Some(mixer) = self.mixers.get_mut(&mixer_id) {
             if let Some(path) = mixer.clear_render() {
-                self.events.push_back(EngineEvent::RenderingFinished {
-                    task_id: self.id.clone(),
-                    render_id,
-                    path,
-                });
+                self.events.push_back(EngineEvent::RenderingFinished { task_id: self.id.clone(),
+                                                                       render_id,
+                                                                       path });
             } else {
                 // we did not get a path
-                self.events.push_back(EngineEvent::RenderingFailed {
-                    task_id: self.id.clone(),
-                    render_id,
-                    error: format!("Rendered file not found"),
-                });
+                self.events.push_back(EngineEvent::RenderingFailed { task_id: self.id.clone(),
+                                                                     render_id,
+                                                                     error: format!("Rendered file not found") });
             }
         }
 
@@ -394,16 +358,9 @@ impl Drop for EngineProject {
 }
 
 impl EngineProject {
-    pub fn add_track(
-        &mut self,
-        id: TrackNodeId,
-        spec: TrackNode,
-        media: &HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<()> {
-        self.tracks.insert(
-            id.clone(),
-            EngineMediaTrack::new(self, self.id.app_id.clone(), id.clone(), spec, media)?,
-        );
+    pub fn add_track(&mut self, id: TrackNodeId, spec: TrackNode, media: &HashMap<AppMediaObjectId, String>) -> anyhow::Result<()> {
+        self.tracks.insert(id.clone(),
+                           EngineMediaTrack::new(self, self.id.app_id.clone(), id.clone(), spec, media)?);
 
         Ok(())
     }
@@ -414,18 +371,15 @@ impl EngineProject {
         }
     }
 
-    pub fn add_fixed_instance(
-        &mut self,
-        fixed_id: FixedInstanceNodeId,
-        spec: FixedInstanceNode,
-        instances: &HashMap<FixedInstanceId, FixedInstanceRouting>,
-    ) -> anyhow::Result<()> {
+    pub fn add_fixed_instance(&mut self,
+                              fixed_id: FixedInstanceNodeId,
+                              spec: FixedInstanceNode,
+                              instances: &HashMap<FixedInstanceId, FixedInstanceRouting>)
+                              -> anyhow::Result<()> {
         let routing = instances.get(&spec.instance_id).cloned();
 
-        self.fixed_instances.insert(
-            fixed_id.clone(),
-            EngineFixedInstance::new(self, fixed_id.clone(), spec, routing)?,
-        );
+        self.fixed_instances
+            .insert(fixed_id.clone(), EngineFixedInstance::new(self, fixed_id.clone(), spec, routing)?);
 
         Ok(())
     }
@@ -439,10 +393,7 @@ impl EngineProject {
     }
 
     pub fn add_mixer(&mut self, mixer_id: MixerNodeId, spec: MixerNode) -> anyhow::Result<()> {
-        self.mixers.insert(
-            mixer_id.clone(),
-            AudioMixer::new(self, mixer_id.clone(), spec)?,
-        );
+        self.mixers.insert(mixer_id.clone(), AudioMixer::new(self, mixer_id.clone(), spec)?);
 
         Ok(())
     }
@@ -454,22 +405,19 @@ impl EngineProject {
     }
 
     pub fn get_status(&self) -> anyhow::Result<EngineStatus> {
-        Ok(EngineStatus {
-            plugin_ready: PluginRegistry::has(&self.id)?,
-            is_transport_playing: self.reaper_play_state.value().is_playing
-                || self.reaper_play_state.value().is_recording,
-            is_playing: if let ProjectPlayState::Playing(play) = self.play_state.value() {
-                Some(play.play_id.clone())
-            } else {
-                None
-            },
-            is_rendering: if let ProjectPlayState::Rendering(render) = self.play_state.value() {
-                Some(render.render_id.clone())
-            } else {
-                None
-            },
-            position: Reaper::get().get_play_position_ex(self.context()).get(),
-        })
+        Ok(EngineStatus { plugin_ready:         PluginRegistry::has(&self.id)?,
+                          is_transport_playing: self.reaper_play_state.value().is_playing || self.reaper_play_state.value().is_recording,
+                          is_playing:           if let ProjectPlayState::Playing(play) = self.play_state.value() {
+                              Some(play.play_id.clone())
+                          } else {
+                              None
+                          },
+                          is_rendering:         if let ProjectPlayState::Rendering(render) = self.play_state.value() {
+                              Some(render.render_id.clone())
+                          } else {
+                              None
+                          },
+                          position:             Reaper::get().get_play_position_ex(self.context()).get(), })
     }
 
     pub fn render(&mut self, render: RequestRender) -> anyhow::Result<()> {
@@ -558,11 +506,9 @@ impl EngineProject {
                     let _ = mixer.clear_render();
                 }
 
-                self.events.push_back(EngineEvent::RenderingFailed {
-                    task_id: self.id.clone(),
-                    render_id: render.render_id,
-                    error: format!("Rendering stopped prematurely"),
-                });
+                self.events.push_back(EngineEvent::RenderingFailed { task_id:   self.id.clone(),
+                                                                     render_id: render.render_id,
+                                                                     error:     format!("Rendering stopped prematurely"), });
             }
             _ => {
                 reaper.on_stop_button_ex(context);
@@ -575,12 +521,11 @@ impl EngineProject {
     }
 
     #[instrument(skip_all, err)]
-    pub fn set_spec(
-        &mut self,
-        spec: TaskSpec,
-        instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
-        media: HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<()> {
+    pub fn set_spec(&mut self,
+                    spec: TaskSpec,
+                    instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
+                    media: HashMap<AppMediaObjectId, String>)
+                    -> anyhow::Result<()> {
         if &self.spec == &spec {
             debug!("incoming spec is the same, not changing anything");
             return Ok(());
@@ -630,19 +575,16 @@ impl EngineProject {
         Ok(())
     }
 
-    pub fn modify_spec(
-        &mut self,
-        transaction: Vec<ModifyTaskSpec>,
-        instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
-        media_ready: HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<()> {
+    pub fn modify_spec(&mut self,
+                       transaction: Vec<ModifyTaskSpec>,
+                       instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
+                       media_ready: HashMap<AppMediaObjectId, String>)
+                       -> anyhow::Result<()> {
         let current_spec = self.spec.clone();
         let mut dirty_chunks = HashSet::new();
 
         for item in transaction {
-            if let Err(err) =
-                self.modify_spec_one(item, &instances, &media_ready, &mut dirty_chunks)
-            {
+            if let Err(err) = self.modify_spec_one(item, &instances, &media_ready, &mut dirty_chunks) {
                 warn!(%err, "failed to execute transaction, rolling back");
                 return Ok(self.set_spec(current_spec, instances, media_ready)?);
             }
@@ -655,44 +597,35 @@ impl EngineProject {
         Ok(())
     }
 
-    fn update_track_chunk(
-        &self,
-        chunk_id: &NodePadId,
-        include_inserts: bool,
-    ) -> anyhow::Result<()> {
+    fn update_track_chunk(&self, chunk_id: &NodePadId, include_inserts: bool) -> anyhow::Result<()> {
         let snapshot = self.template_snapshot();
         let chunk = match chunk_id {
-            NodePadId::MixerInput(mixer_id) => self
-                .mixers
-                .get(mixer_id)
-                .ok_or_else(|| anyhow!("Mixer {mixer_id} not found"))?
-                .get_input_state_chunk(&snapshot)?,
-            NodePadId::MixerOutput(mixer_id) => self
-                .mixers
-                .get(mixer_id)
-                .ok_or_else(|| anyhow!("Mixer {mixer_id} not found"))?
-                .get_output_state_chunk(&snapshot)?,
-            NodePadId::FixedInstanceInput(fixed_id) => self
-                .fixed_instances
-                .get(fixed_id)
-                .ok_or_else(|| anyhow!("Fixed {fixed_id} not found"))?
-                .get_send_state_chunk(&snapshot)?,
-            NodePadId::FixedInstanceOutput(fixed_id) => self
-                .fixed_instances
-                .get(fixed_id)
-                .ok_or_else(|| anyhow!("Fixed {fixed_id} not found"))?
-                .get_return_state_chunk(&snapshot)?,
+            NodePadId::MixerInput(mixer_id) => self.mixers
+                                                   .get(mixer_id)
+                                                   .ok_or_else(|| anyhow!("Mixer {mixer_id} not found"))?
+                                                   .get_input_state_chunk(&snapshot)?,
+            NodePadId::MixerOutput(mixer_id) => self.mixers
+                                                    .get(mixer_id)
+                                                    .ok_or_else(|| anyhow!("Mixer {mixer_id} not found"))?
+                                                    .get_output_state_chunk(&snapshot)?,
+            NodePadId::FixedInstanceInput(fixed_id) => self.fixed_instances
+                                                           .get(fixed_id)
+                                                           .ok_or_else(|| anyhow!("Fixed {fixed_id} not found"))?
+                                                           .get_send_state_chunk(&snapshot)?,
+            NodePadId::FixedInstanceOutput(fixed_id) => self.fixed_instances
+                                                            .get(fixed_id)
+                                                            .ok_or_else(|| anyhow!("Fixed {fixed_id} not found"))?
+                                                            .get_return_state_chunk(&snapshot)?,
             NodePadId::DynamicInstanceInput(_) => {
                 return Err(anyhow!("Dynamic instances not supported yet"));
             }
             NodePadId::DynamicInstanceOutput(_) => {
                 return Err(anyhow!("Dynamic instances not supported yet"));
             }
-            NodePadId::TrackOutput(track_id) => self
-                .tracks
-                .get(track_id)
-                .ok_or_else(|| anyhow!("Track {track_id} not found"))?
-                .get_state_chunk(&snapshot)?,
+            NodePadId::TrackOutput(track_id) => self.tracks
+                                                    .get(track_id)
+                                                    .ok_or_else(|| anyhow!("Track {track_id} not found"))?
+                                                    .get_state_chunk(&snapshot)?,
         };
 
         self.set_track_state_chunk(chunk_id, chunk)?;
@@ -700,34 +633,23 @@ impl EngineProject {
         Ok(())
     }
 
-    fn modify_spec_one(
-        &mut self,
-        item: ModifyTaskSpec,
-        instances: &HashMap<FixedInstanceId, FixedInstanceRouting>,
-        media: &HashMap<AppMediaObjectId, String>,
-        dirty: &mut HashSet<ReaperChunkId>,
-    ) -> anyhow::Result<()> {
+    fn modify_spec_one(&mut self,
+                       item: ModifyTaskSpec,
+                       instances: &HashMap<FixedInstanceId, FixedInstanceRouting>,
+                       media: &HashMap<AppMediaObjectId, String>,
+                       dirty: &mut HashSet<ReaperChunkId>)
+                       -> anyhow::Result<()> {
         match item {
             ModifyTaskSpec::AddTrack { track_id, channels } => {
-                self.add_track(
-                    track_id.clone(),
-                    TrackNode {
-                        channels,
-                        media: HashMap::new(),
-                    },
-                    media,
-                )?;
+                self.add_track(track_id.clone(),
+                               TrackNode { channels,
+                                           media: HashMap::new() },
+                               media)?;
 
-                dirty.insert(ReaperChunkId {
-                    pad_id: NodePadId::TrackOutput(track_id),
-                    include_inserts: true,
-                });
+                dirty.insert(ReaperChunkId { pad_id:          NodePadId::TrackOutput(track_id),
+                                             include_inserts: true, });
             }
-            ModifyTaskSpec::AddTrackMedia {
-                track_id,
-                media_id,
-                spec,
-            } => {
+            ModifyTaskSpec::AddTrackMedia { track_id, media_id, spec } => {
                 if let Some(track) = self.tracks.get_mut(&track_id) {
                     if track.add_media(media_id, spec, media)? {
                         dirty.insert(ReaperChunkId::from(track.get_output_pad_id().clone()));
@@ -736,11 +658,9 @@ impl EngineProject {
                     return Err(anyhow!("track {track_id} not found"));
                 }
             }
-            ModifyTaskSpec::UpdateTrackMedia {
-                track_id,
-                media_id,
-                update,
-            } => {
+            ModifyTaskSpec::UpdateTrackMedia { track_id,
+                                               media_id,
+                                               update, } => {
                 if let Some(track) = self.tracks.get_mut(&track_id) {
                     if track.set_media_values(media_id, update, media)? {
                         dirty.insert(ReaperChunkId::from(track.get_output_pad_id().clone()));
@@ -761,34 +681,20 @@ impl EngineProject {
             ModifyTaskSpec::DeleteTrack { track_id } => {
                 self.delete_track(&track_id);
             }
-            ModifyTaskSpec::AddFixedInstance {
-                fixed_id,
-                spec: process,
-            } => {
+            ModifyTaskSpec::AddFixedInstance { fixed_id, spec: process } => {
                 self.add_fixed_instance(fixed_id.clone(), process, instances)?;
 
-                dirty.insert(ReaperChunkId::from(InputPadId::FixedInstanceInput(
-                    fixed_id.clone(),
-                )));
-                dirty.insert(ReaperChunkId::from(OutputPadId::FixedInstanceOutput(
-                    fixed_id.clone(),
-                )));
+                dirty.insert(ReaperChunkId::from(InputPadId::FixedInstanceInput(fixed_id.clone())));
+                dirty.insert(ReaperChunkId::from(OutputPadId::FixedInstanceOutput(fixed_id.clone())));
             }
             ModifyTaskSpec::AddDynamicInstance { .. } => {
                 // not supported, silently ignore
             }
-            ModifyTaskSpec::AddMixer {
-                mixer_id,
-                spec: mixer,
-            } => {
+            ModifyTaskSpec::AddMixer { mixer_id, spec: mixer } => {
                 self.add_mixer(mixer_id.clone(), mixer)?;
 
-                dirty.insert(ReaperChunkId::from(InputPadId::MixerInput(
-                    mixer_id.clone(),
-                )));
-                dirty.insert(ReaperChunkId::from(OutputPadId::MixerOutput(
-                    mixer_id.clone(),
-                )));
+                dirty.insert(ReaperChunkId::from(InputPadId::MixerInput(mixer_id.clone())));
+                dirty.insert(ReaperChunkId::from(OutputPadId::MixerOutput(mixer_id.clone())));
             }
             ModifyTaskSpec::DeleteMixer { mixer_id } => {
                 self.delete_mixer(&mixer_id);
@@ -805,10 +711,7 @@ impl EngineProject {
             ModifyTaskSpec::AddConnection { to, .. } => {
                 dirty.insert(ReaperChunkId::from(to));
             }
-            ModifyTaskSpec::SetConnectionParameterValues {
-                connection_id,
-                values,
-            } => {
+            ModifyTaskSpec::SetConnectionParameterValues { connection_id, values } => {
                 if let Some(connection) = self.spec.connections.get(&connection_id) {
                     self.set_connection_parameter_values(&connection.to, &connection_id, values)?;
                 } else {
@@ -835,10 +738,7 @@ impl EngineProject {
         self.mixers.clear();
     }
 
-    pub fn on_media_updated(
-        &mut self,
-        available: &HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<()> {
+    pub fn on_media_updated(&mut self, available: &HashMap<AppMediaObjectId, String>) -> anyhow::Result<()> {
         let snapshot = self.template_snapshot();
         for track in self.tracks.values_mut() {
             if track.on_media_updated(available) {
@@ -849,10 +749,7 @@ impl EngineProject {
         Ok(())
     }
 
-    pub fn on_instances_updated(
-        &mut self,
-        instances: &HashMap<FixedInstanceId, FixedInstanceRouting>,
-    ) -> anyhow::Result<()> {
+    pub fn on_instances_updated(&mut self, instances: &HashMap<FixedInstanceId, FixedInstanceRouting>) -> anyhow::Result<()> {
         let snapshot = self.template_snapshot();
 
         for fixed_instance in self.fixed_instances.values_mut() {
@@ -866,14 +763,12 @@ impl EngineProject {
 
     pub fn set_track_state_chunk(&self, pad_id: &NodePadId, chunk: String) -> anyhow::Result<()> {
         let reaper = Reaper::get();
-        let index = self
-            .template_snapshot()
-            .track_index(pad_id)
-            .ok_or_else(|| anyhow!("Track not found"))?;
+        let index = self.template_snapshot()
+                        .track_index(pad_id)
+                        .ok_or_else(|| anyhow!("Track not found"))?;
 
-        let track = reaper
-            .get_track(self.context(), index as u32)
-            .ok_or_else(|| anyhow!("Track could not be loaded"))?;
+        let track = reaper.get_track(self.context(), index as u32)
+                          .ok_or_else(|| anyhow!("Track could not be loaded"))?;
 
         unsafe {
             reaper.set_track_state_chunk(track, chunk.as_str(), ChunkCacheHint::NormalMode)?;
@@ -882,27 +777,16 @@ impl EngineProject {
         Ok(())
     }
 
-    fn set_connection_parameter_values(
-        &self,
-        target: &InputPadId,
-        id: &NodeConnectionId,
-        values: ConnectionValues,
-    ) -> anyhow::Result<()> {
+    fn set_connection_parameter_values(&self, target: &InputPadId, id: &NodeConnectionId, values: ConnectionValues) -> anyhow::Result<()> {
         let track = match target {
-            InputPadId::MixerInput(mixer_id) => self
-                .mixers
-                .get(mixer_id)
-                .map(|mixer| mixer.get_input_track()),
-            InputPadId::FixedInstanceInput(fixed_id) => self
-                .fixed_instances
-                .get(fixed_id)
-                .map(|fixed_instance| fixed_instance.get_input_track()),
-            other => return Err(anyhow!("Unsupported target {other}")),
-        }
-        .ok_or_else(|| anyhow!("Connection target {target} not found"))?;
+                        InputPadId::MixerInput(mixer_id) => self.mixers.get(mixer_id).map(|mixer| mixer.get_input_track()),
+                        InputPadId::FixedInstanceInput(fixed_id) => self.fixed_instances
+                                                                        .get(fixed_id)
+                                                                        .map(|fixed_instance| fixed_instance.get_input_track()),
+                        other => return Err(anyhow!("Unsupported target {other}")),
+                    }.ok_or_else(|| anyhow!("Connection target {target} not found"))?;
 
-        let index = get_track_receive_index(track, id)
-            .ok_or_else(|| anyhow!("Connection not found on target {target} input track"))?;
+        let index = get_track_receive_index(track, id).ok_or_else(|| anyhow!("Connection not found on target {target} input track"))?;
 
         let reaper = Reaper::get();
 
@@ -911,23 +795,13 @@ impl EngineProject {
 
         if let Some(volume) = values.volume {
             unsafe {
-                reaper.set_track_send_ui_vol(
-                    track,
-                    index,
-                    ReaperVolumeValue::new(volume),
-                    EditMode::NormalTweak,
-                )?;
+                reaper.set_track_send_ui_vol(track, index, ReaperVolumeValue::new(volume), EditMode::NormalTweak)?;
             }
         }
 
         if let Some(pan) = values.pan {
             unsafe {
-                reaper.set_track_send_ui_pan(
-                    track,
-                    index,
-                    ReaperPanValue::new(pan),
-                    EditMode::NormalTweak,
-                )?;
+                reaper.set_track_send_ui_pan(track, index, ReaperPanValue::new(pan), EditMode::NormalTweak)?;
             }
         }
 
@@ -941,24 +815,18 @@ impl EngineProject {
     }
 
     fn set_time_range_markers(&mut self, segment: TimeSegment) {
-        Reaper::get().get_set_loop_time_range_2_set(
-            self.context(),
-            TimeRangeType::TimeSelection,
-            PositionInSeconds::new(segment.start),
-            PositionInSeconds::new(segment.end()),
-            AutoSeekBehavior::DenyAutoSeek,
-        );
+        Reaper::get().get_set_loop_time_range_2_set(self.context(),
+                                                    TimeRangeType::TimeSelection,
+                                                    PositionInSeconds::new(segment.start),
+                                                    PositionInSeconds::new(segment.end()),
+                                                    AutoSeekBehavior::DenyAutoSeek);
     }
 
     fn set_play_position(&mut self, position: f64, and_play: bool) {
-        Reaper::get().set_edit_curs_pos_2(
-            self.context(),
-            PositionInSeconds::new(position),
-            SetEditCurPosOptions {
-                seek_play: and_play,
-                move_view: true,
-            },
-        );
+        Reaper::get().set_edit_curs_pos_2(self.context(),
+                                          PositionInSeconds::new(position),
+                                          SetEditCurPosOptions { seek_play: and_play,
+                                                                 move_view: true, });
     }
 
     fn set_looping(&mut self, looping: bool) {
@@ -969,9 +837,7 @@ impl EngineProject {
         let reaper = Reaper::get();
         for _ in 0..reaper.count_project_markers(self.context()).total_count {
             unsafe {
-                reaper
-                    .low()
-                    .DeleteProjectMarkerByIndex(self.project.as_ptr(), 0);
+                reaper.low().DeleteProjectMarkerByIndex(self.project.as_ptr(), 0);
             }
         }
     }
@@ -985,14 +851,13 @@ fn get_track_receive_index(track: MediaTrack, id: &NodeConnectionId) -> Option<u
     for i in 0..unsafe { reaper.get_track_num_sends(track, TrackSendCategory::Receive) } {
         let mut buffer = [0i8; 256];
         unsafe {
-            if reaper.low().GetSetTrackSendInfo_String(
-                track.as_ptr(),
-                TrackSendCategory::Receive.to_raw(),
-                i as i32,
-                P_EXT_ID.as_ptr(),
-                buffer.as_mut_ptr(),
-                false,
-            ) {
+            if reaper.low().GetSetTrackSendInfo_String(track.as_ptr(),
+                                                       TrackSendCategory::Receive.to_raw(),
+                                                       i as i32,
+                                                       P_EXT_ID.as_ptr(),
+                                                       buffer.as_mut_ptr(),
+                                                       false)
+            {
                 let ext_id = CStr::from_ptr(buffer.as_ptr()).to_string_lossy();
 
                 if ext_id == id.as_str() {
@@ -1007,11 +872,7 @@ fn get_track_receive_index(track: MediaTrack, id: &NodeConnectionId) -> Option<u
 
 pub fn set_track_master_send(track: MediaTrack, mut send: bool) {
     unsafe {
-        Reaper::get().get_set_media_track_info(
-            track,
-            TrackAttributeKey::MainSend,
-            &mut send as *mut _ as _,
-        );
+        Reaper::get().get_set_media_track_info(track, TrackAttributeKey::MainSend, &mut send as *mut _ as _);
     }
 }
 
@@ -1021,8 +882,7 @@ pub fn get_track_peak_meters(track: MediaTrack, channels: usize) -> PadMetering 
 
     for i in 0..channels {
         let value = 0.0f64;
-        rv.volume
-            .push(unsafe { reaper.track_get_peak_info(track, i as u32) }.into());
+        rv.volume.push(unsafe { reaper.track_get_peak_info(track, i as u32) }.into());
     }
 
     rv

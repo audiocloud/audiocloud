@@ -15,39 +15,32 @@ use audiocloud_api::newtypes::{AppId, AppMediaObjectId, TrackMediaId};
 
 #[derive(Debug)]
 pub struct EngineMediaItem {
-    media_id: TrackMediaId,
+    media_id:  TrackMediaId,
     object_id: AppMediaObjectId,
-    item_id: Uuid,
-    take_id: Uuid,
-    track: MediaTrack,
-    item: MediaItem,
-    take: MediaItemTake,
-    spec: TrackMedia,
-    path: Option<String>,
+    item_id:   Uuid,
+    take_id:   Uuid,
+    track:     MediaTrack,
+    item:      MediaItem,
+    take:      MediaItemTake,
+    spec:      TrackMedia,
+    path:      Option<String>,
 }
 
 impl EngineMediaItem {
     #[instrument(skip_all, err)]
-    pub fn new(
-        track: MediaTrack,
-        media_root: &PathBuf,
-        app_id: &AppId,
-        media_id: TrackMediaId,
-        spec: TrackMedia,
-        media: &HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<Self> {
+    pub fn new(track: MediaTrack,
+               media_root: &PathBuf,
+               app_id: &AppId,
+               media_id: TrackMediaId,
+               spec: TrackMedia,
+               media: &HashMap<AppMediaObjectId, String>)
+               -> anyhow::Result<Self> {
         let object_id = spec.object_id.clone().for_app(app_id.clone());
 
         debug!(%object_id, "object_id");
 
         let path = match media.get(&object_id) {
-            Some(path) => Some(
-                media_root
-                    .join(path)
-                    .canonicalize()?
-                    .to_string_lossy()
-                    .to_string(),
-            ),
+            Some(path) => Some(media_root.join(path).canonicalize()?.to_string_lossy().to_string()),
             None => None,
         };
 
@@ -66,17 +59,15 @@ impl EngineMediaItem {
         let take_id = get_media_item_take_uuid(take)?;
         debug!(?take_id, "take_id is");
 
-        Ok(Self {
-            media_id,
-            object_id,
-            item_id,
-            take_id,
-            track,
-            item,
-            take,
-            spec,
-            path,
-        })
+        Ok(Self { media_id,
+                  object_id,
+                  item_id,
+                  take_id,
+                  track,
+                  item,
+                  take,
+                  spec,
+                  path })
     }
 
     #[instrument(skip_all, err)]
@@ -91,11 +82,7 @@ impl EngineMediaItem {
     }
 
     #[instrument(skip_all)]
-    pub fn on_media_updated(
-        &mut self,
-        root_dir: &PathBuf,
-        available: &HashMap<AppMediaObjectId, String>,
-    ) -> bool {
+    pub fn on_media_updated(&mut self, root_dir: &PathBuf, available: &HashMap<AppMediaObjectId, String>) -> bool {
         debug!(?root_dir, ?available, "entered");
 
         if self.path.is_none() {
@@ -126,12 +113,9 @@ fn get_media_item_uuid(media_item: MediaItem) -> anyhow::Result<Uuid> {
     let mut buffer = [0i8; 1024];
 
     unsafe {
-        if !reaper.low().GetSetMediaItemInfo_String(
-            media_item.as_ptr(),
-            param.as_ptr(),
-            buffer.as_mut_ptr(),
-            false,
-        ) {
+        if !reaper.low()
+                  .GetSetMediaItemInfo_String(media_item.as_ptr(), param.as_ptr(), buffer.as_mut_ptr(), false)
+        {
             return Err(anyhow::anyhow!("Failed to get media item GUID"));
         }
 
@@ -148,12 +132,9 @@ fn get_media_item_take_uuid(media_item_take: MediaItemTake) -> anyhow::Result<Uu
     let mut buffer = [0i8; 1024];
 
     unsafe {
-        if !reaper.low().GetSetMediaItemTakeInfo_String(
-            media_item_take.as_ptr(),
-            param.as_ptr(),
-            buffer.as_mut_ptr(),
-            false,
-        ) {
+        if !reaper.low()
+                  .GetSetMediaItemTakeInfo_String(media_item_take.as_ptr(), param.as_ptr(), buffer.as_mut_ptr(), false)
+        {
             return Err(anyhow::anyhow!("Failed to get media item take GUID"));
         }
 
@@ -166,21 +147,13 @@ fn get_media_item_take_uuid(media_item_take: MediaItemTake) -> anyhow::Result<Uu
 #[derive(Template)]
 #[template(path = "audio_engine/media_item.txt")]
 pub struct EngineMediaItemTemplate<'a> {
-    media: &'a EngineMediaItem,
-    track: &'a EngineMediaTrack,
+    media:   &'a EngineMediaItem,
+    track:   &'a EngineMediaTrack,
     project: &'a EngineProjectTemplateSnapshot,
 }
 
 impl<'a> EngineMediaItemTemplate<'a> {
-    pub fn new(
-        media: &'a EngineMediaItem,
-        track: &'a EngineMediaTrack,
-        project: &'a EngineProjectTemplateSnapshot,
-    ) -> Self {
-        Self {
-            media,
-            track,
-            project,
-        }
+    pub fn new(media: &'a EngineMediaItem, track: &'a EngineMediaTrack, project: &'a EngineProjectTemplateSnapshot) -> Self {
+        Self { media, track, project }
     }
 }

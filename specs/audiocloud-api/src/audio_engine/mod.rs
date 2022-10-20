@@ -6,30 +6,27 @@ use schemars::schema::RootSchema;
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::OpenApi;
 
 pub use command::*;
 pub use event::*;
 
 use crate::common::media::PlayId;
 use crate::{
-    merge_schemas, AppId, AppMediaObjectId, AppTaskId, FixedInstanceId, MediaObject,
-    ModifyTaskError, RenderId, TaskId, TaskPlayState, TaskSpec,
+    merge_schemas, AppId, AppMediaObjectId, AppTaskId, FixedInstanceId, MediaObject, ModifyTaskError, RenderId, TaskId, TaskPlayState,
+    TaskSpec,
 };
 
 pub mod command;
-pub mod environment;
 pub mod event;
-pub mod tasks;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CompressedAudio {
-    pub play_id: PlayId,
+    pub play_id:      PlayId,
     pub timeline_pos: f64,
-    pub stream_pos: u64,
-    pub buffer: bytes::Bytes,
-    pub num_samples: usize,
-    pub last: bool,
+    pub stream_pos:   u64,
+    pub buffer:       bytes::Bytes,
+    pub num_samples:  usize,
+    pub last:         bool,
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize, JsonSchema)]
@@ -79,19 +76,15 @@ pub enum TaskSought {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MediaUpdated {
-    Updated {
-        added: usize,
-        replaced: usize,
-        deleted: usize,
-    },
+    Updated { added: usize, replaced: usize, deleted: usize },
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct EngineFixedInstance {
-    pub input_start: u32,
+    pub input_start:  u32,
     pub output_start: u32,
-    pub num_inputs: u32,
-    pub num_outputs: u32,
+    pub num_inputs:   u32,
+    pub num_outputs:  u32,
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -107,17 +100,13 @@ pub struct SetMedia {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum InstancesUpdated {
-    Updated {
-        added: usize,
-        replaced: usize,
-        deleted: usize,
-    },
+    Updated { added: usize, replaced: usize, deleted: usize },
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 pub struct TaskWithStatus {
-    pub id: AppTaskId,
-    pub spec: TaskSpec,
+    pub id:         AppTaskId,
+    pub spec:       TaskSpec,
     pub play_state: TaskPlayState,
 }
 
@@ -126,10 +115,7 @@ pub type TaskWithStatusList = Vec<TaskWithStatus>;
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskRendering {
-    Rendering {
-        task_id: AppTaskId,
-        render_id: RenderId,
-    },
+    Rendering { task_id: AppTaskId, render_id: RenderId },
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
@@ -153,59 +139,35 @@ pub enum TaskPlayStopped {
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum TaskRenderCancelled {
-    Cancelled {
-        task_id: AppTaskId,
-        render_id: RenderId,
-    },
+    Cancelled { task_id: AppTaskId, render_id: RenderId },
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(
-    tasks::set_spec,
-    tasks::modify_spec,
-    tasks::delete,
-    tasks::list,
-    tasks::play,
-    tasks::seek,
-    tasks::stop_playing,
-    tasks::cancel_render,
-    tasks::render,
-    environment::set_media,
-    environment::set_instances
-))]
-pub struct EngineApi;
-
 pub fn schemas() -> RootSchema {
-    merge_schemas(
-        [
-            schema_for!(EngineError),
-            schema_for!(TaskReplaced),
-            schema_for!(TaskDeleted),
-            schema_for!(TaskModified),
-            schema_for!(TaskPlaying),
-            schema_for!(TaskSought),
-            schema_for!(TaskPlayStopped),
-            schema_for!(TaskRendering),
-            schema_for!(TaskRenderCancelled),
-            schema_for!(MediaUpdated),
-            schema_for!(InstancesUpdated),
-            schema_for!(EngineFixedInstance),
-            schema_for!(SetInstances),
-            schema_for!(SetMedia),
-            schema_for!(TaskWithStatusList),
-            schema_for!(TaskWithStatus),
-            schema_for!(SetMedia),
-            schema_for!(SetInstances),
-            schema_for!(AppId),
-            schema_for!(TaskId),
-            schema_for!(crate::RequestPlay),
-            schema_for!(crate::RequestSeek),
-            schema_for!(crate::RequestChangeMixer),
-            schema_for!(crate::RequestStopPlay),
-            schema_for!(crate::RequestCancelRender),
-            schema_for!(crate::ModifyTaskSpec),
-            schema_for!(crate::TaskSpec),
-        ]
-        .into_iter(),
-    )
+    merge_schemas([schema_for!(EngineError),
+                   schema_for!(TaskReplaced),
+                   schema_for!(TaskDeleted),
+                   schema_for!(TaskModified),
+                   schema_for!(TaskPlaying),
+                   schema_for!(TaskSought),
+                   schema_for!(TaskPlayStopped),
+                   schema_for!(TaskRendering),
+                   schema_for!(TaskRenderCancelled),
+                   schema_for!(MediaUpdated),
+                   schema_for!(InstancesUpdated),
+                   schema_for!(EngineFixedInstance),
+                   schema_for!(SetInstances),
+                   schema_for!(SetMedia),
+                   schema_for!(TaskWithStatusList),
+                   schema_for!(TaskWithStatus),
+                   schema_for!(SetMedia),
+                   schema_for!(SetInstances),
+                   schema_for!(AppId),
+                   schema_for!(TaskId),
+                   schema_for!(crate::RequestPlay),
+                   schema_for!(crate::RequestSeek),
+                   schema_for!(crate::RequestChangeMixer),
+                   schema_for!(crate::RequestStopPlay),
+                   schema_for!(crate::RequestCancelRender),
+                   schema_for!(crate::ModifyTaskSpec),
+                   schema_for!(crate::TaskSpec)].into_iter())
 }

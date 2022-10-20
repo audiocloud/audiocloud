@@ -27,8 +27,8 @@ mod v1;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(healthz)
-        .service(metrics)
-        .service(web::scope("/v1").configure(v1::configure));
+       .service(metrics)
+       .service(web::scope("/v1").configure(v1::configure));
 }
 
 #[get("/healthz")]
@@ -43,9 +43,7 @@ async fn healthz() -> impl Responder {
 #[get("/metrics")]
 async fn metrics() -> impl Responder {
     match generate_prometheus_metrics() {
-        Ok(metrics) => HttpResponse::Ok()
-            .content_type("text/plain; version=0.0.4")
-            .body(metrics),
+        Ok(metrics) => HttpResponse::Ok().content_type("text/plain; version=0.0.4").body(metrics),
         Err(e) => {
             error!("Failed to generate metrics: {}", e);
             HttpResponse::InternalServerError().finish()
@@ -57,9 +55,8 @@ pub struct ApiResponder(ResponseMedia);
 
 impl ApiResponder {
     pub async fn respond<T, F>(self, fut: F) -> ApiResponse<T>
-    where
-        T: Serialize,
-        F: Future<Output = Result<T, DomainError>>,
+        where T: Serialize,
+              F: Future<Output = Result<T, DomainError>>
     {
         let rv = fut.await;
         ApiResponse(self.0, rv)
@@ -71,24 +68,22 @@ impl FromRequest for ApiResponder {
     type Future = Ready<Result<Self, Infallible>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let rv = Self(
-            req.headers()
-                .get("Accept")
-                .and_then(|v| {
-                    if let Ok(v) = v.to_str() {
-                        if v == mime::APPLICATION_MSGPACK.essence_str() {
-                            Some(ResponseMedia::MsgPack)
-                        } else if v == mime::APPLICATION_JSON.essence_str() {
-                            Some(ResponseMedia::Json)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .unwrap_or(ResponseMedia::Json),
-        );
+        let rv = Self(req.headers()
+                         .get("Accept")
+                         .and_then(|v| {
+                             if let Ok(v) = v.to_str() {
+                                 if v == mime::APPLICATION_MSGPACK.essence_str() {
+                                     Some(ResponseMedia::MsgPack)
+                                 } else if v == mime::APPLICATION_JSON.essence_str() {
+                                     Some(ResponseMedia::Json)
+                                 } else {
+                                     None
+                                 }
+                             } else {
+                                 None
+                             }
+                         })
+                         .unwrap_or(ResponseMedia::Json));
 
         fut::ready(Ok(rv))
     }
@@ -96,49 +91,31 @@ impl FromRequest for ApiResponder {
 
 pub struct ApiResponse<T>(ResponseMedia, Result<T, DomainError>);
 
-impl<T> Responder for ApiResponse<T>
-where
-    T: Serialize,
+impl<T> Responder for ApiResponse<T> where T: Serialize
 {
     type Body = EitherBody<BoxBody>;
 
     fn respond_to(self, _req: &HttpRequest) -> HttpResponse<Self::Body> {
         let err_resp = |err: DomainError| {
             let (content, content_type) = match self.0 {
-                ResponseMedia::Json => (
-                    Json.serialize(&err).unwrap(),
-                    mime::APPLICATION_JSON.as_ref(),
-                ),
-                ResponseMedia::MsgPack => (
-                    MsgPack.serialize(&err).unwrap(),
-                    mime::APPLICATION_MSGPACK.as_ref(),
-                ),
+                ResponseMedia::Json => (Json.serialize(&err).unwrap(), mime::APPLICATION_JSON.as_ref()),
+                ResponseMedia::MsgPack => (MsgPack.serialize(&err).unwrap(), mime::APPLICATION_MSGPACK.as_ref()),
             };
 
             let status = StatusCode::from_u16(err.status_code()).unwrap();
-            HttpResponseBuilder::new(status)
-                .content_type(content_type)
-                .body(content)
-                .map_into_right_body()
+            HttpResponseBuilder::new(status).content_type(content_type)
+                                            .body(content)
+                                            .map_into_right_body()
         };
 
         match self.1 {
             Ok(ok) => {
                 let (content, content_type) = match self.0 {
-                    ResponseMedia::Json => (
-                        Json.serialize(&ok).map_err(|e| DomainError::Serialization {
-                            error: e.to_string(),
-                        }),
-                        mime::APPLICATION_JSON.as_ref(),
-                    ),
-                    ResponseMedia::MsgPack => (
-                        MsgPack
-                            .serialize(&ok)
-                            .map_err(|e| DomainError::Serialization {
-                                error: e.to_string(),
-                            }),
-                        mime::APPLICATION_MSGPACK.as_ref(),
-                    ),
+                    ResponseMedia::Json => (Json.serialize(&ok).map_err(|e| DomainError::Serialization { error: e.to_string() }),
+                                            mime::APPLICATION_JSON.as_ref()),
+                    ResponseMedia::MsgPack => (MsgPack.serialize(&ok)
+                                                      .map_err(|e| DomainError::Serialization { error: e.to_string() }),
+                                               mime::APPLICATION_MSGPACK.as_ref()),
                 };
 
                 let content = match content {
@@ -146,10 +123,9 @@ where
                     Ok(content) => content,
                 };
 
-                HttpResponseBuilder::new(StatusCode::OK)
-                    .content_type(content_type)
-                    .body(content)
-                    .map_into_left_body()
+                HttpResponseBuilder::new(StatusCode::OK).content_type(content_type)
+                                                        .body(content)
+                                                        .map_into_left_body()
             }
             Err(err) => err_resp(err),
         }
@@ -164,28 +140,22 @@ impl FromRequest for DomainSecurity {
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
         let func = move || -> Result<Self, actix_web::Error> {
-            let auth_opts = req.app_data::<web::Data<RestOpts>>().ok_or_else(|| {
-                ErrorInternalServerError(anyhow!("Missing authentication configuration"))
-            })?;
+            let auth_opts = req.app_data::<web::Data<RestOpts>>()
+                               .ok_or_else(|| ErrorInternalServerError(anyhow!("Missing authentication configuration")))?;
 
             match req.headers().get(AUTHORIZATION) {
                 None => match auth_opts.rest_auth_strategy {
                     AuthStrategy::Development => Ok(DomainSecurity::Cloud),
-                    AuthStrategy::Production => {
-                        Err(ErrorUnauthorized(anyhow!("Authentication missing")))
-                    }
+                    AuthStrategy::Production => Err(ErrorUnauthorized(anyhow!("Authentication missing"))),
                 },
                 Some(authorization) => {
-                    let authorization = authorization.to_str().map_err(|err| {
-                        ErrorBadRequest(anyhow!("Error parsing authorization header: {err}"))
-                    })?;
+                    let authorization = authorization.to_str()
+                                                     .map_err(|err| ErrorBadRequest(anyhow!("Error parsing authorization header: {err}")))?;
 
                     if !authorization.starts_with(HEADER_AUTH_PREFIX) {
                         Err(ErrorUnauthorized(anyhow!("Authentication missing")))
                     } else {
-                        Ok(DomainSecurity::SecureKey(SecureKey::new(
-                            authorization[HEADER_AUTH_PREFIX.len()..].to_string(),
-                        )))
+                        Ok(DomainSecurity::SecureKey(SecureKey::new(authorization[HEADER_AUTH_PREFIX.len()..].to_string())))
                     }
                 }
             }
@@ -212,14 +182,12 @@ pub enum AuthStrategy {
 }
 
 pub fn bad_gateway(err: MailboxError) -> DomainError {
-    DomainError::BadGateway {
-        error: err.to_string(),
-    }
+    DomainError::BadGateway { error: err.to_string() }
 }
 
 #[derive(Deserialize)]
 pub struct AppTaskIdPath {
-    app_id: AppId,
+    app_id:  AppId,
     task_id: TaskId,
 }
 

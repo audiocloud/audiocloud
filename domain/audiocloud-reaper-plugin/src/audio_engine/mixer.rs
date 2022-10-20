@@ -11,22 +11,20 @@ use audiocloud_api::common::task::{MixerNode, NodePadId};
 use audiocloud_api::newtypes::MixerNodeId;
 use audiocloud_api::{InputPadId, OutputPadId, PadMetering};
 
-use crate::audio_engine::project::{
-    get_track_peak_meters, set_track_master_send, EngineProject, EngineProjectTemplateSnapshot,
-};
+use crate::audio_engine::project::{get_track_peak_meters, set_track_master_send, EngineProject, EngineProjectTemplateSnapshot};
 use crate::audio_engine::ConnectionTemplate;
 use crate::audio_engine::{append_track, beautify_chunk, delete_track, set_track_chunk};
 
 #[derive(Debug)]
 pub struct AudioMixer {
-    mixer_id: MixerNodeId,
-    input_pad_id: InputPadId,
+    mixer_id:      MixerNodeId,
+    input_pad_id:  InputPadId,
     output_pad_id: OutputPadId,
-    input_id: Uuid,
-    output_id: Uuid,
-    input_track: MediaTrack,
-    output_track: MediaTrack,
-    spec: MixerNode,
+    input_id:      Uuid,
+    output_id:     Uuid,
+    input_track:   MediaTrack,
+    output_track:  MediaTrack,
+    spec:          MixerNode,
 }
 
 impl AudioMixer {
@@ -38,93 +36,52 @@ impl AudioMixer {
 
 impl AudioMixer {
     #[instrument(skip_all, err)]
-    pub fn new(
-        project: &EngineProject,
-        mixer_id: MixerNodeId,
-        spec: MixerNode,
-    ) -> anyhow::Result<Self> {
+    pub fn new(project: &EngineProject, mixer_id: MixerNodeId, spec: MixerNode) -> anyhow::Result<Self> {
         let input_pad_id = InputPadId::MixerInput(mixer_id.clone());
         let output_pad_id = OutputPadId::MixerOutput(mixer_id.clone());
 
         project.focus()?;
 
-        let (input_track, input_id) =
-            append_track(&input_pad_id.clone().into(), project.context())?;
-        let (output_track, output_id) =
-            append_track(&output_pad_id.clone().into(), project.context())?;
+        let (input_track, input_id) = append_track(&input_pad_id.clone().into(), project.context())?;
+        let (output_track, output_id) = append_track(&output_pad_id.clone().into(), project.context())?;
 
-        Ok(Self {
-            mixer_id: { mixer_id },
-            input_pad_id: { input_pad_id },
-            output_pad_id: { output_pad_id },
-            input_id: { input_id },
-            output_id: { output_id },
-            input_track: { input_track },
-            output_track: { output_track },
-            spec: { spec },
-        })
+        Ok(Self { mixer_id:      { mixer_id },
+                  input_pad_id:  { input_pad_id },
+                  output_pad_id: { output_pad_id },
+                  input_id:      { input_id },
+                  output_id:     { output_id },
+                  input_track:   { input_track },
+                  output_track:  { output_track },
+                  spec:          { spec }, })
     }
 
     pub fn get_input_track(&self) -> MediaTrack {
         self.input_track
     }
 
-    pub fn get_input_state_chunk(
-        &self,
-        project: &EngineProjectTemplateSnapshot,
-    ) -> anyhow::Result<String> {
-        Ok(beautify_chunk(
-            AudioMixerInputTemplate {
-                project,
-                mixer: self,
-            }
-            .render()?,
-        ))
+    pub fn get_input_state_chunk(&self, project: &EngineProjectTemplateSnapshot) -> anyhow::Result<String> {
+        Ok(beautify_chunk(AudioMixerInputTemplate { project, mixer: self }.render()?))
     }
 
-    pub fn get_output_state_chunk(
-        &self,
-        project: &EngineProjectTemplateSnapshot,
-    ) -> anyhow::Result<String> {
-        Ok(beautify_chunk(
-            AudioMixerOutputTemplate {
-                project,
-                mixer: self,
-            }
-            .render()?,
-        ))
+    pub fn get_output_state_chunk(&self, project: &EngineProjectTemplateSnapshot) -> anyhow::Result<String> {
+        Ok(beautify_chunk(AudioMixerOutputTemplate { project, mixer: self }.render()?))
     }
 
     #[instrument(skip_all, err, fields(id = %self.mixer_id))]
-    pub fn update_state_chunk(
-        &self,
-        project: &EngineProjectTemplateSnapshot,
-    ) -> anyhow::Result<()> {
-        set_track_chunk(
-            project.context(),
-            self.input_track,
-            &self.get_input_state_chunk(project)?,
-        )?;
+    pub fn update_state_chunk(&self, project: &EngineProjectTemplateSnapshot) -> anyhow::Result<()> {
+        set_track_chunk(project.context(), self.input_track, &self.get_input_state_chunk(project)?)?;
 
-        set_track_chunk(
-            project.context(),
-            self.output_track,
-            &self.get_output_state_chunk(project)?,
-        )?;
+        set_track_chunk(project.context(), self.output_track, &self.get_output_state_chunk(project)?)?;
 
         Ok(())
     }
 
     pub fn fill_peak_meters(&self, peaks: &mut HashMap<NodePadId, PadMetering>) {
-        peaks.insert(
-            self.input_pad_id.clone().into(),
-            get_track_peak_meters(self.input_track, self.spec.input_channels),
-        );
+        peaks.insert(self.input_pad_id.clone().into(),
+                     get_track_peak_meters(self.input_track, self.spec.input_channels));
 
-        peaks.insert(
-            self.output_pad_id.clone().into(),
-            get_track_peak_meters(self.output_track, self.spec.output_channels),
-        );
+        peaks.insert(self.output_pad_id.clone().into(),
+                     get_track_peak_meters(self.output_track, self.spec.output_channels));
     }
 
     pub fn set_master_send(&mut self, master_send: bool) {
@@ -160,17 +117,10 @@ impl AudioMixer {
                     if let Some(source) = reaper.get_media_item_take_source(take) {
                         let mut path_name = [0i8; 1024];
 
-                        reaper.low().GetMediaSourceFileName(
-                            source.as_ptr(),
-                            path_name.as_mut_ptr(),
-                            path_name.len() as i32,
-                        );
+                        reaper.low()
+                              .GetMediaSourceFileName(source.as_ptr(), path_name.as_mut_ptr(), path_name.len() as i32);
 
-                        rv = Some(
-                            CStr::from_ptr(path_name.as_ptr())
-                                .to_string_lossy()
-                                .to_string(),
-                        );
+                        rv = Some(CStr::from_ptr(path_name.as_ptr()).to_string_lossy().to_string());
                     }
                 }
 
@@ -192,12 +142,12 @@ impl AudioMixer {
 #[template(path = "audio_engine/mixer_track_input.txt")]
 struct AudioMixerInputTemplate<'a> {
     project: &'a EngineProjectTemplateSnapshot,
-    mixer: &'a AudioMixer,
+    mixer:   &'a AudioMixer,
 }
 
 #[derive(Template)]
 #[template(path = "audio_engine/mixer_track_output.txt")]
 struct AudioMixerOutputTemplate<'a> {
     project: &'a EngineProjectTemplateSnapshot,
-    mixer: &'a AudioMixer,
+    mixer:   &'a AudioMixer,
 }

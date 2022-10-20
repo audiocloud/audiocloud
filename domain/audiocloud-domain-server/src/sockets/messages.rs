@@ -25,7 +25,7 @@ pub enum SocketReceived {
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "DomainResult")]
 pub struct RegisterWebSocket {
-    pub address: Addr<WebSocketActor>,
+    pub address:   Addr<WebSocketActor>,
     pub socket_id: ClientSocketId,
 }
 
@@ -39,7 +39,7 @@ pub struct SocketConnected {
 #[rtype(result = "()")]
 pub struct RegisterWebRtcSocket {
     pub address: Addr<WebRtcActor>,
-    pub id: ClientSocketId,
+    pub id:      ClientSocketId,
 }
 
 #[derive(Message, Clone, Debug)]
@@ -54,6 +54,6 @@ pub struct SocketReady(SocketId);
 #[rtype(result = "()")]
 pub struct SendToClient {
     pub client_id: ClientId,
-    pub message: DomainServerMessage,
-    pub media: ResponseMedia,
+    pub message:   DomainServerMessage,
+    pub media:     ResponseMedia,
 }

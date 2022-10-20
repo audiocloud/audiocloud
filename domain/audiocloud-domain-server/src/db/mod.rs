@@ -35,9 +35,7 @@ pub struct DataOpts {
 
 impl DataOpts {
     pub fn memory() -> Self {
-        Self {
-            database_url: ":memory:".to_string(),
-        }
+        Self { database_url: ":memory:".to_string(), }
     }
 }
 

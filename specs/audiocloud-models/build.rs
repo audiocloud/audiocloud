@@ -11,15 +11,13 @@ use audiocloud_api::*;
 #[template(path = "rust_preset.rs", escape = "none")]
 struct RustPresetModelTemplate<'a> {
     rust_name: String,
-    model: &'a Model,
+    model:     &'a Model,
 }
 
 impl<'a> RustPresetModelTemplate<'a> {
     pub fn new(name: &str, model: &'a Model) -> Self {
-        Self {
-            rust_name: pascal_case_converter().convert(name),
-            model,
-        }
+        Self { rust_name: pascal_case_converter().convert(name),
+               model }
     }
 }
 
@@ -27,15 +25,13 @@ impl<'a> RustPresetModelTemplate<'a> {
 #[template(path = "rust_parameters.rs", escape = "none")]
 struct RustParamsModelTemplate<'a> {
     rust_name: String,
-    model: &'a Model,
+    model:     &'a Model,
 }
 
 impl<'a> RustParamsModelTemplate<'a> {
     pub fn new(name: &str, model: &'a Model) -> Self {
-        Self {
-            rust_name: pascal_case_converter().convert(name),
-            model,
-        }
+        Self { rust_name: pascal_case_converter().convert(name),
+               model }
     }
 }
 
@@ -43,15 +39,13 @@ impl<'a> RustParamsModelTemplate<'a> {
 #[template(path = "rust_reports.rs", escape = "none")]
 struct RustReportsModelTemplate<'a> {
     rust_name: String,
-    model: &'a Model,
+    model:     &'a Model,
 }
 
 impl<'a> RustReportsModelTemplate<'a> {
     pub fn new(name: &str, model: &'a Model) -> Self {
-        Self {
-            rust_name: pascal_case_converter().convert(name),
-            model,
-        }
+        Self { rust_name: pascal_case_converter().convert(name),
+               model }
     }
 }
 
@@ -95,15 +89,13 @@ impl<'a> RustConstantsTemplate<'a> {
 #[template(path = "ts_preset.ts", escape = "none")]
 struct TSPresetModelTemplate<'a> {
     ts_name: String,
-    model: &'a Model,
+    model:   &'a Model,
 }
 
 impl<'a> TSPresetModelTemplate<'a> {
     pub fn new(name: &str, model: &'a Model) -> Self {
-        Self {
-            ts_name: pascal_case_converter().convert(name),
-            model,
-        }
+        Self { ts_name: pascal_case_converter().convert(name),
+               model }
     }
 }
 
@@ -111,15 +103,13 @@ impl<'a> TSPresetModelTemplate<'a> {
 #[template(path = "ts_parameters.ts", escape = "none")]
 struct TSParamsModelTemplate<'a> {
     ts_name: String,
-    model: &'a Model,
+    model:   &'a Model,
 }
 
 impl<'a> TSParamsModelTemplate<'a> {
     pub fn new(name: &str, model: &'a Model) -> Self {
-        Self {
-            ts_name: pascal_case_converter().convert(name),
-            model,
-        }
+        Self { ts_name: pascal_case_converter().convert(name),
+               model }
     }
 }
 
@@ -127,15 +117,13 @@ impl<'a> TSParamsModelTemplate<'a> {
 #[template(path = "ts_reports.ts", escape = "none")]
 struct TSReportsModelTemplate<'a> {
     ts_name: String,
-    model: &'a Model,
+    model:   &'a Model,
 }
 
 impl<'a> TSReportsModelTemplate<'a> {
     pub fn new(name: &str, model: &'a Model) -> Self {
-        Self {
-            ts_name: pascal_case_converter().convert(name),
-            model,
-        }
+        Self { ts_name: pascal_case_converter().convert(name),
+               model }
     }
 }
 
@@ -193,22 +181,16 @@ fn main() {
     // read env variable MODELS_PATH and deafualt
     let models_dir = env::var("MODELS_DIR").unwrap_or_else(|_| "models".to_owned());
     let mut by_manufacturers = HashMap::<String, HashMap<String, Model>>::new();
-    for model_path in globwalk::GlobWalkerBuilder::from_patterns(models_dir, &["*.yaml", "*.yml"])
-        .max_depth(4)
-        .follow_links(true)
-        .build()
-        .expect("create globber")
-        .into_iter()
-        .filter_map(Result::ok)
+    for model_path in globwalk::GlobWalkerBuilder::from_patterns(models_dir, &["*.yaml", "*.yml"]).max_depth(4)
+                                                                                                  .follow_links(true)
+                                                                                                  .build()
+                                                                                                  .expect("create globber")
+                                                                                                  .into_iter()
+                                                                                                  .filter_map(Result::ok)
     {
         let model_path = model_path.path();
-        let model_file_stem = model_path
-            .file_stem()
-            .expect("get file name")
-            .to_string_lossy()
-            .to_string();
-        let (manufacturer, name) =
-            model_file_stem.split_at(model_file_stem.find('_').expect("file name must have '_'"));
+        let model_file_stem = model_path.file_stem().expect("get file name").to_string_lossy().to_string();
+        let (manufacturer, name) = model_file_stem.split_at(model_file_stem.find('_').expect("file name must have '_'"));
         let name = &name[1..];
 
         println!("cargo:rerun-if-changed={model_path:?}");
@@ -216,10 +198,9 @@ fn main() {
             match serde_yaml::from_reader::<_, Model>(model_file) {
                 Ok(model_content) => {
                     // create rust types
-                    by_manufacturers
-                        .entry(manufacturer.to_owned())
-                        .or_default()
-                        .insert(name.to_owned(), model_content);
+                    by_manufacturers.entry(manufacturer.to_owned())
+                                    .or_default()
+                                    .insert(name.to_owned(), model_content);
                 }
                 Err(err) => {
                     eprintln!("Failed to parse {model_path:?}: {err} ({err:?})");
@@ -228,22 +209,15 @@ fn main() {
         }
     }
 
-    fs::write(
-        "src/generated.rs",
-        RustGeneratedTemplate {
-            models: &by_manufacturers,
-        }
-        .render()
-        .expect("render rust types"),
-    )
-    .expect("write generated rust code");
+    fs::write("src/generated.rs",
+              RustGeneratedTemplate { models: &by_manufacturers }.render()
+                                                                 .expect("render rust types")).expect("write generated rust code");
 
-    let _ = std::process::Command::new("cargo")
-        .arg("+nightly")
-        .arg("fmt")
-        .arg("--")
-        .arg("src/generated.rs")
-        .output();
+    let _ = std::process::Command::new("cargo").arg("+nightly")
+                                               .arg("fmt")
+                                               .arg("--")
+                                               .arg("src/generated.rs")
+                                               .output();
 
     // fs::write("../packages/models/src/generated.ts", TSGeneratedTemplate { models: &by_manufacturers }.render()
     //               .expect("render typescript types")).expect("write generated typescript code");
@@ -275,12 +249,7 @@ fn simple_to_ts_type(simple_type: SimpleModelValueType) -> &'static str {
     }
 }
 
-fn ts_type(
-    options: &Vec<ModelValueOption>,
-    scope: ModelElementScope,
-    model: &Model,
-    _preset: bool,
-) -> String {
+fn ts_type(options: &Vec<ModelValueOption>, scope: ModelElementScope, model: &Model, _preset: bool) -> String {
     let inner_type = match get_values_type(options).expect("get params types") {
         ModelValueType::Single(s) => simple_to_ts_type(s).to_owned(),
         ModelValueType::Either(a, b) => {
@@ -289,11 +258,7 @@ fn ts_type(
             } else if b.is_bool() {
                 format!("T.ToggleOr<{}>", simple_to_ts_type(a))
             } else {
-                format!(
-                    "T.Either<{}, {}>",
-                    simple_to_ts_type(a),
-                    simple_to_rust_type(b)
-                )
+                format!("T.Either<{}, {}>", simple_to_ts_type(a), simple_to_rust_type(b))
             }
         }
         ModelValueType::Any => "any".to_owned(),
@@ -317,12 +282,7 @@ fn ts_type(
     }
 }
 
-fn rust_type(
-    options: &Vec<ModelValueOption>,
-    scope: ModelElementScope,
-    model: &Model,
-    _preset: bool,
-) -> String {
+fn rust_type(options: &Vec<ModelValueOption>, scope: ModelElementScope, model: &Model, _preset: bool) -> String {
     let inner_type = match get_values_type(options).expect("get params types") {
         ModelValueType::Single(s) => simple_to_rust_type(s).to_owned(),
         ModelValueType::Either(a, b) => {
@@ -331,11 +291,7 @@ fn rust_type(
             } else if b.is_bool() {
                 format!("ToggleOr<{}>", simple_to_rust_type(a))
             } else {
-                format!(
-                    "Either<{}, {}>",
-                    simple_to_rust_type(a),
-                    simple_to_rust_type(b)
-                )
+                format!("Either<{}, {}>", simple_to_rust_type(a), simple_to_rust_type(b))
             }
         }
         ModelValueType::Any => "serde_json::Value".to_owned(),
@@ -370,8 +326,7 @@ fn screaming_snake_case_converter() -> convert_case::Converter {
 }
 
 fn get_key<A, B>(a: &(A, B)) -> A
-where
-    A: Copy,
+    where A: Copy
 {
     a.0
 }

@@ -7,19 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::common::{FilterId, ParameterId, ReportId};
 
-#[derive(
-    Serialize,
-    Deserialize,
-    Clone,
-    Copy,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    Ord,
-    Debug,
-    IsVariant,
-    JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Debug, IsVariant, JsonSchema)]
 pub enum ModelValueUnit {
     #[serde(rename = "no")]
     Unitless,
@@ -45,9 +33,7 @@ impl Default for ModelValueUnit {
     }
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Debug, PartialEq, PartialOrd, IsVariant, Unwrap, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, PartialOrd, IsVariant, Unwrap, JsonSchema)]
 #[serde(untagged)]
 pub enum ModelValueOption {
     Single(ModelValue),
@@ -72,10 +58,8 @@ impl ModelValueOption {
             ModelValueOption::Single(value) => Ok(value.get_simple_type()),
             ModelValueOption::Range(first, second) => {
                 if first.is_number() && second.is_number() {
-                    Ok(SimpleModelValueType::Number {
-                        signed: true,
-                        integer: false,
-                    })
+                    Ok(SimpleModelValueType::Number { signed:  true,
+                                                      integer: false, })
                 } else {
                     Err(anyhow!("Only numeric ranges supported"))
                 }
@@ -84,9 +68,7 @@ impl ModelValueOption {
     }
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Debug, PartialEq, PartialOrd, IsVariant, Unwrap, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, PartialOrd, IsVariant, Unwrap, JsonSchema)]
 #[serde(untagged)]
 pub enum ModelValue {
     String(String),
@@ -94,9 +76,7 @@ pub enum ModelValue {
     Bool(bool),
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SimpleModelValueType {
     String,
@@ -122,19 +102,8 @@ impl SimpleModelValueType {
 
     pub fn try_widen(self, other: SimpleModelValueType) -> anyhow::Result<SimpleModelValueType> {
         match (self, other) {
-            (
-                Self::Number {
-                    signed: s1,
-                    integer: i1,
-                },
-                Self::Number {
-                    signed: s2,
-                    integer: i2,
-                },
-            ) => Ok(Self::Number {
-                signed: s1 || s2,
-                integer: i1 && i2,
-            }),
+            (Self::Number { signed: s1, integer: i1 }, Self::Number { signed: s2, integer: i2 }) => Ok(Self::Number { signed:  s1 || s2,
+                                                                                                                      integer: i1 && i2, }),
             _ => Err(anyhow!("Only numeric types may be widened")),
         }
     }
@@ -225,12 +194,12 @@ pub type ModelReports = HashMap<ReportId, ModelReport>;
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq, JsonSchema)]
 pub struct Model {
     #[serde(default)]
-    pub resources: HashMap<ResourceId, f64>,
-    pub inputs: ModelInputs,
-    pub outputs: ModelOutputs,
-    pub parameters: ModelParameters,
-    pub reports: ModelReports,
-    pub media: bool,
+    pub resources:    HashMap<ResourceId, f64>,
+    pub inputs:       ModelInputs,
+    pub outputs:      ModelOutputs,
+    pub parameters:   ModelParameters,
+    pub reports:      ModelReports,
+    pub media:        bool,
     #[serde(default)]
     pub capabilities: HashSet<ModelCapability>,
 }
@@ -272,19 +241,7 @@ pub struct PowerDistributorReports {
     pub power: Option<Vec<bool>>,
 }
 
-#[derive(
-    Serialize,
-    Deserialize,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    IsVariant,
-    Unwrap,
-    JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, Unwrap, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelParameterRole {
     #[unwrap(ignore)]
@@ -297,26 +254,20 @@ pub enum ModelParameterRole {
     Filter(FilterId, FilterParameterRole),
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ChannelParameterRole {
     Pan,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum GlobalParameterRole {
     Enable,
     Bypass,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AmplifierParameterRole {
     Enable,
@@ -325,9 +276,7 @@ pub enum AmplifierParameterRole {
     SlewRate,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DynamicsParameterRole {
     Ratio,
@@ -345,9 +294,7 @@ pub enum DynamicsParameterRole {
     MidEmphasis,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum FilterParameterRole {
     Gain,
@@ -357,19 +304,7 @@ pub enum FilterParameterRole {
     Type,
 }
 
-#[derive(
-    Serialize,
-    Deserialize,
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    PartialEq,
-    PartialOrd,
-    IsVariant,
-    Unwrap,
-    JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, Unwrap, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ModelReportRole {
     #[unwrap(ignore)]
@@ -379,9 +314,7 @@ pub enum ModelReportRole {
     Dynamics(DynamicsId, DynamicsReportRole),
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PowerReportRole {
     Powered,
@@ -390,9 +323,7 @@ pub enum PowerReportRole {
     TotalEnergy,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AmplifierReportRole {
     PeakVolume,
@@ -402,9 +333,7 @@ pub enum AmplifierReportRole {
     LufsVolumeIntegrated,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DynamicsReportRole {
     GainReduction,
@@ -413,10 +342,10 @@ pub enum DynamicsReportRole {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, PartialOrd, JsonSchema)]
 pub struct ModelParameter {
-    pub scope: ModelElementScope,
+    pub scope:  ModelElementScope,
     #[serde(default)]
-    pub unit: ModelValueUnit,
-    pub role: ModelParameterRole,
+    pub unit:   ModelValueUnit,
+    pub role:   ModelParameterRole,
     pub values: Vec<ModelValueOption>,
 }
 
@@ -442,20 +371,18 @@ impl ModelElementScope {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ModelReport {
-    pub scope: ModelElementScope,
+    pub scope:    ModelElementScope,
     #[serde(default)]
-    pub unit: ModelValueUnit,
-    pub role: ModelReportRole,
-    pub values: Vec<ModelValueOption>,
+    pub unit:     ModelValueUnit,
+    pub role:     ModelReportRole,
+    pub values:   Vec<ModelValueOption>,
     #[serde(default)]
-    pub public: bool,
+    pub public:   bool,
     #[serde(default)]
     pub volatile: bool,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ControlChannels {
     Global,
@@ -464,9 +391,7 @@ pub enum ControlChannels {
     Generic,
 }
 
-#[derive(
-    Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Hash, Display, JsonSchema,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Hash, Display, JsonSchema)]
 pub enum ResourceId {
     // in GiB
     #[serde(rename = "ram")]
@@ -485,9 +410,7 @@ pub enum ResourceId {
     UniversalAudioDSP,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AmplifierId {
     Input,
@@ -497,9 +420,7 @@ pub enum AmplifierId {
     InsertOutput,
 }
 
-#[derive(
-    Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, PartialOrd, IsVariant, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DynamicsId {
     Total,
@@ -510,23 +431,20 @@ pub enum DynamicsId {
 }
 
 pub fn get_values_type(options: &Vec<ModelValueOption>) -> anyhow::Result<ModelValueType> {
-    let simple_options = options
-        .iter()
-        .map(ModelValueOption::get_simple_type)
-        .filter_map(Result::ok)
-        .collect::<HashSet<_>>();
+    let simple_options = options.iter()
+                                .map(ModelValueOption::get_simple_type)
+                                .filter_map(Result::ok)
+                                .collect::<HashSet<_>>();
 
-    let maybe_numeric_type = simple_options
-        .iter()
-        .filter(|x| x.is_number())
-        .copied()
-        .reduce(|a, b| a.try_widen(b).unwrap());
+    let maybe_numeric_type = simple_options.iter()
+                                           .filter(|x| x.is_number())
+                                           .copied()
+                                           .reduce(|a, b| a.try_widen(b).unwrap());
 
-    let mut other_types = simple_options
-        .into_iter()
-        .filter(|x| !x.is_number())
-        .collect::<HashSet<_>>()
-        .into_iter();
+    let mut other_types = simple_options.into_iter()
+                                        .filter(|x| !x.is_number())
+                                        .collect::<HashSet<_>>()
+                                        .into_iter();
 
     let first = other_types.next();
     let second = other_types.next();
@@ -569,19 +487,16 @@ impl ToggleOr<u64> {
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, JsonSchema)]
 pub struct Stereo<T> {
-    pub left: T,
+    pub left:  T,
     pub right: T,
 }
 
 impl<T> Stereo<T> {
     pub fn both(value: T) -> Self
-    where
-        T: Clone,
+        where T: Clone
     {
-        Self {
-            left: { value.clone() },
-            right: { value },
-        }
+        Self { left:  { value.clone() },
+               right: { value }, }
     }
 }
 

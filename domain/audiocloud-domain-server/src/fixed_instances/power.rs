@@ -1,9 +1,7 @@
 use chrono::Duration;
 
 use audiocloud_api::cloud::domains::DomainPowerInstanceConfig;
-use audiocloud_api::{
-    DesiredInstancePowerState, InstancePowerState, ReportInstancePowerState, Timestamped,
-};
+use audiocloud_api::{DesiredInstancePowerState, InstancePowerState, ReportInstancePowerState, Timestamped};
 use InstancePowerState::*;
 
 use crate::fixed_instances::{NotifyInstancePowerChannelsChanged, SetDesiredPowerChannel};
@@ -11,33 +9,26 @@ use crate::tasks::NotifyTaskSpec;
 use crate::tracker::RequestTracker;
 
 pub struct Power {
-    state: Timestamped<InstancePowerState>,
+    state:   Timestamped<InstancePowerState>,
     desired: Timestamped<DesiredInstancePowerState>,
     tracker: RequestTracker,
-    config: DomainPowerInstanceConfig,
+    config:  DomainPowerInstanceConfig,
 }
 
 impl Power {
     pub fn new(config: DomainPowerInstanceConfig) -> Self {
-        Self {
-            state: { ShutDown.into() },
-            desired: { DesiredInstancePowerState::ShutDown.into() },
-            tracker: { Default::default() },
-            config: { config },
-        }
+        Self { state:   { ShutDown.into() },
+               desired: { DesiredInstancePowerState::ShutDown.into() },
+               tracker: { Default::default() },
+               config:  { config }, }
     }
 
     pub fn get_power_state(&self) -> ReportInstancePowerState {
-        ReportInstancePowerState {
-            actual: self.state.clone(),
-            desired: self.desired.clone(),
-        }
+        ReportInstancePowerState { actual:  self.state.clone(),
+                                   desired: self.desired.clone(), }
     }
 
-    pub fn update(
-        &mut self,
-        spec: &Timestamped<Option<NotifyTaskSpec>>,
-    ) -> Option<SetDesiredPowerChannel> {
+    pub fn update(&mut self, spec: &Timestamped<Option<NotifyTaskSpec>>) -> Option<SetDesiredPowerChannel> {
         let idle_off_delay_time = Duration::milliseconds(self.config.idle_off_delay_ms as i64);
 
         if spec.value().is_some() {
@@ -51,11 +42,9 @@ impl Power {
                 self.tracker.retried();
                 let power_up = matches!(self.desired.value(), DesiredInstancePowerState::PoweredUp);
 
-                return Some(SetDesiredPowerChannel {
-                    instance_id: { self.config.instance.clone() },
-                    channel: { self.config.channel },
-                    power: { power_up },
-                });
+                return Some(SetDesiredPowerChannel { instance_id: { self.config.instance.clone() },
+                                                     channel:     { self.config.channel },
+                                                     power:       { power_up }, });
             }
         }
 

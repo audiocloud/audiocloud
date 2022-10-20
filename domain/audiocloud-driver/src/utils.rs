@@ -13,18 +13,9 @@ pub fn rescale_range(value: f64, from: Range<f64>, to: Range<f64>) -> f64 {
     (value_from / from_len) * to_len + to.start
 }
 
-pub fn rescale_param(
-    value: Option<ModelValue>,
-    range: &ModelParameter,
-    _ch: usize,
-    to: f64,
-) -> f64 {
+pub fn rescale_param(value: Option<ModelValue>, range: &ModelParameter, _ch: usize, to: f64) -> f64 {
     if let Some(ModelValue::Number(value)) = value {
-        if let ModelValueOption::Range(
-            ModelValue::Number(from_start),
-            ModelValue::Number(from_end),
-        ) = range.values[0]
-        {
+        if let ModelValueOption::Range(ModelValue::Number(from_start), ModelValue::Number(from_end)) = range.values[0] {
             let value_from = value.max(from_start) - from_start;
             let from_len = from_end - from_start;
             let to_len = to;
@@ -52,9 +43,7 @@ pub fn rescale(value: f64, options: &[ModelValueOption], scale: f64) -> f64 {
             ModelValueOption::Single(ModelValue::Number(single)) if single == &value => {
                 return start_range;
             }
-            ModelValueOption::Range(ModelValue::Number(left), ModelValue::Number(right))
-                if left <= &value && &value <= right =>
-            {
+            ModelValueOption::Range(ModelValue::Number(left), ModelValue::Number(right)) if left <= &value && &value <= right => {
                 return rescale_range(value, *left..*right, start_range..end_range);
             }
             _ => {}
@@ -66,11 +55,10 @@ pub fn rescale(value: f64, options: &[ModelValueOption], scale: f64) -> f64 {
 
 pub fn repoint_param(value: Option<ModelValue>, ladder: &ModelParameter, _ch: usize) -> f64 {
     if let Some(ModelValue::Number(value)) = value {
-        ladder
-            .values
-            .iter()
-            .position(|x| *x == ModelValueOption::Single(ModelValue::Number(value)))
-            .unwrap() as f64
+        ladder.values
+              .iter()
+              .position(|x| *x == ModelValueOption::Single(ModelValue::Number(value)))
+              .unwrap() as f64
     } else if let Some(ModelValue::Bool(state)) = value {
         if state == false {
             return 0.0;
@@ -85,16 +73,8 @@ pub fn repoint_param(value: Option<ModelValue>, ladder: &ModelParameter, _ch: us
 pub fn repoint(value: ToggleOr<f64>, options: &[ModelValueOption]) -> usize {
     for (i, option) in options.iter().enumerate() {
         match (&value, option) {
-            (ToggleOr::Toggle(value), ModelValueOption::Single(ModelValue::Bool(opt_value)))
-                if value == opt_value =>
-            {
-                return i
-            }
-            (ToggleOr::Value(value), ModelValueOption::Single(ModelValue::Number(opt_value)))
-                if value == opt_value =>
-            {
-                return i
-            }
+            (ToggleOr::Toggle(value), ModelValueOption::Single(ModelValue::Bool(opt_value))) if value == opt_value => return i,
+            (ToggleOr::Value(value), ModelValueOption::Single(ModelValue::Number(opt_value))) if value == opt_value => return i,
             _ => {}
         }
     }

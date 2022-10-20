@@ -5,9 +5,7 @@ use actix_broker::{Broker, SystemBroker};
 use serde::{Deserialize, Serialize};
 use tracing::*;
 
-use audiocloud_api::instance_driver::{
-    InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent,
-};
+use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent};
 use audiocloud_api::newtypes::FixedInstanceId;
 
 pub mod distopik;
@@ -45,7 +43,7 @@ pub trait InstanceConfig {
 #[rtype(result = "Result<(), InstanceDriverError>")]
 pub struct Command {
     pub instance_id: FixedInstanceId,
-    pub command: InstanceDriverCommand,
+    pub command:     InstanceDriverCommand,
 }
 
 #[derive(Message)]
@@ -58,17 +56,15 @@ pub struct GetValues {
 #[rtype(result = "()")]
 pub struct NotifyInstanceValues {
     pub instance_id: FixedInstanceId,
-    pub parameters: serde_json::Value,
-    pub reports: serde_json::Value,
+    pub parameters:  serde_json::Value,
+    pub reports:     serde_json::Value,
 }
 
 impl NotifyInstanceValues {
     pub fn new(instance_id: FixedInstanceId) -> Self {
-        Self {
-            instance_id,
-            parameters: Default::default(),
-            reports: Default::default(),
-        }
+        Self { instance_id,
+               parameters: Default::default(),
+               reports: Default::default() }
     }
 }
 
@@ -80,7 +76,7 @@ pub struct GetInstances;
 #[rtype(result = "()")]
 pub struct Event {
     pub instance_id: FixedInstanceId,
-    pub event: InstanceDriverEvent,
+    pub event:       InstanceDriverEvent,
 }
 
 pub fn emit_event(instance_id: FixedInstanceId, event: InstanceDriverEvent) {

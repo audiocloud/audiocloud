@@ -19,7 +19,6 @@ impl Handler<NotifyTaskSecurity> for SocketsSupervisor {
     type Result = ();
 
     fn handle(&mut self, msg: NotifyTaskSecurity, ctx: &mut Self::Context) -> Self::Result {
-        self.security
-            .insert(msg.task_id.clone(), msg.security.clone());
+        self.security.insert(msg.task_id.clone(), msg.security.clone());
     }
 }

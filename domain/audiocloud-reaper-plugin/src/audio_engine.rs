@@ -11,9 +11,7 @@ use askama::Template;
 
 use flume::{Receiver, Sender};
 use once_cell::sync::OnceCell;
-use reaper_medium::{
-    ChunkCacheHint, ControlSurface, MediaTrack, ProjectContext, Reaper, TrackDefaultsBehavior,
-};
+use reaper_medium::{ChunkCacheHint, ControlSurface, MediaTrack, ProjectContext, Reaper, TrackDefaultsBehavior};
 use serde::{Deserialize, Serialize};
 use tracing::*;
 use uuid::Uuid;
@@ -40,67 +38,52 @@ mod rest_api;
 
 pub struct PluginRegistry {
     pub tx_engine: Sender<ReaperEngineCommand>,
-    pub plugins: HashMap<AppTaskId, Sender<StreamingPluginCommand>>,
+    pub plugins:   HashMap<AppTaskId, Sender<StreamingPluginCommand>>,
 }
 
 impl PluginRegistry {
-    pub fn register(
-        id: AppTaskId,
-        sender: Sender<StreamingPluginCommand>,
-    ) -> Sender<ReaperEngineCommand> {
-        let mut lock = PLUGIN_REGISTRY
-            .get()
-            .expect("Plugin registry exists")
-            .lock()
-            .expect("Plugin registry lock");
+    pub fn register(id: AppTaskId, sender: Sender<StreamingPluginCommand>) -> Sender<ReaperEngineCommand> {
+        let mut lock = PLUGIN_REGISTRY.get()
+                                      .expect("Plugin registry exists")
+                                      .lock()
+                                      .expect("Plugin registry lock");
         lock.plugins.insert(id, sender);
         lock.tx_engine.clone()
     }
 
     pub fn unregister(id: &AppTaskId) {
-        let mut lock = PLUGIN_REGISTRY
-            .get()
-            .expect("Plugin registry exists")
-            .lock()
-            .expect("Plugin registry lock");
+        let mut lock = PLUGIN_REGISTRY.get()
+                                      .expect("Plugin registry exists")
+                                      .lock()
+                                      .expect("Plugin registry lock");
         lock.plugins.remove(id);
     }
 
-    pub fn play(
-        app_session_id: &AppTaskId,
-        play: RequestPlay,
-        context: ProjectContext,
-    ) -> anyhow::Result<()> {
-        let lock = PLUGIN_REGISTRY
-            .get()
-            .ok_or_else(|| anyhow!("failed to obtain plugin registry: not initialized?"))?
-            .lock()
-            .map_err(|_| anyhow!("failed to lock plugin registry"))?;
+    pub fn play(app_session_id: &AppTaskId, play: RequestPlay, context: ProjectContext) -> anyhow::Result<()> {
+        let lock = PLUGIN_REGISTRY.get()
+                                  .ok_or_else(|| anyhow!("failed to obtain plugin registry: not initialized?"))?
+                                  .lock()
+                                  .map_err(|_| anyhow!("failed to lock plugin registry"))?;
 
-        let plugin = lock
-            .plugins
-            .get(app_session_id)
-            .ok_or_else(|| anyhow!("No plugin for session {app_session_id}"))?;
+        let plugin = lock.plugins
+                         .get(app_session_id)
+                         .ok_or_else(|| anyhow!("No plugin for session {app_session_id}"))?;
 
-        let _ = plugin.try_send(StreamingPluginCommand::Play {
-            context: ProjectContext::CurrentProject,
-            play,
-        });
+        let _ = plugin.try_send(StreamingPluginCommand::Play { context: ProjectContext::CurrentProject,
+                                                               play });
 
         Ok(())
     }
 
     pub fn flush(app_session_id: &AppTaskId, play_id: PlayId) -> anyhow::Result<()> {
-        let lock = PLUGIN_REGISTRY
-            .get()
-            .ok_or_else(|| anyhow!("failed to obtain plugin registry: not initialized?"))?
-            .lock()
-            .map_err(|_| anyhow!("failed to lock plugin registry"))?;
+        let lock = PLUGIN_REGISTRY.get()
+                                  .ok_or_else(|| anyhow!("failed to obtain plugin registry: not initialized?"))?
+                                  .lock()
+                                  .map_err(|_| anyhow!("failed to lock plugin registry"))?;
 
-        let plugin = lock
-            .plugins
-            .get(app_session_id)
-            .ok_or_else(|| anyhow!("No plugin for session {app_session_id}"))?;
+        let plugin = lock.plugins
+                         .get(app_session_id)
+                         .ok_or_else(|| anyhow!("No plugin for session {app_session_id}"))?;
 
         let _ = plugin.try_send(StreamingPluginCommand::Flush { play_id });
 
@@ -108,23 +91,19 @@ impl PluginRegistry {
     }
 
     pub fn has(app_session_id: &AppTaskId) -> anyhow::Result<bool> {
-        let lock = PLUGIN_REGISTRY
-            .get()
-            .ok_or_else(|| anyhow!("failed to obtain plugin registry: not initialized?"))?
-            .lock()
-            .map_err(|_| anyhow!("failed to lock plugin registry"))?;
+        let lock = PLUGIN_REGISTRY.get()
+                                  .ok_or_else(|| anyhow!("failed to obtain plugin registry: not initialized?"))?
+                                  .lock()
+                                  .map_err(|_| anyhow!("failed to lock plugin registry"))?;
 
         Ok(lock.plugins.contains_key(app_session_id))
     }
 
     pub(crate) fn init(tx_engine: Sender<ReaperEngineCommand>) {
-        PLUGIN_REGISTRY
-            .set(Mutex::new(PluginRegistry {
-                tx_engine,
-                plugins: HashMap::new(),
-            }))
-            .map_err(|_| anyhow!("Plugin registry already initialized"))
-            .expect("init Plugin Registry");
+        PLUGIN_REGISTRY.set(Mutex::new(PluginRegistry { tx_engine,
+                                                        plugins: HashMap::new() }))
+                       .map_err(|_| anyhow!("Plugin registry already initialized"))
+                       .expect("init Plugin Registry");
     }
 }
 
@@ -141,30 +120,25 @@ pub enum ReaperEngineCommand {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EngineStatus {
-    pub is_playing: Option<PlayId>,
-    pub is_rendering: Option<RenderId>,
+    pub is_playing:           Option<PlayId>,
+    pub is_rendering:         Option<RenderId>,
     pub is_transport_playing: bool,
-    pub position: f64,
-    pub plugin_ready: bool,
+    pub position:             f64,
+    pub plugin_ready:         bool,
 }
 
 #[derive(Debug)]
 pub enum StreamingPluginCommand {
-    Play {
-        context: ProjectContext,
-        play: RequestPlay,
-    },
-    Flush {
-        play_id: PlayId,
-    },
+    Play { context: ProjectContext, play: RequestPlay },
+    Flush { play_id: PlayId },
 }
 
 #[derive(Debug)]
 pub struct ReaperEngine {
     shared_media_root: PathBuf,
-    sessions: HashMap<AppTaskId, EngineProject>,
-    rx_cmd: Receiver<ReaperEngineCommand>,
-    tx_evt: Sender<EngineEvent>,
+    sessions:          HashMap<AppTaskId, EngineProject>,
+    rx_cmd:            Receiver<ReaperEngineCommand>,
+    tx_evt:            Sender<EngineEvent>,
 }
 
 impl Drop for ReaperEngine {
@@ -186,20 +160,17 @@ impl ReaperEngine {
 
 impl ReaperEngine {
     #[instrument(skip_all)]
-    pub fn new(
-        shared_media_root: PathBuf,
-        tx_cmd: Sender<ReaperEngineCommand>,
-        rx_cmd: Receiver<ReaperEngineCommand>,
-        tx_evt: Sender<EngineEvent>,
-    ) -> ReaperEngine {
+    pub fn new(shared_media_root: PathBuf,
+               tx_cmd: Sender<ReaperEngineCommand>,
+               rx_cmd: Receiver<ReaperEngineCommand>,
+               tx_evt: Sender<EngineEvent>)
+               -> ReaperEngine {
         thread::spawn(move || rest_api::run(tx_cmd));
 
-        ReaperEngine {
-            sessions: HashMap::new(),
-            shared_media_root,
-            rx_cmd,
-            tx_evt,
-        }
+        ReaperEngine { sessions: HashMap::new(),
+                       shared_media_root,
+                       rx_cmd,
+                       tx_evt }
     }
 
     #[instrument(skip_all, err)]
@@ -209,109 +180,85 @@ impl ReaperEngine {
         debug!(?cmd, "entered");
 
         match cmd {
-            SetSpec {
-                task_id: session_id,
-                spec,
-                instances,
-                media_ready,
-            } => {
+            SetSpec { task_id: session_id,
+                      spec,
+                      instances,
+                      media_ready, } => {
                 if let Some(project) = self.sessions.get_mut(&session_id) {
                     project.set_spec(spec, instances, media_ready)?;
                 } else {
                     self.create_session(session_id, spec, instances, media_ready)?;
                 }
             }
-            Media {
-                task_id: session_id,
-                media_ready: ready,
-            } => {
+            Media { task_id: session_id,
+                    media_ready: ready, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.on_media_updated(&ready)?;
                 }
             }
-            ModifySpec {
-                task_id: session_id,
-                transaction,
-                instances,
-                media_ready,
-            } => {
+            ModifySpec { task_id: session_id,
+                         transaction,
+                         instances,
+                         media_ready, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.modify_spec(transaction, instances, media_ready)?;
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            SetDynamicParameterValues {
-                task_id: session_id,
-                ..
-            } => {
+            SetDynamicParameterValues { task_id: session_id, .. } => {
                 if let Some(_) = self.sessions.get_mut(&session_id) {
                     // TODO: implement dynamic parameters
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            Render {
-                task_id: session_id,
-                render,
-            } => {
+            Render { task_id: session_id,
+                     render, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.render(render)?;
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            Play {
-                task_id: session_id,
-                play,
-            } => {
+            Play { task_id: session_id, play } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.play(play)?;
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            UpdatePlay {
-                task_id: session_id,
-                update,
-            } => {
+            UpdatePlay { task_id: session_id,
+                         update, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.update_play(update)?;
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            CancelRender {
-                task_id: session_id,
-                render_id,
-            } => {
+            CancelRender { task_id: session_id,
+                           render_id, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.stop_render(render_id)?;
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            StopPlay {
-                task_id: session_id,
-                play_id,
-            } => {
+            StopPlay { task_id: session_id,
+                       play_id, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.stop_play(play_id)?;
                 } else {
                     return Err(anyhow!("Session not found"));
                 }
             }
-            Instances {
-                task_id: session_id,
-                instances,
-            } => {
+            Instances { task_id: session_id,
+                        instances, } => {
                 if let Some(session) = self.sessions.get_mut(&session_id) {
                     session.on_instances_updated(&instances)?;
                 }
             }
-            Close {
-                task_id: session_id,
-            } => {
+            Close { task_id: session_id } => {
                 if let Some(session) = self.sessions.remove(&session_id) {
                     drop(session);
                 } else {
@@ -322,49 +269,36 @@ impl ReaperEngine {
         Ok(())
     }
 
-    fn create_session(
-        &mut self,
-        session_id: AppTaskId,
-        spec: TaskSpec,
-        instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
-        media: HashMap<AppMediaObjectId, String>,
-    ) -> anyhow::Result<()> {
+    fn create_session(&mut self,
+                      session_id: AppTaskId,
+                      spec: TaskSpec,
+                      instances: HashMap<FixedInstanceId, FixedInstanceRouting>,
+                      media: HashMap<AppMediaObjectId, String>)
+                      -> anyhow::Result<()> {
         // create a temporary folder
         // within it, create a file with {app_session_id}.rpp
 
         let temp_dir = tempdir::TempDir::new("audiocloud-session")?;
 
-        self.sessions.insert(
-            session_id.clone(),
-            EngineProject::new(
-                session_id,
-                temp_dir,
-                self.shared_media_root.clone(),
-                spec,
-                instances,
-                media,
-            )?,
-        );
+        self.sessions.insert(session_id.clone(),
+                             EngineProject::new(session_id, temp_dir, self.shared_media_root.clone(), spec, instances, media)?);
 
         Ok(())
     }
 
     #[instrument(skip_all, err)]
-    pub fn send_playing_audio_event(
-        &mut self,
-        session_id: AppTaskId,
-        play_id: PlayId,
-        audio: CompressedAudio,
-        peak_metering: HashMap<NodePadId, PadMetering>,
-    ) -> anyhow::Result<()> {
+    pub fn send_playing_audio_event(&mut self,
+                                    session_id: AppTaskId,
+                                    play_id: PlayId,
+                                    audio: CompressedAudio,
+                                    peak_metering: HashMap<NodePadId, PadMetering>)
+                                    -> anyhow::Result<()> {
         let dynamic_reports = Default::default();
-        let event = EngineEvent::Playing {
-            task_id: session_id,
-            play_id,
-            audio,
-            peak_metering,
-            dynamic_reports,
-        };
+        let event = EngineEvent::Playing { task_id: session_id,
+                                           play_id,
+                                           audio,
+                                           peak_metering,
+                                           dynamic_reports };
         debug!(?event);
 
         self.tx_evt.try_send(event)?;
@@ -402,10 +336,8 @@ impl ControlSurface for ReaperEngine {
                     let _ = send_status.send(self.get_status());
                 }
                 ReaperEngineCommand::PlayError(session_id, error) => {
-                    let _ = self.tx_evt.send(EngineEvent::Error {
-                        task_id: session_id,
-                        error,
-                    });
+                    let _ = self.tx_evt.send(EngineEvent::Error { task_id: session_id,
+                                                                  error });
                 }
             }
         }
@@ -423,47 +355,38 @@ impl ControlSurface for ReaperEngine {
 pub fn beautify_chunk(chunk: String) -> String {
     let mut tab = 0;
 
-    chunk
-        .lines()
-        .flat_map(|line| {
-            let line = line.trim();
-            let mut this_line_tab = tab;
-            if line.starts_with('<') {
-                tab += 1;
-            } else if line.ends_with('>') {
-                tab -= 1;
-                this_line_tab -= 1;
-            }
+    chunk.lines()
+         .flat_map(|line| {
+             let line = line.trim();
+             let mut this_line_tab = tab;
+             if line.starts_with('<') {
+                 tab += 1;
+             } else if line.ends_with('>') {
+                 tab -= 1;
+                 this_line_tab -= 1;
+             }
 
-            if line.is_empty() {
-                None
-            } else {
-                Some("\t".repeat(this_line_tab) + line)
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+             if line.is_empty() {
+                 None
+             } else {
+                 Some("\t".repeat(this_line_tab) + line)
+             }
+         })
+         .collect::<Vec<_>>()
+         .join("\n")
 }
 
 #[derive(Template)]
 #[template(path = "audio_engine/auxrecv_connection.txt")]
 struct ConnectionTemplate<'a> {
-    id: &'a NodeConnectionId,
-    project: &'a EngineProjectTemplateSnapshot,
+    id:         &'a NodeConnectionId,
+    project:    &'a EngineProjectTemplateSnapshot,
     connection: &'a NodeConnection,
 }
 
 impl<'a> ConnectionTemplate<'a> {
-    pub fn new(
-        project: &'a EngineProjectTemplateSnapshot,
-        id: &'a NodeConnectionId,
-        connection: &'a NodeConnection,
-    ) -> Self {
-        Self {
-            id,
-            project,
-            connection,
-        }
+    pub fn new(project: &'a EngineProjectTemplateSnapshot, id: &'a NodeConnectionId, connection: &'a NodeConnection) -> Self {
+        Self { id, project, connection }
     }
 
     fn source_reaper_channel(&self) -> i32 {
@@ -496,9 +419,8 @@ fn append_track(pad_id: &NodePadId, context: ProjectContext) -> anyhow::Result<(
 
     reaper.insert_track_at_index(index, TrackDefaultsBehavior::OmitDefaultEnvAndFx);
 
-    let track = reaper
-        .get_track(context, index)
-        .ok_or_else(|| anyhow!("failed to get track we just created"))?;
+    let track = reaper.get_track(context, index)
+                      .ok_or_else(|| anyhow!("failed to get track we just created"))?;
 
     let pad_id = pad_id.to_string();
 
@@ -525,11 +447,7 @@ pub(crate) fn delete_track(context: ProjectContext, track: MediaTrack) {
 }
 
 #[instrument(skip_all, err)]
-pub(crate) fn set_track_chunk(
-    context: ProjectContext,
-    track: MediaTrack,
-    chunk: &str,
-) -> anyhow::Result<()> {
+pub(crate) fn set_track_chunk(context: ProjectContext, track: MediaTrack, chunk: &str) -> anyhow::Result<()> {
     let reaper = Reaper::get();
     unsafe {
         if reaper.validate_ptr_2(context, track) {

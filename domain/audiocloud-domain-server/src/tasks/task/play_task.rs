@@ -14,18 +14,13 @@ impl Handler<PlayTask> for TaskActor {
     fn handle(&mut self, msg: PlayTask, ctx: &mut Self::Context) -> Self::Result {
         // TODO: check play_id history
 
-        let rv = TaskPlaying::Playing {
-            task_id: { self.id.clone() },
-            play_id: { msg.play.play_id.clone() },
-        };
+        let rv = TaskPlaying::Playing { task_id: { self.id.clone() },
+                                        play_id: { msg.play.play_id.clone() }, };
 
-        let desired_instance_state = DesiredInstancePlayState::Playing {
-            play_id: { msg.play.play_id.clone() },
-        };
+        let desired_instance_state = DesiredInstancePlayState::Playing { play_id: { msg.play.play_id.clone() }, };
         let desired_task_state = DesiredTaskPlayState::Play(msg.play);
 
-        self.fixed_instances
-            .set_desired_state(desired_instance_state);
+        self.fixed_instances.set_desired_state(desired_instance_state);
         self.engine.set_desired_state(desired_task_state);
 
         Ok(rv)

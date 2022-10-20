@@ -44,20 +44,10 @@ async fn test_supervisor() {
     }
 
     let actor = Supervisor::start(move |_| SupervisedActor);
-    actor
-        .send(DoSupervisedRestart)
-        .await
-        .expect("Expecting nothing");
-    actor
-        .send(DoSupervisedRestart)
-        .await
-        .expect("Expecting nothing");
+    actor.send(DoSupervisedRestart).await.expect("Expecting nothing");
+    actor.send(DoSupervisedRestart).await.expect("Expecting nothing");
 
     assert_eq!(START_COUNT.load(SeqCst), 3, "initial + 2 restarts");
     assert_eq!(RESTART_COUNT.load(SeqCst), 2, "2 restarts");
-    assert_eq!(
-        RECEIVED_MESSAGE_COUNT.load(SeqCst),
-        2,
-        "2 received messages"
-    );
+    assert_eq!(RECEIVED_MESSAGE_COUNT.load(SeqCst), 2, "2 received messages");
 }

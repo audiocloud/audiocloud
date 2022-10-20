@@ -17,28 +17,20 @@ use crate::media::DownloadJobId;
 
 #[derive(Debug)]
 pub struct Downloader {
-    db: Db,
-    job_id: DownloadJobId,
+    db:       Db,
+    job_id:   DownloadJobId,
     download: MediaDownload,
-    source: PathBuf,
-    client: Client,
+    source:   PathBuf,
+    client:   Client,
 }
 
 impl Downloader {
-    pub fn new(
-        db: Db,
-        job_id: DownloadJobId,
-        client: Client,
-        source: PathBuf,
-        download: MediaDownload,
-    ) -> anyhow::Result<Self> {
-        Ok(Self {
-            db,
-            job_id,
-            download,
-            source,
-            client,
-        })
+    pub fn new(db: Db, job_id: DownloadJobId, client: Client, source: PathBuf, download: MediaDownload) -> anyhow::Result<Self> {
+        Ok(Self { db,
+                  job_id,
+                  download,
+                  source,
+                  client })
     }
 
     #[instrument(skip_all)]
@@ -52,58 +44,47 @@ impl Downloader {
         debug!(?source, ?download, %media_id, "starting download");
 
         async move {
-            client
-                .put(&download.download.url)
-                .body(File::open(&source).await?)
-                .send()
-                .await?;
+            client.put(&download.download.url).body(File::open(&source).await?).send().await?;
 
             if let Some(notify_url) = &download.download.notify_url {
-                client
-                    .post(notify_url)
-                    .json(&json!({
-                        "context": &download.download.context,
-                        "id": &media_id,
-                    }))
-                    .send()
-                    .await?;
+                client.post(notify_url)
+                      .json(&json!({
+                                "context": &download.download.context,
+                                "id": &media_id,
+                            }))
+                      .send()
+                      .await?;
             }
 
             Ok::<_, anyhow::Error>(())
-        }
-        .into_actor(self)
-        .map(|res, actor, ctx| match res {
-            Ok(_) => {
-                actor.download.state.error = None;
-                actor.download.state.in_progress = false;
+        }.into_actor(self)
+         .map(|res, actor, ctx| match res {
+             Ok(_) => {
+                 actor.download.state.error = None;
+                 actor.download.state.in_progress = false;
 
-                block_on(actor.save_and_notify());
+                 block_on(actor.save_and_notify());
 
-                ctx.stop();
-            }
-            Err(err) => {
-                warn!(%err, "download failed");
+                 ctx.stop();
+             }
+             Err(err) => {
+                 warn!(%err, "download failed");
 
-                actor.download.state.error = Some(err.to_string());
+                 actor.download.state.error = Some(err.to_string());
 
-                block_on(actor.save_and_notify());
+                 block_on(actor.save_and_notify());
 
-                actor.started(ctx);
-            }
-        })
-        .spawn(ctx);
+                 actor.started(ctx);
+             }
+         })
+         .spawn(ctx);
     }
 
     async fn save_and_notify(&mut self) {
         self.download.state.updated_at = now();
-        let _ = self
-            .db
-            .save_download_job(&self.job_id, &self.download)
-            .await;
-        self.issue_system_async(NotifyDownloadProgress {
-            job_id: self.job_id,
-            download: self.download.clone(),
-        });
+        let _ = self.db.save_download_job(&self.job_id, &self.download).await;
+        self.issue_system_async(NotifyDownloadProgress { job_id:   self.job_id,
+                                                         download: self.download.clone(), });
     }
 }
 

@@ -8,8 +8,8 @@ use crate::common::ModelId;
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 pub struct ModelFilter {
     pub manufacturer_is: Option<String>,
-    pub name_contains: Option<String>,
-    pub id_one_of: HashSet<ModelId>,
+    pub name_contains:   Option<String>,
+    pub id_one_of:       HashSet<ModelId>,
 }
 
 impl ModelFilter {

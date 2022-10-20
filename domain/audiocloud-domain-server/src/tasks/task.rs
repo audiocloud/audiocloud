@@ -10,17 +10,15 @@ use tracing::*;
 use audiocloud_api::audio_engine::{EngineCommand, EngineError};
 use audiocloud_api::cloud::domains::FixedInstanceRouting;
 use audiocloud_api::{
-    AppMediaObjectId, AppTaskId, DomainId, EngineId, FixedInstanceId, SerializableResult,
-    StreamingPacket, TaskReservation, TaskSecurity, TaskSpec,
+    AppMediaObjectId, AppTaskId, DomainId, EngineId, FixedInstanceId, SerializableResult, StreamingPacket, TaskReservation, TaskSecurity,
+    TaskSpec,
 };
 
 use crate::config::NotifyFixedInstanceRouting;
 use crate::fixed_instances::{get_instance_supervisor, GetMultipleFixedInstanceState};
 use crate::nats;
 use crate::tasks::task_engine::TaskEngine;
-use crate::tasks::{
-    NotifyTaskActivated, NotifyTaskReservation, NotifyTaskSecurity, NotifyTaskSpec, TaskOpts,
-};
+use crate::tasks::{NotifyTaskActivated, NotifyTaskReservation, NotifyTaskSecurity, NotifyTaskSpec, TaskOpts};
 
 use super::task_fixed_instance::TaskFixedInstances;
 use super::task_media_objects::TaskMediaObjects;
@@ -37,19 +35,19 @@ mod seek_task;
 mod stop_play;
 
 pub struct TaskActor {
-    id: AppTaskId,
-    opts: TaskOpts,
-    engine_id: EngineId,
-    domain_id: DomainId,
-    reservations: TaskReservation,
-    spec: TaskSpec,
-    security: TaskSecurity,
+    id:                     AppTaskId,
+    opts:                   TaskOpts,
+    engine_id:              EngineId,
+    domain_id:              DomainId,
+    reservations:           TaskReservation,
+    spec:                   TaskSpec,
+    security:               TaskSecurity,
     engine_command_subject: String,
     fixed_instance_routing: HashMap<FixedInstanceId, FixedInstanceRouting>,
-    fixed_instances: TaskFixedInstances,
-    media_objects: TaskMediaObjects,
-    engine: TaskEngine,
-    packet: StreamingPacket,
+    fixed_instances:        TaskFixedInstances,
+    media_objects:          TaskMediaObjects,
+    engine:                 TaskEngine,
+    packet:                 StreamingPacket,
 }
 
 impl Actor for TaskActor {
@@ -62,9 +60,7 @@ impl Actor for TaskActor {
 
         self.notify_task_reservation();
 
-        self.issue_system_async(NotifyTaskActivated {
-            task_id: self.id.clone(),
-        });
+        self.issue_system_async(NotifyTaskActivated { task_id: self.id.clone() });
 
         // subscribe to routing changes
         self.subscribe_system_async::<NotifyFixedInstanceRouting>(ctx);
@@ -77,66 +73,54 @@ impl Actor for TaskActor {
 }
 
 impl TaskActor {
-    pub fn new(
-        id: AppTaskId,
-        opts: TaskOpts,
-        domain_id: DomainId,
-        engine_id: EngineId,
-        reservations: TaskReservation,
-        spec: TaskSpec,
-        security: TaskSecurity,
-        routing: HashMap<FixedInstanceId, FixedInstanceRouting>,
-    ) -> anyhow::Result<Self> {
+    pub fn new(id: AppTaskId,
+               opts: TaskOpts,
+               domain_id: DomainId,
+               engine_id: EngineId,
+               reservations: TaskReservation,
+               spec: TaskSpec,
+               security: TaskSecurity,
+               routing: HashMap<FixedInstanceId, FixedInstanceRouting>)
+               -> anyhow::Result<Self> {
         let engine_command_subject = engine_id.engine_command_subject();
 
-        Ok(Self {
-            id: { id.clone() },
-            engine_id: { engine_id },
-            domain_id: { domain_id },
-            opts: { opts },
-            reservations: { reservations },
-            spec: { spec },
-            security: { security },
-            engine_command_subject: { engine_command_subject },
-            fixed_instance_routing: { routing },
-            fixed_instances: { TaskFixedInstances::default() },
-            media_objects: { TaskMediaObjects::default() },
-            engine: { TaskEngine::new(id.clone()) },
-            packet: { Default::default() },
-        })
+        Ok(Self { id:                     { id.clone() },
+                  engine_id:              { engine_id },
+                  domain_id:              { domain_id },
+                  opts:                   { opts },
+                  reservations:           { reservations },
+                  spec:                   { spec },
+                  security:               { security },
+                  engine_command_subject: { engine_command_subject },
+                  fixed_instance_routing: { routing },
+                  fixed_instances:        { TaskFixedInstances::default() },
+                  media_objects:          { TaskMediaObjects::default() },
+                  engine:                 { TaskEngine::new(id.clone()) },
+                  packet:                 { Default::default() }, })
     }
 
     fn update(&mut self, ctx: &mut <Self as Actor>::Context) {
-        self.engine
-            .set_instances_are_ready(self.fixed_instances.update(&self.spec));
+        self.engine.set_instances_are_ready(self.fixed_instances.update(&self.spec));
 
         if let Some(engine_cmd) = self.engine.update() {
-            nats::request_msgpack(self.engine_command_subject.clone(), engine_cmd)
-                .into_actor(self)
-                .map(Self::handle_engine_response)
-                .spawn(ctx)
+            nats::request_msgpack(self.engine_command_subject.clone(), engine_cmd).into_actor(self)
+                                                                                  .map(Self::handle_engine_response)
+                                                                                  .spawn(ctx)
         }
     }
 
     fn set_engine_spec(&mut self, ctx: &mut Context<TaskActor>) {
-        let cmd = EngineCommand::SetSpec {
-            task_id: { self.id.clone() },
-            spec: { self.spec.clone() },
-            instances: { self.engine_fixed_instance_routing() },
-            media_ready: { self.engine_media_paths() },
-        };
+        let cmd = EngineCommand::SetSpec { task_id:     { self.id.clone() },
+                                           spec:        { self.spec.clone() },
+                                           instances:   { self.engine_fixed_instance_routing() },
+                                           media_ready: { self.engine_media_paths() }, };
 
-        nats::request_msgpack(self.engine_command_subject.clone(), cmd)
-            .into_actor(self)
-            .map(Self::handle_engine_response)
-            .spawn(ctx);
+        nats::request_msgpack(self.engine_command_subject.clone(), cmd).into_actor(self)
+                                                                       .map(Self::handle_engine_response)
+                                                                       .spawn(ctx);
     }
 
-    fn handle_engine_response(
-        res: anyhow::Result<SerializableResult<(), EngineError>>,
-        actor: &mut Self,
-        ctx: &mut Context<Self>,
-    ) {
+    fn handle_engine_response(res: anyhow::Result<SerializableResult<(), EngineError>>, actor: &mut Self, ctx: &mut Context<Self>) {
         match res {
             Ok(SerializableResult::Error(error)) => {
                 error!(%error, id = %actor.id, "Engine command failed");
@@ -149,17 +133,14 @@ impl TaskActor {
     }
 
     fn update_fixed_instance_state(&self, ctx: &mut <Self as Actor>::Context) {
-        get_instance_supervisor()
-            .send(GetMultipleFixedInstanceState {
-                instance_ids: self.reservations.fixed_instances.clone(),
-            })
-            .into_actor(self)
-            .map(|res, actor, ctx| {
-                if let Ok(state) = res {
-                    actor.update_fixed_instance_state_inner(state, ctx);
-                }
-            })
-            .spawn(ctx);
+        get_instance_supervisor().send(GetMultipleFixedInstanceState { instance_ids: self.reservations.fixed_instances.clone(), })
+                                 .into_actor(self)
+                                 .map(|res, actor, ctx| {
+                                     if let Ok(state) = res {
+                                         actor.update_fixed_instance_state_inner(state, ctx);
+                                     }
+                                 })
+                                 .spawn(ctx);
     }
 
     fn engine_fixed_instance_routing(&self) -> HashMap<FixedInstanceId, FixedInstanceRouting> {
@@ -180,23 +161,17 @@ impl TaskActor {
     }
 
     fn notify_task_spec(&mut self) {
-        self.issue_system_async(NotifyTaskSpec {
-            task_id: self.id.clone(),
-            spec: self.spec.clone(),
-        });
+        self.issue_system_async(NotifyTaskSpec { task_id: self.id.clone(),
+                                                 spec:    self.spec.clone(), });
     }
 
     fn notify_task_security(&mut self) {
-        self.issue_system_async(NotifyTaskSecurity {
-            task_id: self.id.clone(),
-            security: self.security.clone(),
-        });
+        self.issue_system_async(NotifyTaskSecurity { task_id:  self.id.clone(),
+                                                     security: self.security.clone(), });
     }
 
     fn notify_task_reservation(&mut self) {
-        self.issue_system_async(NotifyTaskReservation {
-            task_id: self.id.clone(),
-            reservation: self.reservations.clone(),
-        });
+        self.issue_system_async(NotifyTaskReservation { task_id:     self.id.clone(),
+                                                        reservation: self.reservations.clone(), });
     }
 }

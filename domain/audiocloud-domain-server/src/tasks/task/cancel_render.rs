@@ -15,20 +15,14 @@ impl Handler<CancelRenderTask> for TaskActor {
         let render_id = msg.cancel.render_id;
 
         if play_state.is_rendering(&render_id) {
-            self.engine.enqueue(EngineCommand::CancelRender {
-                task_id: { self.id.clone() },
-                render_id: { render_id.clone() },
-            });
+            self.engine.enqueue(EngineCommand::CancelRender { task_id:   { self.id.clone() },
+                                                              render_id: { render_id.clone() }, });
 
-            Ok(TaskRenderCancelled::Cancelled {
-                task_id: { self.id.clone() },
-                render_id: { render_id },
-            })
+            Ok(TaskRenderCancelled::Cancelled { task_id:   { self.id.clone() },
+                                                render_id: { render_id }, })
         } else {
-            Err(DomainError::TaskIllegalPlayState {
-                task_id: { self.id.clone() },
-                state: { play_state.into() },
-            })
+            Err(DomainError::TaskIllegalPlayState { task_id: { self.id.clone() },
+                                                    state:   { play_state.into() }, })
         }
     }
 }

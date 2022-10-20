@@ -6,14 +6,12 @@ use schemars::schema::RootSchema;
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::OpenApi;
 
 use crate::common::change::ModifyTaskError;
 use crate::common::model::ResourceId;
 use crate::{
-    merge_schemas, AppId, AppMediaObjectId, AppTaskId, ChannelMask, DomainId,
-    DynamicInstanceNodeId, FixedInstanceId, FixedInstanceNodeId, MixerNodeId, ModelId,
-    NodeConnectionId, TrackNodeId,
+    merge_schemas, AppId, AppMediaObjectId, AppTaskId, ChannelMask, DomainId, DynamicInstanceNodeId, FixedInstanceId, FixedInstanceNodeId,
+    MixerNodeId, ModelId, NodeConnectionId, TrackNodeId,
 };
 
 pub mod apps;
@@ -56,14 +54,12 @@ pub enum CloudError {
     InternalInconsistency { message: String },
 
     #[error("Instances overlapping: {instance_ids:?}")]
-    OverlappingFixedInstances {
-        instance_ids: HashSet<FixedInstanceId>,
-    },
+    OverlappingFixedInstances { instance_ids: HashSet<FixedInstanceId> },
 
     #[error("Connection error: {connection_id}: {error}")]
     ConnectionError {
         connection_id: NodeConnectionId,
-        error: Box<CloudError>,
+        error:         Box<CloudError>,
     },
 
     #[error("Channel mask {mask:?} is invalid for channel count {channels}")]
@@ -79,9 +75,7 @@ pub enum CloudError {
     FixedInstanceNodeNotFound { fixed_node_id: FixedInstanceNodeId },
 
     #[error("Dynamic instance node not found: {dynamic_node_id}")]
-    DynamicInstanceNodeNotFound {
-        dynamic_node_id: DynamicInstanceNodeId,
-    },
+    DynamicInstanceNodeNotFound { dynamic_node_id: DynamicInstanceNodeId },
 
     #[error("Domain {domain_id} unknown")]
     DomainNotFound { domain_id: DomainId },
@@ -94,29 +88,29 @@ pub enum CloudError {
 
     #[error("Model {model_id} of a dynamic instance required by node {node_id} is not supported on domain {domain_id}")]
     DynamicInstanceNotSupported {
-        node_id: DynamicInstanceNodeId,
+        node_id:   DynamicInstanceNodeId,
         domain_id: DomainId,
-        model_id: ModelId,
+        model_id:  ModelId,
     },
 
     #[error("Fixed instance {instance_id} required by fixed instance node {node_id} is not supported on domain {domain_id}")]
     FixedInstanceNotSupported {
-        node_id: FixedInstanceNodeId,
-        domain_id: DomainId,
+        node_id:     FixedInstanceNodeId,
+        domain_id:   DomainId,
         instance_id: FixedInstanceId,
     },
 
     #[error("Fixed instance {instance_id} required by fixed instance node {node_id} is not avaialble to app {app_id} on domain {domain_id}")]
     FixedInstanceAccessDenied {
-        node_id: FixedInstanceNodeId,
-        domain_id: DomainId,
+        node_id:     FixedInstanceNodeId,
+        domain_id:   DomainId,
         instance_id: FixedInstanceId,
-        app_id: AppId,
+        app_id:      AppId,
     },
 
     #[error("Out of {resource} resource. Requested {requested} available {available}")]
     OutOfResource {
-        resource: ResourceId,
+        resource:  ResourceId,
         available: f64,
         requested: f64,
     },
@@ -143,76 +137,50 @@ pub enum CloudError {
     BlockingLock,
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(
-    apps::get_app,
-    apps::update_app,
-    tasks::create_task,
-    tasks::adjust_task_time,
-    tasks::delete_task,
-    tasks::modify_task_spec,
-    domains::get_domain,
-    domains::get_domain_config,
-    domains::add_domain_maintenance,
-    domains::clear_domain_maintenance,
-    domains::add_fixed_instance_maintenance,
-    domains::clear_fixed_instance_maintenance,
-    media::upload_media_object,
-    media::download_media_object,
-    media::delete_media_object,
-    media::report_media_job_progress
-))]
-pub struct CloudApi;
-
 pub fn schemas() -> RootSchema {
-    merge_schemas(
-        [
-            schema_for!(CloudError),
-            schema_for!(crate::ModifyTaskError),
-            schema_for!(crate::AppId),
-            schema_for!(crate::DomainId),
-            schema_for!(crate::TaskId),
-            schema_for!(crate::TimeRange),
-            schema_for!(crate::TrackNode),
-            schema_for!(crate::MixerNode),
-            schema_for!(crate::DynamicInstanceNode),
-            schema_for!(crate::FixedInstanceNode),
-            schema_for!(crate::NodeConnection),
-            schema_for!(crate::TaskPermissions),
-            schema_for!(crate::TrackMedia),
-            schema_for!(crate::TaskSpec),
-            schema_for!(crate::ModifyTaskSpec),
-            schema_for!(crate::ModifyTask),
-            schema_for!(crate::Model),
-            schema_for!(crate::MediaJobState),
-            schema_for!(crate::UploadToDomain),
-            schema_for!(crate::DownloadFromDomain),
-            schema_for!(apps::GetAppResponse),
-            schema_for!(apps::UpdateApp),
-            schema_for!(apps::AppUpdated),
-            schema_for!(tasks::CreateTask),
-            schema_for!(tasks::TaskCreated),
-            schema_for!(tasks::TaskUpdated),
-            schema_for!(tasks::TaskDeleted),
-            schema_for!(tasks::AdjustTaskTime),
-            schema_for!(tasks::ModifyTaskList),
-            schema_for!(domains::DomainMediaInstanceConfig),
-            schema_for!(domains::DomainPowerInstanceConfig),
-            schema_for!(domains::GetDomainResponse),
-            schema_for!(domains::DomainConfig),
-            schema_for!(domains::DomainUpdated),
-            schema_for!(domains::AddMaintenance),
-            schema_for!(domains::ClearMaintenance),
-            schema_for!(domains::Maintenance),
-            schema_for!(domains::AppFixedInstance),
-            schema_for!(domains::DomainFixedInstanceConfig),
-            schema_for!(domains::DynamicInstanceLimits),
-            schema_for!(domains::DomainEngineConfig),
-            schema_for!(media::DownloadCreated),
-            schema_for!(media::UploadCreated),
-            schema_for!(media::MediaObjectDeleted),
-            schema_for!(media::ReportMediaJobProgress),
-        ]
-        .into_iter(),
-    )
+    merge_schemas([schema_for!(CloudError),
+                   schema_for!(crate::ModifyTaskError),
+                   schema_for!(crate::AppId),
+                   schema_for!(crate::DomainId),
+                   schema_for!(crate::TaskId),
+                   schema_for!(crate::TimeRange),
+                   schema_for!(crate::TrackNode),
+                   schema_for!(crate::MixerNode),
+                   schema_for!(crate::DynamicInstanceNode),
+                   schema_for!(crate::FixedInstanceNode),
+                   schema_for!(crate::NodeConnection),
+                   schema_for!(crate::TaskPermissions),
+                   schema_for!(crate::TrackMedia),
+                   schema_for!(crate::TaskSpec),
+                   schema_for!(crate::ModifyTaskSpec),
+                   schema_for!(crate::ModifyTask),
+                   schema_for!(crate::Model),
+                   schema_for!(crate::MediaJobState),
+                   schema_for!(crate::UploadToDomain),
+                   schema_for!(crate::DownloadFromDomain),
+                   schema_for!(apps::GetAppResponse),
+                   schema_for!(apps::UpdateApp),
+                   schema_for!(apps::AppUpdated),
+                   schema_for!(tasks::CreateTask),
+                   schema_for!(tasks::TaskCreated),
+                   schema_for!(tasks::TaskUpdated),
+                   schema_for!(tasks::TaskDeleted),
+                   schema_for!(tasks::AdjustTaskTime),
+                   schema_for!(tasks::ModifyTaskList),
+                   schema_for!(domains::DomainMediaInstanceConfig),
+                   schema_for!(domains::DomainPowerInstanceConfig),
+                   schema_for!(domains::GetDomainResponse),
+                   schema_for!(domains::DomainConfig),
+                   schema_for!(domains::DomainUpdated),
+                   schema_for!(domains::AddMaintenance),
+                   schema_for!(domains::ClearMaintenance),
+                   schema_for!(domains::Maintenance),
+                   schema_for!(domains::AppFixedInstance),
+                   schema_for!(domains::DomainFixedInstanceConfig),
+                   schema_for!(domains::DynamicInstanceLimits),
+                   schema_for!(domains::DomainEngineConfig),
+                   schema_for!(media::DownloadCreated),
+                   schema_for!(media::UploadCreated),
+                   schema_for!(media::MediaObjectDeleted),
+                   schema_for!(media::ReportMediaJobProgress)].into_iter())
 }

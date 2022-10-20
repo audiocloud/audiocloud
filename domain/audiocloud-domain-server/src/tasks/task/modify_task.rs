@@ -16,45 +16,32 @@ impl Handler<ModifyTask> for TaskActor {
 
         if msg.revision < self.spec.revision {
             if msg.optional {
-                Ok(TaskUpdated::Ignored {
-                    task_id: self.id.clone(),
-                    revision: self.spec.revision,
-                })
+                Ok(TaskUpdated::Ignored { task_id:  self.id.clone(),
+                                          revision: self.spec.revision, })
             } else {
-                Err(DomainError::TaskModificationRevisionOutOfDate {
-                    task_id: self.id.clone(),
-                    revision: self.spec.revision,
-                })
+                Err(DomainError::TaskModificationRevisionOutOfDate { task_id:  self.id.clone(),
+                                                                     revision: self.spec.revision, })
             }
         } else if play_state.is_rendering_any() {
-            Err(DomainError::TaskIllegalPlayState {
-                task_id: self.id.clone(),
-                state: play_state.into(),
-            })
+            Err(DomainError::TaskIllegalPlayState { task_id: self.id.clone(),
+                                                    state:   play_state.into(), })
         } else {
             let mut clone = self.spec.clone();
             for update in msg.modify_spec {
-                clone
-                    .modify(update)
-                    .map_err(|error| DomainError::TaskModification {
-                        task_id: self.id.clone(),
-                        error,
-                    })?;
+                clone.modify(update)
+                     .map_err(|error| DomainError::TaskModification { task_id: self.id.clone(),
+                                                                      error })?;
             }
 
             clone.revision += 1;
             self.spec = clone;
-            self.engine.enqueue(EngineCommand::SetSpec {
-                task_id: self.id.clone(),
-                spec: self.spec.clone(),
-                instances: self.fixed_instance_routing.clone(),
-                media_ready: self.media_objects.ready_for_engine(),
-            });
+            self.engine.enqueue(EngineCommand::SetSpec { task_id:     self.id.clone(),
+                                                         spec:        self.spec.clone(),
+                                                         instances:   self.fixed_instance_routing.clone(),
+                                                         media_ready: self.media_objects.ready_for_engine(), });
 
-            Ok(TaskUpdated::Updated {
-                task_id: self.id.clone(),
-                revision: self.spec.revision,
-            })
+            Ok(TaskUpdated::Updated { task_id:  self.id.clone(),
+                                      revision: self.spec.revision, })
         }
     }
 }

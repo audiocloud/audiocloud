@@ -20,17 +20,14 @@ impl InstanceConfig for Config {
     fn create(self, id: FixedInstanceId) -> anyhow::Result<Recipient<Command>> {
         info!(%id, config = ?self, "Creating instance");
 
-        let driver = Netio4cMocked {
-            id,
-            state: vec![false; 4],
-        };
+        let driver = Netio4cMocked { id, state: vec![false; 4] };
 
         Ok(DriverActor::start_recipient(driver))
     }
 }
 
 struct Netio4cMocked {
-    id: FixedInstanceId,
+    id:    FixedInstanceId,
     state: Vec<bool>,
 }
 
@@ -44,13 +41,9 @@ impl Driver for Netio4cMocked {
     }
 
     fn poll(&mut self) -> Option<Duration> {
-        Self::emit_reports(
-            self.id.clone(),
-            PowerPdu4CReports {
-                power: Some(self.state.clone()),
-                ..Default::default()
-            },
-        );
+        Self::emit_reports(self.id.clone(),
+                           PowerPdu4CReports { power: Some(self.state.clone()),
+                                               ..Default::default() });
 
         Some(Duration::from_secs(5))
     }

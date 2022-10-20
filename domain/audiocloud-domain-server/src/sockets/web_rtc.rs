@@ -2,16 +2,12 @@ use std::default::Default;
 
 use std::time::Duration;
 
-use actix::{
-    Actor, ActorContext, ActorFutureExt, Addr, AsyncContext, Context, ContextFutureSpawner,
-    Handler, Message, WrapFuture,
-};
+use actix::{Actor, ActorContext, ActorFutureExt, Addr, AsyncContext, Context, ContextFutureSpawner, Handler, Message, WrapFuture};
 
 use clap::Args;
 use datachannel::{
-    ConnectionState, DataChannelHandler, DataChannelInit, GatheringState, IceCandidate,
-    PeerConnectionHandler, Reliability, RtcConfig, RtcDataChannel, RtcPeerConnection,
-    SessionDescription,
+    ConnectionState, DataChannelHandler, DataChannelInit, GatheringState, IceCandidate, PeerConnectionHandler, Reliability, RtcConfig,
+    RtcDataChannel, RtcPeerConnection, SessionDescription,
 };
 
 use futures::FutureExt;
@@ -61,9 +57,7 @@ impl PeerConnectionHandler for ActorConnectionHandler {
     type DCH = ActorDataChannelHandler;
 
     fn data_channel_handler(&mut self) -> Self::DCH {
-        ActorDataChannelHandler {
-            actor: self.actor.clone(),
-        }
+        ActorDataChannelHandler { actor: self.actor.clone() }
     }
 
     #[instrument(skip_all)]
@@ -111,8 +105,7 @@ impl DataChannelHandler for ActorDataChannelHandler {
 
     fn on_message(&mut self, msg: &[u8]) {
         debug!("DataChannel received message");
-        self.actor
-            .do_send(OnDataChannelMessage(bytes::Bytes::copy_from_slice(msg)));
+        self.actor.do_send(OnDataChannelMessage(bytes::Bytes::copy_from_slice(msg)));
     }
 
     fn on_closed(&mut self) {
@@ -122,24 +115,19 @@ impl DataChannelHandler for ActorDataChannelHandler {
 }
 
 pub struct WebRtcActor {
-    id: ClientSocketId,
+    id:                  ClientSocketId,
     initiator_socket_id: ClientSocketId,
-    peer_connection: Box<RtcPeerConnection<ActorConnectionHandler>>,
-    data_channel: Box<RtcDataChannel<ActorDataChannelHandler>>,
-    connected: bool,
+    peer_connection:     Box<RtcPeerConnection<ActorConnectionHandler>>,
+    data_channel:        Box<RtcDataChannel<ActorDataChannelHandler>>,
+    connected:           bool,
 }
 
 impl WebRtcActor {
-    pub fn new(
-        id: ClientSocketId,
-        initiator_socket_id: ClientSocketId,
-        opts: &WebRtcOpts,
-    ) -> anyhow::Result<(Addr<Self>, String)> {
-        let config = RtcConfig::new(&opts.ice_servers)
-            .enable_ice_tcp()
-            .enable_ice_udp_mux()
-            .port_range_begin(opts.web_rtc_port_min)
-            .port_range_end(opts.web_rtc_port_max);
+    pub fn new(id: ClientSocketId, initiator_socket_id: ClientSocketId, opts: &WebRtcOpts) -> anyhow::Result<(Addr<Self>, String)> {
+        let config = RtcConfig::new(&opts.ice_servers).enable_ice_tcp()
+                                                      .enable_ice_udp_mux()
+                                                      .port_range_begin(opts.web_rtc_port_min)
+                                                      .port_range_end(opts.web_rtc_port_max);
 
         let mut reliability = Reliability::default().max_retransmits(opts.web_rtc_max_retransmits);
 
@@ -154,23 +142,12 @@ impl WebRtcActor {
         let actor = Self::create({
             let local_description = &mut local_description;
             move |ctx| {
-                let mut peer_connection = RtcPeerConnection::new(
-                    &config,
-                    ActorConnectionHandler {
-                        actor: ctx.address(),
-                    },
-                )
-                .expect("Create peer connection");
+                let mut peer_connection =
+                    RtcPeerConnection::new(&config, ActorConnectionHandler { actor: ctx.address() }).expect("Create peer connection");
 
-                let data_channel = peer_connection
-                    .create_data_channel_ex(
-                        "data",
-                        ActorDataChannelHandler {
-                            actor: ctx.address(),
-                        },
-                        &data_channel_init,
-                    )
-                    .expect("Create data channel");
+                let data_channel =
+                    peer_connection.create_data_channel_ex("data", ActorDataChannelHandler { actor: ctx.address() }, &data_channel_init)
+                                   .expect("Create data channel");
 
                 *local_description = serde_json::to_string(
                     &peer_connection
@@ -181,13 +158,11 @@ impl WebRtcActor {
 
                 let connected = false;
 
-                Self {
-                    peer_connection,
-                    data_channel,
-                    id,
-                    initiator_socket_id,
-                    connected,
-                }
+                Self { peer_connection,
+                       data_channel,
+                       id,
+                       initiator_socket_id,
+                       connected }
             }
         });
 
@@ -214,11 +189,10 @@ impl Handler<OnDataChannelMessage> for WebRtcActor {
     type Result = ();
 
     fn handle(&mut self, msg: OnDataChannelMessage, ctx: &mut Self::Context) -> Self::Result {
-        get_sockets_supervisor()
-            .send(SocketReceived::Bytes(self.id.clone(), msg.0))
-            .map(drop)
-            .into_actor(self)
-            .spawn(ctx);
+        get_sockets_supervisor().send(SocketReceived::Bytes(self.id.clone(), msg.0))
+                                .map(drop)
+                                .into_actor(self)
+                                .spawn(ctx);
     }
 }
 
@@ -226,14 +200,16 @@ impl Handler<OnLocalIceCandidate> for WebRtcActor {
     type Result = ();
 
     fn handle(&mut self, msg: OnLocalIceCandidate, _ctx: &mut Self::Context) -> Self::Result {
-        get_sockets_supervisor().do_send(SendToClient {
-            client_id: self.id.client_id.clone(),
-            message: DomainServerMessage::SubmitPeerConnectionCandidate {
-                socket_id: { self.id.socket_id.clone() },
-                candidate: { msg.0 },
-            },
-            media: ResponseMedia::MsgPack,
-        });
+        get_sockets_supervisor().do_send(SendToClient { client_id: self.id.client_id.clone(),
+                                                        message:   DomainServerMessage::SubmitPeerConnectionCandidate { socket_id: {
+                                                                                                                            self.id
+                                                                                                                                .socket_id
+                                                                                                                                .clone()
+                                                                                                                        },
+                                                                                                                        candidate: {
+                                                                                                                            msg.0
+                                                                                                                        }, },
+                                                        media:     ResponseMedia::MsgPack, });
     }
 }
 
@@ -270,9 +246,7 @@ impl Handler<Opened> for WebRtcActor {
 
     fn handle(&mut self, _msg: Opened, _ctx: &mut Self::Context) -> Self::Result {
         self.connected = true;
-        get_sockets_supervisor().do_send(SocketConnected {
-            socket_id: self.id.clone(),
-        });
+        get_sockets_supervisor().do_send(SocketConnected { socket_id: self.id.clone(), });
     }
 }
 

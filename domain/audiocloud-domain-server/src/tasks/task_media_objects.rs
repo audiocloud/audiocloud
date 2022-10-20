@@ -21,10 +21,7 @@ impl TaskMediaObjects {
         rv
     }
 
-    pub fn update_media(
-        &mut self,
-        media_service_objects: HashMap<AppMediaObjectId, MediaObject>,
-    ) -> bool {
+    pub fn update_media(&mut self, media_service_objects: HashMap<AppMediaObjectId, MediaObject>) -> bool {
         // make a backup of pending items
         let prev = self.waiting_for_media();
 
@@ -37,12 +34,7 @@ impl TaskMediaObjects {
     pub fn ready_for_engine(&self) -> HashMap<AppMediaObjectId, String> {
         self.media
             .iter()
-            .filter_map(|(_, object)| {
-                object
-                    .path
-                    .as_ref()
-                    .map(|path| (object.id.clone(), path.clone()))
-            })
+            .filter_map(|(_, object)| object.path.as_ref().map(|path| (object.id.clone(), path.clone())))
             .collect()
     }
 

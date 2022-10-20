@@ -15,20 +15,14 @@ impl Handler<StopPlayTask> for TaskActor {
         let play_id = msg.stop.play_id;
 
         if play_state.is_playing(&play_id) {
-            self.engine.enqueue(EngineCommand::StopPlay {
-                task_id: { self.id.clone() },
-                play_id: { play_id.clone() },
-            });
+            self.engine.enqueue(EngineCommand::StopPlay { task_id: { self.id.clone() },
+                                                          play_id: { play_id.clone() }, });
 
-            Ok(TaskPlayStopped::Stopped {
-                task_id: { self.id.clone() },
-                play_id: { play_id },
-            })
+            Ok(TaskPlayStopped::Stopped { task_id: { self.id.clone() },
+                                          play_id: { play_id }, })
         } else {
-            Err(DomainError::TaskIllegalPlayState {
-                task_id: { self.id.clone() },
-                state: { play_state.into() },
-            })
+            Err(DomainError::TaskIllegalPlayState { task_id: { self.id.clone() },
+                                                    state:   { play_state.into() }, })
         }
     }
 }

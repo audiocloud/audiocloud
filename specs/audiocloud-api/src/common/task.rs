@@ -13,9 +13,9 @@ use crate::cloud::CloudError;
 use crate::cloud::CloudError::*;
 use crate::domain::streaming::DiffStamped;
 use crate::{
-    now, AppMediaObjectId, DesiredTaskPlayState, DomainId, DynamicInstanceNodeId, FixedInstanceId,
-    FixedInstanceNodeId, MediaObjectId, MixerNodeId, Model, ModelId, NodeConnectionId, PlayId,
-    SecureKey, TaskPlayState, TimeRange, Timestamp, Timestamped, TrackMediaId, TrackNodeId,
+    now, AppMediaObjectId, DesiredTaskPlayState, DomainId, DynamicInstanceNodeId, FixedInstanceId, FixedInstanceNodeId, MediaObjectId,
+    MixerNodeId, Model, ModelId, NodeConnectionId, PlayId, SecureKey, TaskPlayState, TimeRange, Timestamp, Timestamped, TrackMediaId,
+    TrackNodeId,
 };
 
 /// Task specification
@@ -23,22 +23,22 @@ use crate::{
 pub struct TaskSpec {
     /// Track nodes of the task
     #[serde(default)]
-    pub tracks: HashMap<TrackNodeId, TrackNode>,
+    pub tracks:      HashMap<TrackNodeId, TrackNode>,
     /// Mixer nodes of the task
     #[serde(default)]
-    pub mixers: HashMap<MixerNodeId, MixerNode>,
+    pub mixers:      HashMap<MixerNodeId, MixerNode>,
     /// Dynamic instance nodes of the task
     #[serde(default)]
-    pub dynamic: HashMap<DynamicInstanceNodeId, DynamicInstanceNode>,
+    pub dynamic:     HashMap<DynamicInstanceNodeId, DynamicInstanceNode>,
     /// Fixed instance nodes of the task
     #[serde(default)]
-    pub fixed: HashMap<FixedInstanceNodeId, FixedInstanceNode>,
+    pub fixed:       HashMap<FixedInstanceNodeId, FixedInstanceNode>,
     /// Connections between nodes
     #[serde(default)]
     pub connections: HashMap<NodeConnectionId, NodeConnection>,
     /// The revision number of the specification (starts at zero, increments for every change)
     #[serde(default)]
-    pub revision: u64,
+    pub revision:    u64,
 }
 
 /// Create task spec
@@ -46,16 +46,16 @@ pub struct TaskSpec {
 pub struct CreateTaskSpec {
     /// Track nodes of the task
     #[serde(default)]
-    pub tracks: HashMap<TrackNodeId, TrackNode>,
+    pub tracks:      HashMap<TrackNodeId, TrackNode>,
     /// Mixer nodes of the task
     #[serde(default)]
-    pub mixers: HashMap<MixerNodeId, MixerNode>,
+    pub mixers:      HashMap<MixerNodeId, MixerNode>,
     /// Dynamic instance nodes of the task
     #[serde(default)]
-    pub dynamic: HashMap<DynamicInstanceNodeId, DynamicInstanceNode>,
+    pub dynamic:     HashMap<DynamicInstanceNodeId, DynamicInstanceNode>,
     /// Fixed instance nodes of the task
     #[serde(default)]
-    pub fixed: HashMap<FixedInstanceNodeId, FixedInstanceNode>,
+    pub fixed:       HashMap<FixedInstanceNodeId, FixedInstanceNode>,
     /// Connections between nodes
     #[serde(default)]
     pub connections: HashMap<NodeConnectionId, NodeConnection>,
@@ -63,31 +63,23 @@ pub struct CreateTaskSpec {
 
 impl Into<TaskSpec> for CreateTaskSpec {
     fn into(self) -> TaskSpec {
-        let Self {
-            tracks,
-            mixers,
-            dynamic,
-            fixed,
-            connections,
-        } = self;
-        TaskSpec {
-            tracks,
-            mixers,
-            dynamic,
-            fixed,
-            connections,
-            revision: 0,
-        }
+        let Self { tracks,
+                   mixers,
+                   dynamic,
+                   fixed,
+                   connections, } = self;
+        TaskSpec { tracks,
+                   mixers,
+                   dynamic,
+                   fixed,
+                   connections,
+                   revision: 0 }
     }
 }
 
 impl TaskSpec {
     pub fn validate(&self, models: &HashMap<ModelId, Model>) -> Result<(), CloudError> {
-        if self.fixed.is_empty()
-            && self.dynamic.is_empty()
-            && self.mixers.is_empty()
-            && self.tracks.is_empty()
-        {
+        if self.fixed.is_empty() && self.dynamic.is_empty() && self.mixers.is_empty() && self.tracks.is_empty() {
             return Err(InternalInconsistency { message:
                                                    format!("No tracks, mixers, dynamic instances, or fixed instances declared in task spec"), });
         }
@@ -99,10 +91,7 @@ impl TaskSpec {
         Ok(())
     }
 
-    pub fn fixed_instance_to_fixed_id(
-        &self,
-        instance_id: &FixedInstanceId,
-    ) -> Option<&FixedInstanceNodeId> {
+    pub fn fixed_instance_to_fixed_id(&self, instance_id: &FixedInstanceId) -> Option<&FixedInstanceNodeId> {
         for (fixed_id, fixed) in &self.fixed {
             if &fixed.instance_id == instance_id {
                 return Some(fixed_id);
@@ -111,221 +100,149 @@ impl TaskSpec {
         None
     }
 
-    fn validate_connection(
-        &self,
-        id: &NodeConnectionId,
-        connection: &NodeConnection,
-        models: &HashMap<ModelId, Model>,
-    ) -> Result<(), CloudError> {
+    fn validate_connection(&self,
+                           id: &NodeConnectionId,
+                           connection: &NodeConnection,
+                           models: &HashMap<ModelId, Model>)
+                           -> Result<(), CloudError> {
         self.check_source_channel_exists(id, &connection.from, connection.from_channels, models)?;
         self.check_destination_channel_exists(id, &connection.to, connection.to_channels, models)?;
 
         Ok(())
     }
 
-    fn check_source_channel_exists(
-        &self,
-        connection_id: &NodeConnectionId,
-        pad_id: &OutputPadId,
-        channels: ChannelMask,
-        models: &HashMap<ModelId, Model>,
-    ) -> Result<(), CloudError> {
-        let complete_error = |error| ConnectionError {
-            connection_id: connection_id.clone(),
-            error: Box::new(error),
-        };
+    fn check_source_channel_exists(&self,
+                                   connection_id: &NodeConnectionId,
+                                   pad_id: &OutputPadId,
+                                   channels: ChannelMask,
+                                   models: &HashMap<ModelId, Model>)
+                                   -> Result<(), CloudError> {
+        let complete_error = |error| ConnectionError { connection_id: connection_id.clone(),
+                                                       error:         Box::new(error), };
 
         match pad_id {
-            OutputPadId::MixerOutput(id) => self
-                .mixers
-                .get(id)
-                .ok_or_else(|| MixerNodeNotFound {
-                    mixer_node_id: id.clone(),
-                })
-                .and_then(|node| node.validate_source_channels(channels))
-                .map_err(complete_error),
+            OutputPadId::MixerOutput(id) => self.mixers
+                                                .get(id)
+                                                .ok_or_else(|| MixerNodeNotFound { mixer_node_id: id.clone() })
+                                                .and_then(|node| node.validate_source_channels(channels))
+                                                .map_err(complete_error),
             OutputPadId::FixedInstanceOutput(id) => {
-                let fixed = self
-                    .fixed
-                    .get(id)
-                    .ok_or_else(|| FixedInstanceNodeNotFound {
-                        fixed_node_id: id.clone(),
-                    })
-                    .map_err(complete_error)?;
+                let fixed = self.fixed
+                                .get(id)
+                                .ok_or_else(|| FixedInstanceNodeNotFound { fixed_node_id: id.clone() })
+                                .map_err(complete_error)?;
 
-                let model = models
-                    .get(&fixed.instance_id.model_id())
-                    .ok_or_else(|| ModelNotFound {
-                        model_id: fixed.instance_id.model_id(),
-                    })
-                    .map_err(complete_error)?;
+                let model = models.get(&fixed.instance_id.model_id())
+                                  .ok_or_else(|| ModelNotFound { model_id: fixed.instance_id.model_id(), })
+                                  .map_err(complete_error)?;
 
-                fixed
-                    .validate_source_channels(channels, model)
-                    .map_err(complete_error)
+                fixed.validate_source_channels(channels, model).map_err(complete_error)
             }
             OutputPadId::DynamicInstanceOutput(id) => {
-                let dynamic = self
-                    .dynamic
-                    .get(id)
-                    .ok_or_else(|| DynamicInstanceNodeNotFound {
-                        dynamic_node_id: id.clone(),
-                    })
-                    .map_err(complete_error)?;
+                let dynamic = self.dynamic
+                                  .get(id)
+                                  .ok_or_else(|| DynamicInstanceNodeNotFound { dynamic_node_id: id.clone(), })
+                                  .map_err(complete_error)?;
 
-                let model = models
-                    .get(&dynamic.model_id)
-                    .ok_or_else(|| ModelNotFound {
-                        model_id: dynamic.model_id.clone(),
-                    })
-                    .map_err(complete_error)?;
+                let model = models.get(&dynamic.model_id)
+                                  .ok_or_else(|| ModelNotFound { model_id: dynamic.model_id.clone(), })
+                                  .map_err(complete_error)?;
 
-                dynamic
-                    .validate_source_channels(channels, model)
-                    .map_err(complete_error)
+                dynamic.validate_source_channels(channels, model).map_err(complete_error)
             }
-            OutputPadId::TrackOutput(id) => self
-                .tracks
-                .get(id)
-                .ok_or_else(|| TrackNodeNotFound {
-                    track_node_id: id.clone(),
-                })
-                .and_then(|node| node.validate_source_channels(channels))
-                .map_err(complete_error),
+            OutputPadId::TrackOutput(id) => self.tracks
+                                                .get(id)
+                                                .ok_or_else(|| TrackNodeNotFound { track_node_id: id.clone() })
+                                                .and_then(|node| node.validate_source_channels(channels))
+                                                .map_err(complete_error),
         }
     }
 
-    fn check_destination_channel_exists(
-        &self,
-        connection_id: &NodeConnectionId,
-        pad_id: &InputPadId,
-        channels: ChannelMask,
-        models: &HashMap<ModelId, Model>,
-    ) -> Result<(), CloudError> {
-        let complete_error = |error| ConnectionError {
-            connection_id: connection_id.clone(),
-            error: Box::new(error),
-        };
+    fn check_destination_channel_exists(&self,
+                                        connection_id: &NodeConnectionId,
+                                        pad_id: &InputPadId,
+                                        channels: ChannelMask,
+                                        models: &HashMap<ModelId, Model>)
+                                        -> Result<(), CloudError> {
+        let complete_error = |error| ConnectionError { connection_id: connection_id.clone(),
+                                                       error:         Box::new(error), };
 
         match pad_id {
-            InputPadId::MixerInput(id) => self
-                .mixers
-                .get(id)
-                .ok_or_else(|| MixerNodeNotFound {
-                    mixer_node_id: id.clone(),
-                })
-                .and_then(|node| node.validate_destination_channels(channels))
-                .map_err(complete_error),
+            InputPadId::MixerInput(id) => self.mixers
+                                              .get(id)
+                                              .ok_or_else(|| MixerNodeNotFound { mixer_node_id: id.clone() })
+                                              .and_then(|node| node.validate_destination_channels(channels))
+                                              .map_err(complete_error),
             InputPadId::FixedInstanceInput(id) => {
-                let fixed = self
-                    .fixed
-                    .get(id)
-                    .ok_or_else(|| FixedInstanceNodeNotFound {
-                        fixed_node_id: id.clone(),
-                    })
-                    .map_err(complete_error)?;
+                let fixed = self.fixed
+                                .get(id)
+                                .ok_or_else(|| FixedInstanceNodeNotFound { fixed_node_id: id.clone() })
+                                .map_err(complete_error)?;
 
-                let model = models
-                    .get(&fixed.instance_id.model_id())
-                    .ok_or_else(|| ModelNotFound {
-                        model_id: fixed.instance_id.model_id(),
-                    })
-                    .map_err(complete_error)?;
+                let model = models.get(&fixed.instance_id.model_id())
+                                  .ok_or_else(|| ModelNotFound { model_id: fixed.instance_id.model_id(), })
+                                  .map_err(complete_error)?;
 
-                fixed
-                    .validate_destination_channels(channels, model)
-                    .map_err(complete_error)
+                fixed.validate_destination_channels(channels, model).map_err(complete_error)
             }
             InputPadId::DynamicInstanceInput(id) => {
-                let dynamic = self
-                    .dynamic
-                    .get(id)
-                    .ok_or_else(|| DynamicInstanceNodeNotFound {
-                        dynamic_node_id: id.clone(),
-                    })
-                    .map_err(complete_error)?;
+                let dynamic = self.dynamic
+                                  .get(id)
+                                  .ok_or_else(|| DynamicInstanceNodeNotFound { dynamic_node_id: id.clone(), })
+                                  .map_err(complete_error)?;
 
-                let model = models
-                    .get(&dynamic.model_id)
-                    .ok_or_else(|| ModelNotFound {
-                        model_id: dynamic.model_id.clone(),
-                    })
-                    .map_err(complete_error)?;
+                let model = models.get(&dynamic.model_id)
+                                  .ok_or_else(|| ModelNotFound { model_id: dynamic.model_id.clone(), })
+                                  .map_err(complete_error)?;
 
-                dynamic
-                    .validate_destination_channels(channels, model)
-                    .map_err(complete_error)
+                dynamic.validate_destination_channels(channels, model).map_err(complete_error)
             }
         }
     }
 
-    fn check_channel_exists_mixer(
-        &self,
-        id: &NodeConnectionId,
-        mixer_id: &MixerNodeId,
-        channels: &ChannelMask,
-    ) -> Result<(), CloudError> {
-        let mixer = self
-            .mixers
-            .get(mixer_id)
-            .ok_or_else(|| InternalInconsistency {
-                message: format!("Connection {id} flow to mixer {mixer_id} does not exist"),
-            })?;
+    fn check_channel_exists_mixer(&self, id: &NodeConnectionId, mixer_id: &MixerNodeId, channels: &ChannelMask) -> Result<(), CloudError> {
+        let mixer =
+            self.mixers
+                .get(mixer_id)
+                .ok_or_else(|| InternalInconsistency { message: format!("Connection {id} flow to mixer {mixer_id} does not exist"), })?;
 
         if !channels.is_subset_of(0..mixer.input_channels) {
-            return Err(InternalInconsistency {
-                message: format!(
-                    "Connection {id} flow to mixer {mixer_id} has channels that do not exist"
-                ),
-            });
+            return Err(InternalInconsistency { message: format!("Connection {id} flow to mixer {mixer_id} has channels that do not exist"), });
         }
 
         Ok(())
     }
 
-    fn check_channel_exists_fixed(
-        &self,
-        id: &NodeConnectionId,
-        fixed_id: &FixedInstanceNodeId,
-        channels: &ChannelMask,
-        output: bool,
-        models: &HashMap<ModelId, Model>,
-    ) -> Result<(), CloudError> {
-        let fixed = self
-            .fixed
-            .get(fixed_id)
-            .ok_or_else(|| InternalInconsistency {
-                message: format!(
+    fn check_channel_exists_fixed(&self,
+                                  id: &NodeConnectionId,
+                                  fixed_id: &FixedInstanceNodeId,
+                                  channels: &ChannelMask,
+                                  output: bool,
+                                  models: &HashMap<ModelId, Model>)
+                                  -> Result<(), CloudError> {
+        let fixed = self.fixed.get(fixed_id).ok_or_else(|| InternalInconsistency { message: format!(
                     "Connection {id} references fixed {fixed_id} which does not exist"
-                ),
-            })?;
+                ), })?;
 
         let model_id = fixed.instance_id.model_id();
         let model = models.get(&model_id).ok_or_else(|| {
             InternalInconsistency { message: format!("Connection {id} references fixed instance labelled {fixed_id} which references model {model_id} which does not exist") }
         })?;
 
-        if !channels.is_subset_of(
-            0..(if output {
-                model.outputs.len()
-            } else {
-                model.inputs.len()
-            }),
-        ) {
+        if !channels.is_subset_of(0..(if output { model.outputs.len() } else { model.inputs.len() })) {
             return Err(InternalInconsistency { message: format!("Connection {id} references fixed instance labelled {fixed_id} which has channels that do not exist") });
         }
 
         Ok(())
     }
 
-    fn check_channel_exists_dynamic(
-        &self,
-        id: &NodeConnectionId,
-        dynamic_id: &DynamicInstanceNodeId,
-        channels: &ChannelMask,
-        output: bool,
-        models: &HashMap<ModelId, Model>,
-    ) -> Result<(), CloudError> {
+    fn check_channel_exists_dynamic(&self,
+                                    id: &NodeConnectionId,
+                                    dynamic_id: &DynamicInstanceNodeId,
+                                    channels: &ChannelMask,
+                                    output: bool,
+                                    models: &HashMap<ModelId, Model>)
+                                    -> Result<(), CloudError> {
         let dynamic = self.dynamic.get(dynamic_id).ok_or_else(|| {
             InternalInconsistency { message: format!("Connection {id} references dynamic instance labelled {dynamic_id} which does not exist") }
         })?;
@@ -335,33 +252,17 @@ impl TaskSpec {
             InternalInconsistency { message: format!("Connection {id} references dynamic instance labelled {dynamic_id} which references model {model_id} which does not exist") }
         })?;
 
-        if !channels.is_subset_of(
-            0..(if output {
-                model.outputs.len()
-            } else {
-                model.inputs.len()
-            }),
-        ) {
+        if !channels.is_subset_of(0..(if output { model.outputs.len() } else { model.inputs.len() })) {
             return Err(InternalInconsistency { message: format!("Connection {id} references dynamic instance labelled {dynamic_id} which has channels that do not exist") });
         }
 
         Ok(())
     }
 
-    fn check_channel_exists_track(
-        &self,
-        id: &NodeConnectionId,
-        track_id: &TrackNodeId,
-        channels: &ChannelMask,
-    ) -> Result<(), CloudError> {
-        let track = self
-            .tracks
-            .get(track_id)
-            .ok_or_else(|| InternalInconsistency {
-                message: format!(
+    fn check_channel_exists_track(&self, id: &NodeConnectionId, track_id: &TrackNodeId, channels: &ChannelMask) -> Result<(), CloudError> {
+        let track = self.tracks.get(track_id).ok_or_else(|| InternalInconsistency { message: format!(
                     "Connection {id} references track {track_id} which does not exist"
-                ),
-            })?;
+                ), })?;
 
         if !channels.is_subset_of(0..track.channels.num_channels()) {
             return Err(InternalInconsistency { message: format!("Connection {id} references track {track_id} which has channels that do not exist") });
@@ -375,13 +276,13 @@ impl TaskSpec {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct Task {
     /// Domain executing the task
-    pub domain_id: DomainId,
+    pub domain_id:    DomainId,
     /// Task reservations
     pub reservations: TaskReservation,
     /// Task specification
-    pub spec: TaskSpec,
+    pub spec:         TaskSpec,
     /// Security keys and associateds permissions
-    pub security: TaskSecurity,
+    pub security:     TaskSecurity,
 }
 
 /// Information about access keys and permissions of a task
@@ -396,10 +297,8 @@ pub struct TaskSecurity {
 
 impl From<CreateTaskSecurity> for TaskSecurity {
     fn from(other: CreateTaskSecurity) -> Self {
-        TaskSecurity {
-            security: other,
-            revision: 0,
-        }
+        TaskSecurity { security: other,
+                       revision: 0, }
     }
 }
 
@@ -410,13 +309,13 @@ pub type CreateTaskSecurity = HashMap<SecureKey, TaskPermissions>;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TaskReservation {
     /// Start of the reservation time
-    pub from: Timestamp,
+    pub from:            Timestamp,
     /// End of the reservation time
-    pub to: Timestamp,
+    pub to:              Timestamp,
     /// Fixed instances reserved for the task
     pub fixed_instances: HashSet<FixedInstanceId>,
     /// Revision number - starts at zero and change of task reservation increments it
-    pub revision: u64,
+    pub revision:        u64,
 }
 
 impl TaskReservation {
@@ -435,45 +334,35 @@ impl TaskReservation {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct CreateTaskReservation {
     /// Start of the reservation time
-    pub from: Timestamp,
+    pub from:            Timestamp,
     /// End of the reservation time
-    pub to: Timestamp,
+    pub to:              Timestamp,
     /// Fixed instances reserved for the task
     pub fixed_instances: HashSet<FixedInstanceId>,
 }
 
 impl Into<TaskReservation> for CreateTaskReservation {
     fn into(self) -> TaskReservation {
-        let Self {
-            from,
-            to,
-            fixed_instances,
-        } = self;
-        TaskReservation {
-            from,
-            to,
-            fixed_instances,
-            revision: 0,
-        }
+        let Self { from, to, fixed_instances } = self;
+        TaskReservation { from,
+                          to,
+                          fixed_instances,
+                          revision: 0 }
     }
 }
 
 impl From<CreateTask> for Task {
     fn from(source: CreateTask) -> Self {
-        let CreateTask {
-            domain_id,
-            reservations,
-            spec,
-            security,
-            ..
-        } = source;
+        let CreateTask { domain_id,
+                         reservations,
+                         spec,
+                         security,
+                         .. } = source;
 
-        Self {
-            domain_id: domain_id.into(),
-            reservations: reservations.into(),
-            spec: spec.into(),
-            security: security.into(),
-        }
+        Self { domain_id:    domain_id.into(),
+               reservations: reservations.into(),
+               spec:         spec.into(),
+               security:     security.into(), }
     }
 }
 
@@ -481,28 +370,23 @@ impl From<CreateTask> for Task {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct MixerNode {
     /// Numvber of input channels on the mixer node
-    pub input_channels: usize,
+    pub input_channels:  usize,
     /// Number of output channels on the mixer node
     pub output_channels: usize,
 }
 
 impl MixerNode {
     pub fn validate_source_channels(&self, mask: ChannelMask) -> Result<(), CloudError> {
-        let Self {
-            output_channels, ..
-        } = *self;
+        let Self { output_channels, .. } = *self;
 
         let half_output_channels = output_channels / 2;
 
-        if matches!(mask, ChannelMask::Mono(i) if i < output_channels)
-            || matches!(mask, ChannelMask::Stereo(i) if i < half_output_channels)
+        if matches!(mask, ChannelMask::Mono(i) if i < output_channels) || matches!(mask, ChannelMask::Stereo(i) if i < half_output_channels)
         {
             Ok(())
         } else {
-            Err(ChannelMaskIncompatible {
-                mask: mask.clone(),
-                channels: output_channels,
-            })
+            Err(ChannelMaskIncompatible { mask:     mask.clone(),
+                                          channels: output_channels, })
         }
     }
 
@@ -511,15 +395,11 @@ impl MixerNode {
 
         let half_input_channels = input_channels / 2;
 
-        if matches!(mask, ChannelMask::Mono(i) if i < input_channels)
-            || matches!(mask, ChannelMask::Stereo(i) if i < half_input_channels)
-        {
+        if matches!(mask, ChannelMask::Mono(i) if i < input_channels) || matches!(mask, ChannelMask::Stereo(i) if i < half_input_channels) {
             Ok(())
         } else {
-            Err(ChannelMaskIncompatible {
-                mask: mask.clone(),
-                channels: input_channels,
-            })
+            Err(ChannelMaskIncompatible { mask:     mask.clone(),
+                                          channels: input_channels, })
         }
     }
 }
@@ -528,49 +408,34 @@ impl MixerNode {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct DynamicInstanceNode {
     /// The manufacturer and name of the processing software
-    pub model_id: ModelId,
+    pub model_id:   ModelId,
     /// Parameter values
     pub parameters: InstanceParameters,
 }
 
 impl DynamicInstanceNode {
-    pub fn validate_source_channels(
-        &self,
-        mask: ChannelMask,
-        model: &Model,
-    ) -> Result<(), CloudError> {
+    pub fn validate_source_channels(&self, mask: ChannelMask, model: &Model) -> Result<(), CloudError> {
         let output_channels = model.get_audio_output_channel_count();
         let half_output_channels = output_channels / 2;
 
-        if matches!(mask, ChannelMask::Mono(i) if i < output_channels)
-            || matches!(mask, ChannelMask::Stereo(i) if i < half_output_channels)
+        if matches!(mask, ChannelMask::Mono(i) if i < output_channels) || matches!(mask, ChannelMask::Stereo(i) if i < half_output_channels)
         {
             Ok(())
         } else {
-            Err(ChannelMaskIncompatible {
-                mask: mask.clone(),
-                channels: output_channels,
-            })
+            Err(ChannelMaskIncompatible { mask:     mask.clone(),
+                                          channels: output_channels, })
         }
     }
 
-    pub fn validate_destination_channels(
-        &self,
-        mask: ChannelMask,
-        model: &Model,
-    ) -> Result<(), CloudError> {
+    pub fn validate_destination_channels(&self, mask: ChannelMask, model: &Model) -> Result<(), CloudError> {
         let input_channels = model.get_audio_input_channel_count();
         let half_input_channels = input_channels / 2;
 
-        if matches!(mask, ChannelMask::Mono(i) if i < input_channels)
-            || matches!(mask, ChannelMask::Stereo(i) if i < half_input_channels)
-        {
+        if matches!(mask, ChannelMask::Mono(i) if i < input_channels) || matches!(mask, ChannelMask::Stereo(i) if i < half_input_channels) {
             Ok(())
         } else {
-            Err(ChannelMaskIncompatible {
-                mask: mask.clone(),
-                channels: input_channels,
-            })
+            Err(ChannelMaskIncompatible { mask:     mask.clone(),
+                                          channels: input_channels, })
         }
     }
 }
@@ -581,52 +446,37 @@ pub struct FixedInstanceNode {
     /// The manufacturer, name and instance identifier of the hardware device doing the processing
     pub instance_id: FixedInstanceId,
     /// parameters
-    pub parameters: InstanceParameters,
+    pub parameters:  InstanceParameters,
     /// Dry-wet percentage
     ///
     /// only applicable for instances with same number of inputs and outputs,
     /// having 1 or 2 channels.
-    pub wet: f64,
+    pub wet:         f64,
 }
 
 impl FixedInstanceNode {
-    pub fn validate_source_channels(
-        &self,
-        mask: ChannelMask,
-        model: &Model,
-    ) -> Result<(), CloudError> {
+    pub fn validate_source_channels(&self, mask: ChannelMask, model: &Model) -> Result<(), CloudError> {
         let input_channels = model.get_audio_input_channel_count();
         let half_input_channels = input_channels / 2;
 
-        if matches!(mask, ChannelMask::Mono(i) if i < input_channels)
-            || matches!(mask, ChannelMask::Stereo(i) if i < half_input_channels)
-        {
+        if matches!(mask, ChannelMask::Mono(i) if i < input_channels) || matches!(mask, ChannelMask::Stereo(i) if i < half_input_channels) {
             Ok(())
         } else {
-            Err(ChannelMaskIncompatible {
-                mask: mask.clone(),
-                channels: input_channels,
-            })
+            Err(ChannelMaskIncompatible { mask:     mask.clone(),
+                                          channels: input_channels, })
         }
     }
 
-    pub fn validate_destination_channels(
-        &self,
-        mask: ChannelMask,
-        model: &Model,
-    ) -> Result<(), CloudError> {
+    pub fn validate_destination_channels(&self, mask: ChannelMask, model: &Model) -> Result<(), CloudError> {
         let output_channels = model.get_audio_output_channel_count();
         let half_output_channels = output_channels / 2;
 
-        if matches!(mask, ChannelMask::Mono(i) if i < output_channels)
-            || matches!(mask, ChannelMask::Stereo(i) if i < half_output_channels)
+        if matches!(mask, ChannelMask::Mono(i) if i < output_channels) || matches!(mask, ChannelMask::Stereo(i) if i < half_output_channels)
         {
             Ok(())
         } else {
-            Err(ChannelMaskIncompatible {
-                mask: mask.clone(),
-                channels: output_channels,
-            })
+            Err(ChannelMaskIncompatible { mask:     mask.clone(),
+                                          channels: output_channels, })
         }
     }
 }
@@ -635,19 +485,19 @@ impl FixedInstanceNode {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct NodeConnection {
     /// Source node pad
-    pub from: OutputPadId,
+    pub from:          OutputPadId,
     /// Destination node pad
-    pub to: InputPadId,
+    pub to:            InputPadId,
     /// Source channel mask
     pub from_channels: ChannelMask,
     /// Destination channel mask
-    pub to_channels: ChannelMask,
+    pub to_channels:   ChannelMask,
     /// Volume adjustment as a factor
-    pub volume: f64,
+    pub volume:        f64,
     /// Panning adjustment
     ///
     /// Zero is centered, -1 is fully left, 1 is fully right
-    pub pan: f64,
+    pub pan:           f64,
 }
 
 pub type InstanceParameters = serde_json::Value;
@@ -656,21 +506,17 @@ pub type InstanceReports = serde_json::Value;
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct ConnectionValues {
     pub volume: Option<f64>,
-    pub pan: Option<f64>,
+    pub pan:    Option<f64>,
 }
 
-#[derive(
-    Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, IsVariant, Unwrap, JsonSchema,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, IsVariant, Unwrap, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum MixerChannels {
     Mono(usize),
     Stereo(usize),
 }
 
-#[derive(
-    Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, IsVariant, Unwrap, JsonSchema,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq, IsVariant, Unwrap, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ChannelMask {
     Mono(usize),
@@ -710,20 +556,7 @@ impl ChannelMask {
 }
 
 /// A pad that can receive connections on a node inside a task
-#[derive(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    PartialEq,
-    IsVariant,
-    Unwrap,
-    Hash,
-    Eq,
-    PartialOrd,
-    Ord,
-    JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, IsVariant, Unwrap, Hash, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum InputPadId {
     /// Mixer node input
     #[serde(rename = "mixer")]
@@ -741,36 +574,16 @@ pub enum InputPadId {
 impl InputPadId {
     pub fn references(&self, node_id: &TaskNodeId) -> bool {
         match (self, node_id) {
-            (Self::MixerInput(mixer_id), TaskNodeId::Mixer(ref_mixer_id)) => {
-                mixer_id == ref_mixer_id
-            }
-            (Self::FixedInstanceInput(fixed_id), TaskNodeId::FixedInstance(ref_fixed_id)) => {
-                fixed_id == ref_fixed_id
-            }
-            (
-                Self::DynamicInstanceInput(dynamic_id),
-                TaskNodeId::DynamicInstance(ref_dynamic_id),
-            ) => dynamic_id == ref_dynamic_id,
+            (Self::MixerInput(mixer_id), TaskNodeId::Mixer(ref_mixer_id)) => mixer_id == ref_mixer_id,
+            (Self::FixedInstanceInput(fixed_id), TaskNodeId::FixedInstance(ref_fixed_id)) => fixed_id == ref_fixed_id,
+            (Self::DynamicInstanceInput(dynamic_id), TaskNodeId::DynamicInstance(ref_dynamic_id)) => dynamic_id == ref_dynamic_id,
             _ => false,
         }
     }
 }
 
 /// A pad that can receive connections on a node inside a task
-#[derive(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    PartialEq,
-    IsVariant,
-    Unwrap,
-    Hash,
-    Eq,
-    PartialOrd,
-    Ord,
-    JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, IsVariant, Unwrap, Hash, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum OutputPadId {
     /// Mixer node output
     #[serde(rename = "mixer")]
@@ -792,20 +605,10 @@ pub enum OutputPadId {
 impl OutputPadId {
     pub fn references(&self, node_id: &TaskNodeId) -> bool {
         match (self, node_id) {
-            (Self::TrackOutput(track_id), TaskNodeId::Track(ref_track_id)) => {
-                track_id == ref_track_id
-            }
-            (
-                Self::DynamicInstanceOutput(instance_id),
-                TaskNodeId::DynamicInstance(ref_instance_id),
-            ) => instance_id == ref_instance_id,
-            (
-                Self::FixedInstanceOutput(instance_id),
-                TaskNodeId::FixedInstance(ref_instance_id),
-            ) => instance_id == ref_instance_id,
-            (Self::MixerOutput(mixer_id), TaskNodeId::Mixer(ref_mixer_id)) => {
-                mixer_id == ref_mixer_id
-            }
+            (Self::TrackOutput(track_id), TaskNodeId::Track(ref_track_id)) => track_id == ref_track_id,
+            (Self::DynamicInstanceOutput(instance_id), TaskNodeId::DynamicInstance(ref_instance_id)) => instance_id == ref_instance_id,
+            (Self::FixedInstanceOutput(instance_id), TaskNodeId::FixedInstance(ref_instance_id)) => instance_id == ref_instance_id,
+            (Self::MixerOutput(mixer_id), TaskNodeId::Mixer(ref_mixer_id)) => mixer_id == ref_mixer_id,
             _ => false,
         }
     }
@@ -832,20 +635,7 @@ impl std::fmt::Display for InputPadId {
     }
 }
 
-#[derive(
-    Serialize,
-    Deserialize,
-    Clone,
-    Debug,
-    PartialEq,
-    IsVariant,
-    Unwrap,
-    Hash,
-    Eq,
-    PartialOrd,
-    Ord,
-    JsonSchema,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, IsVariant, Unwrap, Hash, Eq, PartialOrd, Ord, JsonSchema)]
 pub enum NodePadId {
     /// Mixer node output
     #[serde(rename = "out_mixer")]
@@ -878,10 +668,8 @@ pub enum NodePadId {
 
 impl NodePadId {
     pub fn is_input(&self) -> bool {
-        matches!(
-            self,
-            Self::MixerInput(_) | Self::FixedInstanceInput(_) | Self::DynamicInstanceInput(_)
-        )
+        matches!(self,
+                 Self::MixerInput(_) | Self::FixedInstanceInput(_) | Self::DynamicInstanceInput(_))
     }
 
     pub fn is_output(&self) -> bool {
@@ -897,20 +685,12 @@ impl ToString for NodePadId {
     fn to_string(&self) -> String {
         match self {
             NodePadId::MixerOutput(id) => OutputPadId::MixerOutput(id.clone()).to_string(),
-            NodePadId::FixedInstanceOutput(id) => {
-                OutputPadId::FixedInstanceOutput(id.clone()).to_string()
-            }
-            NodePadId::DynamicInstanceOutput(id) => {
-                OutputPadId::DynamicInstanceOutput(id.clone()).to_string()
-            }
+            NodePadId::FixedInstanceOutput(id) => OutputPadId::FixedInstanceOutput(id.clone()).to_string(),
+            NodePadId::DynamicInstanceOutput(id) => OutputPadId::DynamicInstanceOutput(id.clone()).to_string(),
             NodePadId::TrackOutput(id) => OutputPadId::TrackOutput(id.clone()).to_string(),
             NodePadId::MixerInput(id) => InputPadId::MixerInput(id.clone()).to_string(),
-            NodePadId::FixedInstanceInput(id) => {
-                InputPadId::FixedInstanceInput(id.clone()).to_string()
-            }
-            NodePadId::DynamicInstanceInput(id) => {
-                InputPadId::DynamicInstanceInput(id.clone()).to_string()
-            }
+            NodePadId::FixedInstanceInput(id) => InputPadId::FixedInstanceInput(id.clone()).to_string(),
+            NodePadId::DynamicInstanceInput(id) => InputPadId::DynamicInstanceInput(id.clone()).to_string(),
         }
     }
 }
@@ -952,7 +732,7 @@ pub struct TrackNode {
     /// Number of channels
     pub channels: MediaChannels,
     /// Media items present on the track
-    pub media: HashMap<TrackMediaId, TrackMedia>,
+    pub media:    HashMap<TrackMediaId, TrackMedia>,
 }
 
 impl TrackNode {
@@ -995,25 +775,23 @@ impl MediaChannels {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct TrackMedia {
     /// Number of channels
-    pub channels: MediaChannels,
+    pub channels:         MediaChannels,
     /// Media format
-    pub format: TrackMediaFormat,
+    pub format:           TrackMediaFormat,
     /// Subset of media that is used
-    pub media_segment: TimeSegment,
+    pub media_segment:    TimeSegment,
     /// Where to place the media in the task timeline
     pub timeline_segment: TimeSegment,
     /// Source media object id
-    pub object_id: MediaObjectId,
+    pub object_id:        MediaObjectId,
 }
 
 impl TrackMedia {
     pub fn update(&mut self, update: UpdateTaskTrackMedia) {
-        let UpdateTaskTrackMedia {
-            channels,
-            media_segment,
-            timeline_segment,
-            object_id,
-        } = update;
+        let UpdateTaskTrackMedia { channels,
+                                   media_segment,
+                                   timeline_segment,
+                                   object_id, } = update;
 
         if let Some(channels) = channels {
             self.channels = channels;
@@ -1035,10 +813,10 @@ impl TrackMedia {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct UpdateTaskTrackMedia {
-    pub channels: Option<MediaChannels>,
-    pub media_segment: Option<TimeSegment>,
+    pub channels:         Option<MediaChannels>,
+    pub media_segment:    Option<TimeSegment>,
     pub timeline_segment: Option<TimeSegment>,
-    pub object_id: Option<MediaObjectId>,
+    pub object_id:        Option<MediaObjectId>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
@@ -1065,7 +843,7 @@ impl Display for TrackMediaFormat {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, JsonSchema)]
 pub struct TimeSegment {
-    pub start: f64,
+    pub start:  f64,
     pub length: f64,
 }
 
@@ -1077,22 +855,20 @@ impl TimeSegment {
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema)]
 pub struct TaskPermissions {
-    pub structure: bool,
-    pub media: bool,
+    pub structure:  bool,
+    pub media:      bool,
     pub parameters: bool,
-    pub transport: bool,
-    pub audio: bool,
+    pub transport:  bool,
+    pub audio:      bool,
 }
 
 impl TaskPermissions {
     pub const fn empty() -> Self {
-        Self {
-            structure: false,
-            media: false,
-            parameters: false,
-            transport: false,
-            audio: false,
-        }
+        Self { structure:  false,
+               media:      false,
+               parameters: false,
+               transport:  false,
+               audio:      false, }
     }
 
     pub fn can(&self, other: TaskPermissions) -> bool {
@@ -1120,13 +896,11 @@ impl TaskPermissions {
     }
 
     pub fn full() -> Self {
-        TaskPermissions {
-            structure: true,
-            media: true,
-            parameters: true,
-            transport: true,
-            audio: true,
-        }
+        TaskPermissions { structure:  true,
+                          media:      true,
+                          parameters: true,
+                          transport:  true,
+                          audio:      true, }
     }
 }
 
@@ -1134,10 +908,10 @@ impl TaskPermissions {
 #[serde(rename_all = "snake_case")]
 pub enum TaskEvent {
     PlayState {
-        current: Timestamped<TaskPlayState>,
-        desired: Timestamped<DesiredTaskPlayState>,
+        current:           Timestamped<TaskPlayState>,
+        desired:           Timestamped<DesiredTaskPlayState>,
         waiting_instances: HashSet<FixedInstanceId>,
-        waiting_media: HashSet<AppMediaObjectId>,
+        waiting_media:     HashSet<AppMediaObjectId>,
     },
     StreamingPacket {
         packet: StreamingPacket,
@@ -1148,28 +922,26 @@ pub enum TaskEvent {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct StreamingPacket {
-    pub play_id: PlayId,
-    pub created_at: Timestamp,
-    pub audio: Vec<DiffStamped<CompressedAudio>>,
+    pub play_id:           PlayId,
+    pub created_at:        Timestamp,
+    pub audio:             Vec<DiffStamped<CompressedAudio>>,
     pub instance_metering: HashMap<FixedInstanceId, Vec<DiffStamped<serde_json::Value>>>,
-    pub pad_metering: HashMap<NodePadId, Vec<DiffStamped<PadMetering>>>,
-    pub timeline_pos: f64,
-    pub streaming_pos: u64,
-    pub serial: u64,
+    pub pad_metering:      HashMap<NodePadId, Vec<DiffStamped<PadMetering>>>,
+    pub timeline_pos:      f64,
+    pub streaming_pos:     u64,
+    pub serial:            u64,
 }
 
 impl Default for StreamingPacket {
     fn default() -> Self {
-        Self {
-            play_id: { PlayId::new(Default::default()) },
-            audio: { Default::default() },
-            instance_metering: { Default::default() },
-            pad_metering: { Default::default() },
-            created_at: { now() },
-            timeline_pos: { 0.0 },
-            streaming_pos: { 0 },
-            serial: { 0 },
-        }
+        Self { play_id:           { PlayId::new(Default::default()) },
+               audio:             { Default::default() },
+               instance_metering: { Default::default() },
+               pad_metering:      { Default::default() },
+               created_at:        { now() },
+               timeline_pos:      { 0.0 },
+               streaming_pos:     { 0 },
+               serial:            { 0 }, }
     }
 }
 
@@ -1178,12 +950,7 @@ impl StreamingPacket {
         let mut rv = Self::default();
         rv.serial = packet.serial + 1;
         rv.play_id = packet.play_id.clone();
-        rv.streaming_pos = packet.streaming_pos
-            + packet
-                .audio
-                .iter()
-                .map(|audio| audio.value().num_samples)
-                .sum::<usize>() as u64;
+        rv.streaming_pos = packet.streaming_pos + packet.audio.iter().map(|audio| audio.value().num_samples).sum::<usize>() as u64;
 
         rv
     }

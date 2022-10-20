@@ -3,9 +3,7 @@ use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use tracing::*;
 
-use audiocloud_domain_server::{
-    config, db, events, fixed_instances, media, models, nats, o11y, rest_api, sockets, tasks,
-};
+use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, o11y, rest_api, sockets, tasks};
 
 #[derive(Parser)]
 struct Opts {
@@ -103,11 +101,7 @@ async fn main() -> anyhow::Result<()> {
 
     sockets::init(opts.sockets)?;
 
-    info!(
-        bind = opts.bind,
-        port = opts.port,
-        " ==== AudioCloud Domain server ==== "
-    );
+    info!(bind = opts.bind, port = opts.port, " ==== AudioCloud Domain server ==== ");
 
     let rest_opts = web::Data::new(opts.rest.clone());
     if rest_opts.rest_auth_strategy.is_development() {
@@ -116,15 +110,13 @@ async fn main() -> anyhow::Result<()> {
 
     // create actix
     HttpServer::new(move || {
-        App::new()
-            .wrap(Logger::default())
-            .app_data(rest_opts.clone())
-            .configure(rest_api::configure)
-            .configure(sockets::configure)
-    })
-    .bind((opts.bind.as_str(), opts.port))?
-    .run()
-    .await?;
+        App::new().wrap(Logger::default())
+                  .app_data(rest_opts.clone())
+                  .configure(rest_api::configure)
+                  .configure(sockets::configure)
+    }).bind((opts.bind.as_str(), opts.port))?
+      .run()
+      .await?;
 
     Ok(())
 }

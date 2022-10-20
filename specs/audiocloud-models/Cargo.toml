@@ -22,10 +22,7 @@ path = "../audiocloud-api"
 [dev-dependencies]
 serde_yaml = "0.9"
 serde_json = "1"
-
-[dev-dependencies.utoipa]
-version = "2"
-features = ["chrono", "debug", "openapi_extensions", "uuid"]
+anyhow = "1"
 
 [build-dependencies]
 serde_yaml = "0.9"

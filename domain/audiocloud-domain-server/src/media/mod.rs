@@ -58,7 +58,7 @@ impl DownloadJobId {
 
 struct MediaJobs {
     download: Option<DownloadJobId>,
-    upload: Option<UploadJobId>,
+    upload:   Option<UploadJobId>,
 }
 
 #[derive(Args)]
@@ -77,15 +77,11 @@ pub struct MediaOpts {
 pub async fn init(cfg: MediaOpts, db: Db) -> anyhow::Result<Addr<MediaSupervisor>> {
     let service = MediaSupervisor::new(cfg, db)?;
 
-    let addr = MEDIA_SUPERVISOR
-        .get_or_init(move || service.start())
-        .clone();
+    let addr = MEDIA_SUPERVISOR.get_or_init(move || service.start()).clone();
 
     Ok(addr)
 }
 
 pub fn get_media_supervisor() -> &'static Addr<MediaSupervisor> {
-    MEDIA_SUPERVISOR
-        .get()
-        .expect("Media supervisor not initialized")
+    MEDIA_SUPERVISOR.get().expect("Media supervisor not initialized")
 }

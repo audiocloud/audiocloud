@@ -19,27 +19,19 @@ impl Handler<ModifyTask> for TasksSupervisor {
 
         match self.tasks.get_mut(&msg.task_id) {
             Some(task) => match task.actor.as_ref() {
-                Some(actor) => actor
-                    .send(msg)
-                    .into_actor(self)
-                    .map(|result, _, _| match result {
-                        Ok(result) => result,
-                        Err(err) => Err(BadGateway {
-                            error: err.to_string(),
-                        }),
-                    })
-                    .boxed_local(),
-                None => fut::ready(Self::modify_task_spec(task, msg))
-                    .into_actor(self)
-                    .boxed_local(),
+                Some(actor) => actor.send(msg)
+                                    .into_actor(self)
+                                    .map(|result, _, _| match result {
+                                        Ok(result) => result,
+                                        Err(err) => Err(BadGateway { error: err.to_string() }),
+                                    })
+                                    .boxed_local(),
+                None => fut::ready(Self::modify_task_spec(task, msg)).into_actor(self).boxed_local(),
             },
             None => {
                 warn!(task_id = %msg.task_id, "Refusing to modify unknown task");
-                fut::err(TaskNotFound {
-                    task_id: msg.task_id.clone(),
-                })
-                .into_actor(self)
-                .boxed_local()
+                fut::err(TaskNotFound { task_id: msg.task_id.clone(), }).into_actor(self)
+                                                                        .boxed_local()
             }
         }
     }
@@ -53,17 +45,13 @@ impl TasksSupervisor {
 
         for modification in msg.modify_spec {
             spec.modify(modification)
-                .map_err(|error| TaskModification {
-                    task_id: { msg.task_id.clone() },
-                    error: { error },
-                })?;
+                .map_err(|error| TaskModification { task_id: { msg.task_id.clone() },
+                                                    error:   { error }, })?;
         }
 
         task.spec = spec;
 
-        Ok(TaskUpdated::Updated {
-            task_id: { msg.task_id.clone() },
-            revision: { task.spec.revision },
-        })
+        Ok(TaskUpdated::Updated { task_id:  { msg.task_id.clone() },
+                                  revision: { task.spec.revision }, })
     }
 }

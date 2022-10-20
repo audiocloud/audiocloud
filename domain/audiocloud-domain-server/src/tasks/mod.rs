@@ -20,23 +20,15 @@ mod task_media_objects;
 static TASKS_SUPERVISOR: OnceCell<Addr<TasksSupervisor>> = OnceCell::new();
 
 pub fn get_tasks_supervisor() -> &'static Addr<TasksSupervisor> {
-    TASKS_SUPERVISOR
-        .get()
-        .expect("Tasks supervisor not initialized")
+    TASKS_SUPERVISOR.get().expect("Tasks supervisor not initialized")
 }
 
 #[instrument(skip_all, err)]
-pub fn init(
-    db: Db,
-    opts: &TaskOpts,
-    config: &DomainConfig,
-    routing: FixedInstanceRoutingMap,
-) -> anyhow::Result<()> {
+pub fn init(db: Db, opts: &TaskOpts, config: &DomainConfig, routing: FixedInstanceRoutingMap) -> anyhow::Result<()> {
     let supervisor = TasksSupervisor::new(db, opts, config, routing)?;
 
-    TASKS_SUPERVISOR
-        .set(supervisor.start())
-        .map_err(|_| anyhow!("Tasks supervisor already initialized"))?;
+    TASKS_SUPERVISOR.set(supervisor.start())
+                    .map_err(|_| anyhow!("Tasks supervisor already initialized"))?;
 
     Ok(())
 }

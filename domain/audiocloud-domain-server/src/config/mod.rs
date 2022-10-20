@@ -21,21 +21,11 @@ pub struct ConfigOpts {
     pub config_source: ConfigSource,
 
     /// Path to the config file
-    #[clap(
-        long,
-        env,
-        default_value = "config.yaml",
-        required_if_eq("config_source", "file")
-    )]
+    #[clap(long, env, default_value = "config.yaml", required_if_eq("config_source", "file"))]
     pub config_file: PathBuf,
 
     /// The base cloud URL to use for config retrieval
-    #[clap(
-        long,
-        env,
-        default_value = "https://api.audiocloud.io",
-        required_if_eq("config_source", "cloud")
-    )]
+    #[clap(long, env, default_value = "https://api.audiocloud.io", required_if_eq("config_source", "cloud"))]
     pub cloud_url: Url,
 
     #[clap(long, env, required_if_eq("config_source", "cloud"))]
@@ -64,12 +54,11 @@ pub enum ConfigSource {
 
 async fn load_config(cfg: ConfigOpts) -> anyhow::Result<DomainConfig> {
     match cfg.config_source {
-        ConfigSource::Cloud => Ok(cloud::get_config(
-            cfg.cloud_url,
-            cfg.api_key
-                .ok_or_else(|| anyhow!("API key must be configured for cloud configuration"))?,
-        )
-        .await?),
+        ConfigSource::Cloud => {
+            Ok(cloud::get_config(cfg.cloud_url,
+                                 cfg.api_key
+                                    .ok_or_else(|| anyhow!("API key must be configured for cloud configuration"))?).await?)
+        }
         ConfigSource::File => Ok(file::get_config(cfg.config_file).await?),
     }
 }
@@ -84,27 +73,24 @@ pub async fn init(cfg: ConfigOpts) -> anyhow::Result<DomainConfig> {
             loop {
                 time::sleep(time::Duration::from_secs(cfg.config_refresh_seconds as u64)).await;
                 rv = async {
-                    debug!(source = cfg.describe(), "Reloading configuration");
-                    match load_config(cfg.clone()).await {
-                        Err(error) => {
-                            error!(%error, "Failed to reload config");
-                            rv
-                        }
-                        Ok(config) => {
-                            if &rv != &config {
-                                // TODO: this will not reload models or fixed instance routing
-                                Broker::<SystemBroker>::issue_async(NotifyDomainConfiguration {
-                                    config: config.clone(),
-                                });
-                                config
-                            } else {
-                                rv
-                            }
-                        }
-                    }
-                }
-                .instrument(info_span!("config_reload"))
-                .await;
+                         debug!(source = cfg.describe(), "Reloading configuration");
+                         match load_config(cfg.clone()).await {
+                             Err(error) => {
+                                 error!(%error, "Failed to reload config");
+                                 rv
+                             }
+                             Ok(config) => {
+                                 if &rv != &config {
+                                     // TODO: this will not reload models or fixed instance routing
+                                     Broker::<SystemBroker>::issue_async(NotifyDomainConfiguration { config: config.clone() });
+                                     config
+                                 } else {
+                                     rv
+                                 }
+                             }
+                         }
+                     }.instrument(info_span!("config_reload"))
+                      .await;
             }
         }
     });

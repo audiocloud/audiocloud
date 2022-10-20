@@ -82,12 +82,10 @@ mod test {
         let value = Err::<String, _>(format!("Error message"));
         let msg = Json.serialize(&value).expect("serialize");
         let jsvalue: serde_json::Value = serde_json::from_slice(&msg).expect("deserialize");
-        assert_eq!(
-            jsvalue,
-            json!({
-                "Err": "Error message"
-            })
-        );
+        assert_eq!(jsvalue,
+                   json!({
+                       "Err": "Error message"
+                   }));
     }
 
     #[test]
@@ -95,11 +93,9 @@ mod test {
         let value = Ok::<_, String>(18);
         let msg = Json.serialize(&value).expect("serialize");
         let jsvalue: serde_json::Value = serde_json::from_slice(&msg).expect("deserialize");
-        assert_eq!(
-            jsvalue,
-            json!({
-                "Ok": 18
-            })
-        );
+        assert_eq!(jsvalue,
+                   json!({
+                       "Ok": 18
+                   }));
     }
 }

@@ -1,0 +1,3502 @@
+openapi: 3.1.0
+info:
+  contact:
+    email: bojan@distopik.com
+    name: Bojan Šernek
+  description: ''
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  title: Audio Cloud Orchestrator
+  version: 0.1.0
+paths:
+  /v1/apps/{app_id}:
+    get:
+      deprecated: false
+      description: |
+        Get app details
+
+        Get details of a registered app. Only administrators and app owners may do this.
+      operationId: get_app
+      parameters:
+      - deprecated: false
+        description: App to get
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAppResponse'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Get app details
+      tags:
+      - apps
+    patch:
+      deprecated: false
+      description: |
+        Update app details
+
+        Update details of a registered app. Only administrators and app owners may do this. If the media
+        URL is changed, it will only be used for newly submitted upload and download jobs.
+      operationId: update_app
+      parameters:
+      - deprecated: false
+        description: App to update
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApp'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Update app details
+      tags:
+      - apps
+  /v1/apps/{app_id}/media/{object_id}:
+    delete:
+      deprecated: false
+      description: |
+        Delete a media object
+
+        Delete a media object form all domains that have a copy.
+      operationId: delete_media_object
+      parameters:
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadToDomain'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaObjectDeleted'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or task not found
+      summary: Delete a media object
+      tags:
+      - media
+  /v1/apps/{app_id}/tasks:
+    post:
+      deprecated: false
+      description: |
+        Create a task
+
+        The task will be checked against exclusivity with other tasks, as well as resources and other
+        limits imposed by the domain configuration.
+      operationId: create_task
+      parameters:
+      - deprecated: false
+        description: The app for which we are creating a task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTask'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Overlapping task exists
+      summary: Create a task
+      tags:
+      - tasks
+  /v1/apps/{app_id}/tasks/{task_id}:
+    delete:
+      deprecated: false
+      description: |
+        Delete a task
+
+        Delete a task and release all referenced resources.
+      operationId: delete_task
+      parameters:
+      - deprecated: false
+        description: App owning the task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task to be deleted
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDeleted'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App not found
+      summary: Delete a task
+      tags:
+      - tasks
+  /v1/apps/{app_id}/tasks/{task_id}/spec:
+    put:
+      deprecated: false
+      description: |
+        Modify existing task spec
+
+        Submit modifications to the task. This generic request can be used to update most aspects of the
+        session: adjusting parameters, creating, deleting, reconnecting nodes, changing media, etc.
+      operationId: modify_task_spec
+      parameters:
+      - deprecated: false
+        description: App owning the task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task to be updated
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version for
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyTaskList'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App or task not found
+      summary: Modify existing task spec
+      tags:
+      - tasks
+  /v1/apps/{app_id}/tasks/{task_id}/time:
+    put:
+      deprecated: false
+      description: |
+        Modify existing task time
+
+        Submit modifications to the task reservation time. Can be used to extend, move start or end early.
+      operationId: adjust_task_time
+      parameters:
+      - deprecated: false
+        description: App owning the task
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: Task to be updated
+        in: path
+        name: task_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/TaskId'
+      - deprecated: false
+        description: The task version for
+        in: header
+        name: If-Match
+        required: true
+        schema:
+          format: int64
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustTaskTime'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: App or task not found
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Overlapping task exists
+      summary: Modify existing task time
+      tags:
+      - tasks
+  /v1/domains/{domain_id}:
+    get:
+      deprecated: false
+      description: |
+        Get domain details
+
+        Get details about a domain. Available to owners, administrators and apps where the app has
+        permission to access domain details.
+      operationId: get_domain
+      parameters:
+      - deprecated: false
+        description: Domain to get
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetDomainResponse'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Get domain details
+      tags:
+      - domains
+  /v1/domains/{domain_id}/config:
+    get:
+      deprecated: false
+      description: |
+        Domain requests to get its configuration
+
+        When a domain starts in cloud mode, it will get the details of its configuration from the cloud.
+        This endpoint delivers all of the cloud information about the domain, including instances,
+        audio engines and cloud synchronization endpoints.
+      operationId: get_domain_config
+      parameters:
+      - deprecated: false
+        description: Domain to get config for
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainConfig'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Domain requests to get its configuration
+      tags:
+      - domains
+  /v1/domains/{domain_id}/instances/{manufacturer}/{name}/{instance}/maintenance:
+    delete:
+      deprecated: false
+      description: |
+        Clear instance maintenance time
+
+        Clear any maitnenance on the instance that matches the time predicates provided.
+      operationId: clear_fixed_instance_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain hosting the instance
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Instance manufacturer
+        in: path
+        name: manufacturer
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance (product) name
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance unique identifier
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Clear instance maintenance time
+      tags:
+      - domains
+    post:
+      deprecated: false
+      description: |
+        Add maitenance time to instance
+
+        Add a designated time of maitnenance to an instance in a domain. When an instance is in
+        maintenance, it cannot process tasks. Apps will not be able to create bookings against the
+        instance that intersect with maintenance windows.
+      operationId: add_fixed_instance_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain hosting the instance
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Instance manufacturer
+        in: path
+        name: manufacturer
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance (product) name
+        in: path
+        name: name
+        required: true
+        schema:
+          type: string
+      - deprecated: false
+        description: Instance unique identifier
+        in: path
+        name: instance
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Add maitenance time to instance
+      tags:
+      - domains
+  /v1/domains/{domain_id}/maintenance:
+    delete:
+      deprecated: false
+      description: |
+        Clear domain maintenance time
+
+        Clear any maitnenance on the domain that matches the time predicates provided.
+      operationId: clear_domain_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain to clear maitnenance on
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClearMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Clear domain maintenance time
+      tags:
+      - domains
+    post:
+      deprecated: false
+      description: |
+        Add maitenance time to domain
+
+        Add a designated time of maitnenance to the whole domain. When a domain is in maintenance, it
+        cannot serve API requests or process tasks. Apps will not be able to create bookings against the
+        domain that intersect with maintenance windows.
+      operationId: add_domain_maintenance
+      parameters:
+      - deprecated: false
+        description: Domain to add maintenance to
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddMaintenance'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DomainUpdated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not found
+      summary: Add maitenance time to domain
+      tags:
+      - domains
+  /v1/domains/{domain_id}/media/{app_id}/{object_id}/download:
+    put:
+      deprecated: false
+      description: |
+        Download a media object
+
+        Download a media object from a domain to an app's private storage.
+      operationId: download_media_object
+      parameters:
+      - deprecated: false
+        description: Domain to download the file from
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DownloadFromDomain'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or task not found
+      summary: Download a media object
+      tags:
+      - media
+  /v1/domains/{domain_id}/media/{app_id}/{object_id}/report:
+    put:
+      deprecated: false
+      description: |
+        Update upload/download progress
+
+        Used by domains to communicate upload or download progress.
+      operationId: report_media_job_progress
+      parameters:
+      - deprecated: false
+        description: Domain to download the file from
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportMediaJobProgress'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or object not found
+      summary: Update upload/download progress
+      tags:
+      - media
+  /v1/domains/{domain_id}/media/{app_id}/{object_id}/upload:
+    put:
+      deprecated: false
+      description: |
+        Uplod a media object
+
+        Upload or replace content of a domain object from an app's private storage.
+      operationId: upload_media_object
+      parameters:
+      - deprecated: false
+        description: Domain to upload the file to
+        in: path
+        name: domain_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/DomainId'
+      - deprecated: false
+        description: Owner of the file
+        in: path
+        name: app_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/AppId'
+      - deprecated: false
+        description: File object ID
+        in: path
+        name: object_id
+        required: true
+        schema:
+          $ref: '#/components/schemas/MediaObjectId'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadToDomain'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadCreated'
+          description: Success
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Not authorized
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CloudError'
+          description: Domain, app or task not found
+      summary: Uplod a media object
+      tags:
+      - media
+servers:
+- description: Production
+  url: https://api.audiocloud.io
+- description: Local development
+  url: http://localhost:7100
+components:
+  schemas:
+    AddMaintenance:
+      title: AddMaintenance
+      description: Add maintenance to an object
+      type: object
+      required:
+      - reason
+      - time
+      properties:
+        reason:
+          description: WHat is the reason for maintenance (human readable string or URL with more information
+          type: string
+        time:
+          description: When is it taking place
+          allOf:
+          - $ref: '#/components/schemas/TimeRange'
+    AdjustTaskTime:
+      title: AdjustTaskTime
+      description: Adjust the task time
+      type: object
+      properties:
+        from:
+          description: If not null, overwrite the starting time
+          type:
+          - string
+          - 'null'
+          format: date-time
+        to:
+          description: If not null, overwrite the ending time
+          type:
+          - string
+          - 'null'
+          format: date-time
+    AmplifierId:
+      type: string
+      enum:
+      - input
+      - output
+      - global
+      - insert_input
+      - insert_output
+    AmplifierParameterRole:
+      type: string
+      enum:
+      - enable
+      - gain
+      - distortion
+      - slew_rate
+    AmplifierReportRole:
+      type: string
+      enum:
+      - peak_volume
+      - rms_volume
+      - lufs_volume_momentary
+      - lufs_volume_short_term
+      - lufs_volume_integrated
+    AppFixedInstance:
+      title: AppFixedInstance
+      description: Fixed instance summary for apps
+      type: object
+      required:
+      - maintenance
+      - media
+      - power
+      - sidecars
+      properties:
+        maintenance:
+          description: Configured maintenance time windows during which the instance should not serve requests
+          type: array
+          items:
+            $ref: '#/components/schemas/Maintenance'
+        media:
+          description: If true, the instance is using media and may rewind
+          type: boolean
+        power:
+          description: If true, the instance may need to be powered up
+          type: boolean
+        sidecars:
+          description: Additional models with parameters or reports that are merged with the instance model
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelId'
+          uniqueItems: true
+    AppId:
+      type: string
+    AppMediaObjectId:
+      type: string
+    AppTaskId:
+      type: string
+    AppUpdated:
+      title: AppUpdated
+      description: The App has been updated
+      oneOf:
+      - description: Updated normally
+        type: object
+        required:
+        - updated
+        properties:
+          updated:
+            $ref: '#/components/schemas/AppId'
+        additionalProperties: false
+    ChannelMask:
+      oneOf:
+      - type: object
+        required:
+        - mono
+        properties:
+          mono:
+            type: integer
+            format: uint
+            minimum: 0.0
+        additionalProperties: false
+      - type: object
+        required:
+        - stereo
+        properties:
+          stereo:
+            type: integer
+            format: uint
+            minimum: 0.0
+        additionalProperties: false
+    ChannelParameterRole:
+      type: string
+      enum:
+      - pan
+    ClearMaintenance:
+      title: ClearMaintenance
+      description: Clear maintenance from an object
+      type: object
+      properties:
+        after:
+          description: If not null, clear all maitnenance after this timestamp
+          type:
+          - string
+          - 'null'
+          format: date-time
+        before:
+          description: If not null, clear all maitnenance before this timestamp
+          type:
+          - string
+          - 'null'
+          format: date-time
+    CloudError:
+      title: CloudError
+      oneOf:
+      - type: object
+        required:
+        - type
+        properties:
+          type:
+            type: string
+            enum:
+            - api_key_not_found
+      - type: object
+        required:
+        - id
+        - type
+        properties:
+          id:
+            $ref: '#/components/schemas/AppMediaObjectId'
+          type:
+            type: string
+            enum:
+            - app_file_not_found
+      - type: object
+        required:
+        - id
+        - type
+        properties:
+          id:
+            $ref: '#/components/schemas/AppId'
+          type:
+            type: string
+            enum:
+            - app_not_found
+      - type: object
+        required:
+        - task_id
+        - type
+        properties:
+          task_id:
+            type: string
+          type:
+            type: string
+            enum:
+            - invalid_app_task_id
+      - type: object
+        required:
+        - object_id
+        - type
+        properties:
+          object_id:
+            type: string
+          type:
+            type: string
+            enum:
+            - invalid_app_media_object_id
+      - type: object
+        required:
+        - type
+        properties:
+          type:
+            type: string
+            enum:
+            - only_future_reservations
+      - type: object
+        required:
+        - type
+        properties:
+          type:
+            type: string
+            enum:
+            - time_malformed
+      - type: object
+        required:
+        - minimum
+        - requested
+        - type
+        properties:
+          minimum:
+            type: number
+            format: double
+          requested:
+            type: number
+            format: double
+          type:
+            type: string
+            enum:
+            - duration_too_short
+      - type: object
+        required:
+        - max
+        - type
+        properties:
+          max:
+            type: integer
+            format: uint
+            minimum: 0.0
+          type:
+            type: string
+            enum:
+            - too_many_tasks
+      - type: object
+        required:
+        - message
+        - type
+        properties:
+          message:
+            type: string
+          type:
+            type: string
+            enum:
+            - internal_inconsistency
+      - type: object
+        required:
+        - instance_ids
+        - type
+        properties:
+          instance_ids:
+            type: array
+            items:
+              $ref: '#/components/schemas/FixedInstanceId'
+            uniqueItems: true
+          type:
+            type: string
+            enum:
+            - overlapping_fixed_instances
+      - type: object
+        required:
+        - connection_id
+        - error
+        - type
+        properties:
+          connection_id:
+            $ref: '#/components/schemas/NodeConnectionId'
+          error:
+            $ref: '#/components/schemas/CloudError'
+          type:
+            type: string
+            enum:
+            - connection_error
+      - type: object
+        required:
+        - channels
+        - mask
+        - type
+        properties:
+          channels:
+            type: integer
+            format: uint
+            minimum: 0.0
+          mask:
+            $ref: '#/components/schemas/ChannelMask'
+          type:
+            type: string
+            enum:
+            - channel_mask_incompatible
+      - type: object
+        required:
+        - mixer_node_id
+        - type
+        properties:
+          mixer_node_id:
+            $ref: '#/components/schemas/MixerNodeId'
+          type:
+            type: string
+            enum:
+            - mixer_node_not_found
+      - type: object
+        required:
+        - track_node_id
+        - type
+        properties:
+          track_node_id:
+            $ref: '#/components/schemas/TrackNodeId'
+          type:
+            type: string
+            enum:
+            - track_node_not_found
+      - type: object
+        required:
+        - fixed_node_id
+        - type
+        properties:
+          fixed_node_id:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - fixed_instance_node_not_found
+      - type: object
+        required:
+        - dynamic_node_id
+        - type
+        properties:
+          dynamic_node_id:
+            $ref: '#/components/schemas/DynamicInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - dynamic_instance_node_not_found
+      - type: object
+        required:
+        - domain_id
+        - type
+        properties:
+          domain_id:
+            $ref: '#/components/schemas/DomainId'
+          type:
+            type: string
+            enum:
+            - domain_not_found
+      - type: object
+        required:
+        - instance_id
+        - type
+        properties:
+          instance_id:
+            $ref: '#/components/schemas/FixedInstanceId'
+          type:
+            type: string
+            enum:
+            - instance_not_found
+      - type: object
+        required:
+        - model_id
+        - type
+        properties:
+          model_id:
+            $ref: '#/components/schemas/ModelId'
+          type:
+            type: string
+            enum:
+            - model_not_found
+      - type: object
+        required:
+        - domain_id
+        - model_id
+        - node_id
+        - type
+        properties:
+          domain_id:
+            $ref: '#/components/schemas/DomainId'
+          model_id:
+            $ref: '#/components/schemas/ModelId'
+          node_id:
+            $ref: '#/components/schemas/DynamicInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - dynamic_instance_not_supported
+      - type: object
+        required:
+        - domain_id
+        - instance_id
+        - node_id
+        - type
+        properties:
+          domain_id:
+            $ref: '#/components/schemas/DomainId'
+          instance_id:
+            $ref: '#/components/schemas/FixedInstanceId'
+          node_id:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - fixed_instance_not_supported
+      - type: object
+        required:
+        - app_id
+        - domain_id
+        - instance_id
+        - node_id
+        - type
+        properties:
+          app_id:
+            $ref: '#/components/schemas/AppId'
+          domain_id:
+            $ref: '#/components/schemas/DomainId'
+          instance_id:
+            $ref: '#/components/schemas/FixedInstanceId'
+          node_id:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - fixed_instance_access_denied
+      - type: object
+        required:
+        - available
+        - requested
+        - resource
+        - type
+        properties:
+          available:
+            type: number
+            format: double
+          requested:
+            type: number
+            format: double
+          resource:
+            $ref: '#/components/schemas/ResourceId'
+          type:
+            type: string
+            enum:
+            - out_of_resource
+      - type: object
+        required:
+        - task_id
+        - type
+        properties:
+          task_id:
+            $ref: '#/components/schemas/AppTaskId'
+          type:
+            type: string
+            enum:
+            - task_not_found
+      - type: object
+        required:
+        - error
+        - type
+        properties:
+          error:
+            $ref: '#/components/schemas/ModifyTaskError'
+          type:
+            type: string
+            enum:
+            - task_modification
+      - type: object
+        required:
+        - message
+        - type
+        properties:
+          message:
+            type: string
+          type:
+            type: string
+            enum:
+            - database
+      - type: object
+        required:
+        - message
+        - type
+        properties:
+          message:
+            type: string
+          type:
+            type: string
+            enum:
+            - authentication
+      - type: object
+        required:
+        - message
+        - type
+        properties:
+          message:
+            type: string
+          type:
+            type: string
+            enum:
+            - authorization
+      - type: object
+        required:
+        - type
+        properties:
+          type:
+            type: string
+            enum:
+            - blocking_lock
+    ConnectionValues:
+      type: object
+      properties:
+        pan:
+          type:
+          - number
+          - 'null'
+          format: double
+        volume:
+          type:
+          - number
+          - 'null'
+          format: double
+    ControlChannels:
+      type: string
+      enum:
+      - global
+      - left
+      - right
+      - generic
+    CreateTask:
+      title: CreateTask
+      description: |-
+        Create a task
+
+        Tasks describe graphs of media operations that may execute in real time or unattended as a render. They are allocated to a domain and an engine within that domain. Operations are executed with the help of instances, which are fixed hardware blocks or dynamically instanced software components.
+      type: object
+      required:
+      - domain_id
+      - dry_run
+      - reservations
+      - security
+      - spec
+      properties:
+        domain_id:
+          description: Domain that will be executing the task
+          allOf:
+          - $ref: '#/components/schemas/DomainId'
+        dry_run:
+          description: When true, do not actually create a task, just validate the process
+          type: boolean
+        reservations:
+          description: Task reservations
+          allOf:
+          - $ref: '#/components/schemas/CreateTaskReservation'
+        security:
+          description: Security keys and associateds permissions
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TaskPermissions'
+        spec:
+          description: Task specification
+          allOf:
+          - $ref: '#/components/schemas/CreateTaskSpec'
+    CreateTaskReservation:
+      description: Timed resource reservations for the task (must contain all used resources)
+      type: object
+      required:
+      - fixed_instances
+      - from
+      - to
+      properties:
+        fixed_instances:
+          description: Fixed instances reserved for the task
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedInstanceId'
+          uniqueItems: true
+        from:
+          description: Start of the reservation time
+          type: string
+          format: date-time
+        to:
+          description: End of the reservation time
+          type: string
+          format: date-time
+    CreateTaskSpec:
+      description: Create task spec
+      type: object
+      properties:
+        connections:
+          description: Connections between nodes
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NodeConnection'
+        dynamic:
+          description: Dynamic instance nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DynamicInstanceNode'
+        fixed:
+          description: Fixed instance nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FixedInstanceNode'
+        mixers:
+          description: Mixer nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MixerNode'
+        tracks:
+          description: Track nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TrackNode'
+    DomainCommandSource:
+      description: Source of commands for domains
+      oneOf:
+      - description: Domain command source disabled
+        type: string
+        enum:
+        - disabled
+      - description: Consume a kafka topic
+        type: object
+        required:
+        - kafka
+        properties:
+          kafka:
+            type: object
+            required:
+            - brokers
+            - password
+            - topic
+            - username
+            properties:
+              brokers:
+                description: Kafka broker list to be used for commands and events
+                type: string
+              offset:
+                description: Read after this offset from event stream, or default to the latest one persisted
+                type:
+                - integer
+                - 'null'
+                format: int64
+              password:
+                description: SASL SCRAM password used to consume commands
+                type: string
+              topic:
+                description: Topic where commands to the domain will be sent
+                type: string
+              username:
+                description: Username used to consume commands
+                type: string
+        additionalProperties: false
+    DomainConfig:
+      title: DomainConfig
+      description: Used by domain for booting
+      type: object
+      required:
+      - domain_id
+      - models
+      - public_host
+      properties:
+        apps:
+          description: Apps allowed to access the domain
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/AppId'
+          uniqueItems: true
+        command_source:
+          description: Source for commands from the cloud to the domain
+          default: disabled
+          allOf:
+          - $ref: '#/components/schemas/DomainCommandSource'
+        domain_id:
+          description: Id of the domain
+          allOf:
+          - $ref: '#/components/schemas/DomainId'
+        dynamic_instances:
+          description: Dynamic instances configured on the domain, with associated limits
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DynamicInstanceLimits'
+        engines:
+          description: Engines configured on the domain
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DomainEngineConfig'
+        event_sink:
+          description: Sink for events from the domain to the cloud
+          default: log
+          allOf:
+          - $ref: '#/components/schemas/DomainEventSink'
+        fixed_instances:
+          description: Fixed instances configured on the domain
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DomainFixedInstanceConfig'
+        maintenance:
+          description: Configured maintenance time windows during which the domain should not serve requests
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/Maintenance'
+        max_concurrent_tasks:
+          description: Maximum number of concurrent tasks (when lower than the sum of tasks available on engines)
+          default: null
+          type:
+          - integer
+          - 'null'
+          format: uint
+          minimum: 0.0
+        min_task_len_ms:
+          description: Minimum Task length
+          default: 5000
+          type: integer
+          format: int64
+        models:
+          description: Source of model information for the domain (can include unused models)
+          allOf:
+          - $ref: '#/components/schemas/DomainModelSource'
+        public_host:
+          description: The public host or IP where domain API is visible to the outside world
+          type: string
+        tasks:
+          description: Currently configured tasks
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Task'
+    DomainEngineConfig:
+      title: DomainEngineConfig
+      description: Information about a media engine within a domain
+      type: object
+      required:
+      - max_concurrent_tasks
+      - sample_rate
+      properties:
+        dynamic_instances:
+          description: Dynamic instances configured on the audio engine, with associated limits
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DynamicInstanceLimits'
+        max_concurrent_tasks:
+          description: Maximum number of concurrent tasks
+          type: integer
+          format: uint
+          minimum: 0.0
+        resources:
+          description: Resources available on the domain
+          default: {}
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        sample_rate:
+          description: Native audio sample rate
+          type: integer
+          format: uint
+          minimum: 0.0
+    DomainEventSink:
+      description: Source of commands for domains
+      oneOf:
+      - description: Disable sending of domain events
+        type: string
+        enum:
+        - disabled
+      - description: Emit events as logs
+        type: string
+        enum:
+        - log
+      - description: Produce to a kafka topic
+        type: object
+        required:
+        - kafka
+        properties:
+          kafka:
+            type: object
+            required:
+            - brokers
+            - password
+            - topic
+            - username
+            properties:
+              brokers:
+                description: Kafka broker list to be used for commands and events
+                type: string
+              password:
+                description: SASL SCRAM password used to produce events
+                type: string
+              topic:
+                description: Topic where events from the domain may be sent
+                type: string
+              username:
+                description: Username used to produce events
+                type: string
+        additionalProperties: false
+    DomainFixedInstanceConfig:
+      title: DomainFixedInstanceConfig
+      description: Configuration of a fixed instance
+      type: object
+      required:
+      - engine_id
+      properties:
+        apps_override:
+          description: Apps allowed to access the instance or null if the domain defaults are used
+          default: null
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/AppId'
+          uniqueItems: true
+        engine_id:
+          description: Engine hosting the instance
+          allOf:
+          - $ref: '#/components/schemas/EngineId'
+        input_start:
+          description: Instance inputs start at index on engine
+          default: null
+          type:
+          - integer
+          - 'null'
+          format: uint32
+          minimum: 0.0
+        maintenance:
+          description: Maintenance windows on this instance
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/Maintenance'
+        media:
+          description: Optional configuration if instance handles media (such as tape machines)
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/DomainMediaInstanceConfig'
+          - type: 'null'
+        output_start:
+          description: Instance outputs start at index on engine
+          default: null
+          type:
+          - integer
+          - 'null'
+          format: uint32
+          minimum: 0.0
+        power:
+          description: Optional configuration to powers on/off instance to conserve energy
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/DomainPowerInstanceConfig'
+          - type: 'null'
+        sidecars:
+          description: Additional models with parameters or reports that are merged with the instance model
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelId'
+          uniqueItems: true
+    DomainId:
+      type: string
+    DomainMediaInstanceConfig:
+      description: Instance media settings
+      type: object
+      required:
+      - length_ms
+      - renders_rewind_to_start
+      properties:
+        length_ms:
+          description: Lenght of the inserted media in milliseconds
+          type: integer
+          format: uint
+          minimum: 0.0
+        play_rewind:
+          description: |-
+            Behaviour of playing back (streaming) and hitting end of media
+
+            - If null, rewind to start - Otherwise, rewind by specified amount of milliseconds
+          type:
+          - integer
+          - 'null'
+          format: uint
+          minimum: 0.0
+        renders_rewind_to_start:
+          description: WHen rewinding to make space for contiguous renders, should the driver rewind to start or just enough to start rendering
+          type: boolean
+    DomainModelSource:
+      description: Source for models
+      oneOf:
+      - description: MOdels are provided in-line with the configuration
+        type: object
+        required:
+        - inline
+        properties:
+          inline:
+            type: object
+            required:
+            - models
+            properties:
+              models:
+                description: All model information for parameter and report validation
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/Model'
+        additionalProperties: false
+      - description: Models are stored locally on the filesystem
+        type: object
+        required:
+        - local
+        properties:
+          local:
+            type: object
+            required:
+            - path
+            properties:
+              path:
+                description: The local path where models are stored
+                type: string
+        additionalProperties: false
+      - description: Obtain models from a remote URL
+        type: object
+        required:
+        - remote
+        properties:
+          remote:
+            type: object
+            required:
+            - refresh_interval_ms
+            - url
+            properties:
+              refresh_interval_ms:
+                description: Refresh interval, in milliseconds
+                type: integer
+                format: uint64
+                minimum: 0.0
+              url:
+                description: URL where models are going to reside
+                type: string
+        additionalProperties: false
+    DomainPowerInstanceConfig:
+      description: Instance power settings
+      type: object
+      required:
+      - channel
+      - cool_down_ms
+      - idle_off_delay_ms
+      - instance
+      - warm_up_ms
+      properties:
+        channel:
+          description: Which channel on the power instance is distributing power to this instance
+          type: integer
+          format: uint
+          minimum: 0.0
+        cool_down_ms:
+          description: Number of milliseconds to wait to cool down after powering down
+          type: integer
+          format: uint
+          minimum: 0.0
+        idle_off_delay_ms:
+          description: Number of milliseconds to wait before automatically powering down after idle
+          type: integer
+          format: uint
+          minimum: 0.0
+        instance:
+          description: Power instance used to distribute power to this instance
+          allOf:
+          - $ref: '#/components/schemas/FixedInstanceId'
+        warm_up_ms:
+          description: Number of milliseconds to wait to warm up after powering on
+          type: integer
+          format: uint
+          minimum: 0.0
+    DomainUpdated:
+      title: DomainUpdated
+      description: The domain has been updated
+      oneOf:
+      - description: Updated normally
+        type: object
+        required:
+        - updated
+        properties:
+          updated:
+            $ref: '#/components/schemas/DomainId'
+        additionalProperties: false
+    DownloadCreated:
+      title: DownloadCreated
+      description: Confirming download is created
+      oneOf:
+      - type: object
+        required:
+        - created
+        properties:
+          created:
+            type: object
+            required:
+            - domain_id
+            - media_id
+            properties:
+              domain_id:
+                $ref: '#/components/schemas/DomainId'
+              media_id:
+                $ref: '#/components/schemas/AppMediaObjectId'
+        additionalProperties: false
+    DownloadFromDomain:
+      title: DownloadFromDomain
+      type: object
+      required:
+      - url
+      properties:
+        context: true
+        notify_url:
+          type:
+          - string
+          - 'null'
+        url:
+          type: string
+    DynamicInstanceLimits:
+      description: Limits on dynamic instances
+      type: object
+      required:
+      - max_instances
+      properties:
+        max_instances:
+          description: |-
+            Maximum number of concurrent dynamic instances
+
+            Takes precedence over over total resource usage. For example, there may be more resources but licensing limits the amount of instances.
+          type: integer
+          format: uint
+          minimum: 0.0
+    DynamicInstanceNode:
+      description: Dynamic node specification
+      type: object
+      required:
+      - model_id
+      - parameters
+      properties:
+        model_id:
+          description: The manufacturer and name of the processing software
+          allOf:
+          - $ref: '#/components/schemas/ModelId'
+        parameters:
+          description: Parameter values
+    DynamicInstanceNodeId:
+      type: string
+    DynamicsId:
+      type: string
+      enum:
+      - total
+      - compressor
+      - gate
+      - limiter
+      - de_esser
+    DynamicsParameterRole:
+      type: string
+      enum:
+      - ratio
+      - threshold
+      - ceiling
+      - attack
+      - release
+      - auto_release
+      - auto_attack
+      - auto_ratio
+      - knee
+      - detector_input
+      - detector_material
+      - detector_filter
+      - mid_emphasis
+    DynamicsReportRole:
+      type: string
+      enum:
+      - gain_reduction
+      - gain_reduction_limit_hit
+    EngineId:
+      type: string
+    FilterId:
+      description: What kind of filter
+      type: string
+      enum:
+      - high_pass
+      - low
+      - low_mid
+      - mid
+      - high_mid
+      - high
+      - low_pass
+      - band_pass
+      - dynamics
+      - de_esser
+    FilterParameterRole:
+      type: string
+      enum:
+      - gain
+      - gain_direction
+      - frequency
+      - bandwidth
+      - type
+    FixedInstanceId:
+      type: string
+    FixedInstanceNode:
+      description: Fixed instance node specification
+      type: object
+      required:
+      - instance_id
+      - parameters
+      - wet
+      properties:
+        instance_id:
+          description: The manufacturer, name and instance identifier of the hardware device doing the processing
+          allOf:
+          - $ref: '#/components/schemas/FixedInstanceId'
+        parameters:
+          description: parameters
+        wet:
+          description: |-
+            Dry-wet percentage
+
+            only applicable for instances with same number of inputs and outputs, having 1 or 2 channels.
+          type: number
+          format: double
+    FixedInstanceNodeId:
+      type: string
+    GetAppResponse:
+      title: GetAppResponse
+      description: Returned information about an app
+      type: object
+      required:
+      - admin_email
+      - enabled
+      - id
+      - media_url
+      properties:
+        admin_email:
+          description: App owner/administrator email
+          type: string
+        enabled:
+          description: If true, the app is enabled - it may make responses to the cloud API
+          type: boolean
+        id:
+          description: App Id
+          allOf:
+          - $ref: '#/components/schemas/AppId'
+        media_url:
+          description: The URL used to resolve object IDs to media information
+          type: string
+    GetDomainResponse:
+      title: GetDomainResponse
+      description: Domain summary for apps
+      type: object
+      required:
+      - enabled
+      - engines
+      - fixed_instances
+      - maintenance
+      - min_task_len
+      - public_url
+      properties:
+        enabled:
+          description: If true, the domain is enabled and will serve requests if not in maitenance
+          type: boolean
+        engines:
+          description: Engines available on the domain
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DomainEngineConfig'
+        fixed_instances:
+          description: FIxed instances available on the domain
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/AppFixedInstance'
+        maintenance:
+          description: Configured maintenance time windows during which the domain should not serve requests
+          type: array
+          items:
+            $ref: '#/components/schemas/Maintenance'
+        min_task_len:
+          description: Minimum task duration
+          type: number
+          format: double
+        public_url:
+          description: Base public URL for domain API
+          type: string
+    GlobalParameterRole:
+      type: string
+      enum:
+      - enable
+      - bypass
+    InputPadId:
+      description: A pad that can receive connections on a node inside a task
+      oneOf:
+      - description: Mixer node input
+        type: object
+        required:
+        - mixer
+        properties:
+          mixer:
+            $ref: '#/components/schemas/MixerNodeId'
+        additionalProperties: false
+      - description: Fixed instance node input
+        type: object
+        required:
+        - fixed
+        properties:
+          fixed:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+        additionalProperties: false
+      - description: Dynamic instance node input
+        type: object
+        required:
+        - dynamic
+        properties:
+          dynamic:
+            $ref: '#/components/schemas/DynamicInstanceNodeId'
+        additionalProperties: false
+    Maintenance:
+      description: Maintenance window
+      type: object
+      required:
+      - reason
+      - time
+      properties:
+        reason:
+          description: Human readable string about it, or URL to a web page detailing more information
+          type: string
+        time:
+          description: Time during which maintenance is taking place (may overlap with others)
+          allOf:
+          - $ref: '#/components/schemas/TimeRange'
+    MediaChannels:
+      description: Channel count for media items and track nodes
+      oneOf:
+      - description: Single channel
+        type: string
+        enum:
+        - mono
+      - description: Two channels - left and right
+        type: string
+        enum:
+        - stereo
+    MediaJobState:
+      type: object
+      required:
+      - in_progress
+      - progress
+      - retry
+      - updated_at
+      properties:
+        error:
+          type:
+          - string
+          - 'null'
+        in_progress:
+          type: boolean
+        progress:
+          type: number
+          format: double
+        retry:
+          type: integer
+          format: uint
+          minimum: 0.0
+        updated_at:
+          type: string
+          format: date-time
+    MediaObjectDeleted:
+      title: MediaObjectDeleted
+      description: Confirming media object is scheduled for deletion
+      oneOf:
+      - type: object
+        required:
+        - deleted
+        properties:
+          deleted:
+            type: object
+            required:
+            - media_id
+            properties:
+              media_id:
+                $ref: '#/components/schemas/AppMediaObjectId'
+        additionalProperties: false
+    MediaObjectId:
+      type: string
+    MixerNode:
+      description: Mixer node specification
+      type: object
+      required:
+      - input_channels
+      - output_channels
+      properties:
+        input_channels:
+          description: Numvber of input channels on the mixer node
+          type: integer
+          format: uint
+          minimum: 0.0
+        output_channels:
+          description: Number of output channels on the mixer node
+          type: integer
+          format: uint
+          minimum: 0.0
+    MixerNodeId:
+      type: string
+    Model:
+      description: A model describes the parameters and reprots of a processor
+      type: object
+      required:
+      - inputs
+      - media
+      - outputs
+      - parameters
+      - reports
+      properties:
+        capabilities:
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelCapability'
+          uniqueItems: true
+        inputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelInput'
+        media:
+          type: boolean
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelOutput'
+        parameters:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ModelParameter'
+        reports:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ModelReport'
+        resources:
+          default: {}
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+    ModelCapability:
+      type: string
+      enum:
+      - power_distributor
+      - audio_router
+      - audio_mixer
+      - digital_input_output
+    ModelElementScope:
+      oneOf:
+      - type: string
+        enum:
+        - global
+        - all_inputs
+        - all_outputs
+      - type: object
+        required:
+        - count
+        properties:
+          count:
+            type: integer
+            format: uint
+            minimum: 0.0
+        additionalProperties: false
+    ModelId:
+      type: string
+    ModelInput:
+      oneOf:
+      - type: string
+        enum:
+        - sidechain
+        - midi
+      - type: object
+        required:
+        - audio
+        properties:
+          audio:
+            $ref: '#/components/schemas/ControlChannels'
+        additionalProperties: false
+    ModelOutput:
+      oneOf:
+      - type: string
+        enum:
+        - midi
+      - type: object
+        required:
+        - audio
+        properties:
+          audio:
+            $ref: '#/components/schemas/ControlChannels'
+        additionalProperties: false
+    ModelParameter:
+      type: object
+      required:
+      - role
+      - scope
+      - values
+      properties:
+        role:
+          $ref: '#/components/schemas/ModelParameterRole'
+        scope:
+          $ref: '#/components/schemas/ModelElementScope'
+        unit:
+          default: no
+          allOf:
+          - $ref: '#/components/schemas/ModelValueUnit'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelValueOption'
+    ModelParameterRole:
+      oneOf:
+      - type: string
+        enum:
+        - no_role
+        - power
+      - type: object
+        required:
+        - global
+        properties:
+          global:
+            $ref: '#/components/schemas/GlobalParameterRole'
+        additionalProperties: false
+      - type: object
+        required:
+        - channel
+        properties:
+          channel:
+            $ref: '#/components/schemas/ChannelParameterRole'
+        additionalProperties: false
+      - type: object
+        required:
+        - amplifier
+        properties:
+          amplifier:
+            type: array
+            items:
+            - $ref: '#/components/schemas/AmplifierId'
+            - $ref: '#/components/schemas/AmplifierParameterRole'
+            maxItems: 2
+            minItems: 2
+        additionalProperties: false
+      - type: object
+        required:
+        - dynamics
+        properties:
+          dynamics:
+            type: array
+            items:
+            - $ref: '#/components/schemas/DynamicsId'
+            - $ref: '#/components/schemas/DynamicsParameterRole'
+            maxItems: 2
+            minItems: 2
+        additionalProperties: false
+      - type: object
+        required:
+        - filter
+        properties:
+          filter:
+            type: array
+            items:
+            - $ref: '#/components/schemas/FilterId'
+            - $ref: '#/components/schemas/FilterParameterRole'
+            maxItems: 2
+            minItems: 2
+        additionalProperties: false
+    ModelReport:
+      type: object
+      required:
+      - role
+      - scope
+      - values
+      properties:
+        public:
+          default: false
+          type: boolean
+        role:
+          $ref: '#/components/schemas/ModelReportRole'
+        scope:
+          $ref: '#/components/schemas/ModelElementScope'
+        unit:
+          default: no
+          allOf:
+          - $ref: '#/components/schemas/ModelValueUnit'
+        values:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelValueOption'
+        volatile:
+          default: false
+          type: boolean
+    ModelReportRole:
+      oneOf:
+      - type: string
+        enum:
+        - no_role
+      - type: object
+        required:
+        - power
+        properties:
+          power:
+            $ref: '#/components/schemas/PowerReportRole'
+        additionalProperties: false
+      - type: object
+        required:
+        - amplifier
+        properties:
+          amplifier:
+            type: array
+            items:
+            - $ref: '#/components/schemas/AmplifierId'
+            - $ref: '#/components/schemas/AmplifierReportRole'
+            maxItems: 2
+            minItems: 2
+        additionalProperties: false
+      - type: object
+        required:
+        - dynamics
+        properties:
+          dynamics:
+            type: array
+            items:
+            - $ref: '#/components/schemas/DynamicsId'
+            - $ref: '#/components/schemas/DynamicsReportRole'
+            maxItems: 2
+            minItems: 2
+        additionalProperties: false
+    ModelValue:
+      anyOf:
+      - type: string
+      - type: number
+        format: double
+      - type: boolean
+    ModelValueOption:
+      anyOf:
+      - $ref: '#/components/schemas/ModelValue'
+      - type: array
+        items:
+        - $ref: '#/components/schemas/ModelValue'
+        - $ref: '#/components/schemas/ModelValue'
+        maxItems: 2
+        minItems: 2
+    ModelValueUnit:
+      type: string
+      enum:
+      - no
+      - percent
+      - dB
+      - hz
+      - oct
+      - toggle
+      - amps
+      - watthrs
+    ModifyTask:
+      description: Modify a task
+      oneOf:
+      - description: Modify task specification
+        type: object
+        required:
+        - spec
+        properties:
+          spec:
+            type: object
+            required:
+            - spec
+            properties:
+              spec:
+                description: Specification change
+                allOf:
+                - $ref: '#/components/schemas/ModifyTaskSpec'
+        additionalProperties: false
+      - description: Add or overwrite task security
+        type: object
+        required:
+        - set_security
+        properties:
+          set_security:
+            type: object
+            required:
+            - key
+            - security
+            properties:
+              key:
+                description: Secure key to add or overwrite
+                allOf:
+                - $ref: '#/components/schemas/SecureKey'
+              security:
+                description: Permissions to set for the secure key
+                allOf:
+                - $ref: '#/components/schemas/TaskPermissions'
+        additionalProperties: false
+      - description: Revoke task security
+        type: object
+        required:
+        - revoke_security
+        properties:
+          revoke_security:
+            type: object
+            required:
+            - key
+            properties:
+              key:
+                description: Secure key to revoke
+                allOf:
+                - $ref: '#/components/schemas/SecureKey'
+        additionalProperties: false
+    ModifyTaskError:
+      title: ModifyTaskError
+      oneOf:
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/TrackNodeId'
+          type:
+            type: string
+            enum:
+            - track_exists
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - fixed_instance_exists
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/DynamicInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - dynamic_instance_exists
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/MixerNodeId'
+          type:
+            type: string
+            enum:
+            - mixer_exists
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/TrackNodeId'
+          type:
+            type: string
+            enum:
+            - track_does_not_exist
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - fixed_instance_does_not_exist
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/DynamicInstanceNodeId'
+          type:
+            type: string
+            enum:
+            - dynamic_instance_does_not_exist
+      - type: object
+        required:
+        - node_id
+        - type
+        properties:
+          node_id:
+            $ref: '#/components/schemas/MixerNodeId'
+          type:
+            type: string
+            enum:
+            - mixer_does_not_exist
+      - type: object
+        required:
+        - connection_id
+        - type
+        properties:
+          connection_id:
+            $ref: '#/components/schemas/NodeConnectionId'
+          type:
+            type: string
+            enum:
+            - connection_does_not_exist
+      - type: object
+        required:
+        - connection_id
+        - type
+        properties:
+          connection_id:
+            $ref: '#/components/schemas/NodeConnectionId'
+          type:
+            type: string
+            enum:
+            - connection_exists
+      - type: object
+        required:
+        - connection_id
+        - message
+        - type
+        properties:
+          connection_id:
+            $ref: '#/components/schemas/NodeConnectionId'
+          message:
+            type: string
+          type:
+            type: string
+            enum:
+            - connection_malformed
+      - type: object
+        required:
+        - media_id
+        - node_id
+        - type
+        properties:
+          media_id:
+            $ref: '#/components/schemas/TrackMediaId'
+          node_id:
+            $ref: '#/components/schemas/TrackNodeId'
+          type:
+            type: string
+            enum:
+            - media_exists
+      - type: object
+        required:
+        - media_id
+        - node_id
+        - type
+        properties:
+          media_id:
+            $ref: '#/components/schemas/TrackMediaId'
+          node_id:
+            $ref: '#/components/schemas/TrackNodeId'
+          type:
+            type: string
+            enum:
+            - media_does_not_exist
+      - type: object
+        required:
+        - type
+        properties:
+          type:
+            type: string
+            enum:
+            - cycle_detected
+    ModifyTaskList:
+      title: Array_of_ModifyTask
+      type: array
+      items:
+        $ref: '#/components/schemas/ModifyTask'
+    ModifyTaskSpec:
+      description: Modify task structure
+      oneOf:
+      - description: Add a track node to the task
+        type: object
+        required:
+        - add_track
+        properties:
+          add_track:
+            type: object
+            required:
+            - channels
+            - track_id
+            properties:
+              channels:
+                description: Number of channels for the track node
+                allOf:
+                - $ref: '#/components/schemas/MediaChannels'
+              track_id:
+                description: New track node id
+                allOf:
+                - $ref: '#/components/schemas/TrackNodeId'
+        additionalProperties: false
+      - description: Add media to a track node
+        type: object
+        required:
+        - add_track_media
+        properties:
+          add_track_media:
+            type: object
+            required:
+            - media_id
+            - spec
+            - track_id
+            properties:
+              media_id:
+                description: Media id within the track node
+                allOf:
+                - $ref: '#/components/schemas/TrackMediaId'
+              spec:
+                description: Media object specification
+                allOf:
+                - $ref: '#/components/schemas/TrackMedia'
+              track_id:
+                description: Track node id
+                allOf:
+                - $ref: '#/components/schemas/TrackNodeId'
+        additionalProperties: false
+      - description: Update track media on a track node
+        type: object
+        required:
+        - update_track_media
+        properties:
+          update_track_media:
+            type: object
+            required:
+            - media_id
+            - track_id
+            - update
+            properties:
+              media_id:
+                description: Media id within the track node
+                allOf:
+                - $ref: '#/components/schemas/TrackMediaId'
+              track_id:
+                description: Track node id
+                allOf:
+                - $ref: '#/components/schemas/TrackNodeId'
+              update:
+                description: Media object update
+                allOf:
+                - $ref: '#/components/schemas/UpdateTaskTrackMedia'
+        additionalProperties: false
+      - description: Delete track media from a track node
+        type: object
+        required:
+        - delete_track_media
+        properties:
+          delete_track_media:
+            type: object
+            required:
+            - media_id
+            - track_id
+            properties:
+              media_id:
+                description: Media id within the track node
+                allOf:
+                - $ref: '#/components/schemas/TrackMediaId'
+              track_id:
+                description: Track node id
+                allOf:
+                - $ref: '#/components/schemas/TrackNodeId'
+        additionalProperties: false
+      - description: Delete a track node from the task (including all media and referencing connections)
+        type: object
+        required:
+        - delete_track
+        properties:
+          delete_track:
+            type: object
+            required:
+            - track_id
+            properties:
+              track_id:
+                description: Track node id
+                allOf:
+                - $ref: '#/components/schemas/TrackNodeId'
+        additionalProperties: false
+      - description: Add a fixed instance node to the task
+        type: object
+        required:
+        - add_fixed_instance
+        properties:
+          add_fixed_instance:
+            type: object
+            required:
+            - fixed_id
+            - spec
+            properties:
+              fixed_id:
+                description: Fixed instance node id
+                allOf:
+                - $ref: '#/components/schemas/FixedInstanceNodeId'
+              spec:
+                description: Fixed instance node processing specification
+                allOf:
+                - $ref: '#/components/schemas/FixedInstanceNode'
+        additionalProperties: false
+      - description: Add a dynamic instance node to the task
+        type: object
+        required:
+        - add_dynamic_instance
+        properties:
+          add_dynamic_instance:
+            type: object
+            required:
+            - dynamic_id
+            - spec
+            properties:
+              dynamic_id:
+                description: Dynamic instance node id
+                allOf:
+                - $ref: '#/components/schemas/DynamicInstanceNodeId'
+              spec:
+                description: Dynamic instance node processing specification
+                allOf:
+                - $ref: '#/components/schemas/DynamicInstanceNode'
+        additionalProperties: false
+      - description: Add a mixer node to the task
+        type: object
+        required:
+        - add_mixer
+        properties:
+          add_mixer:
+            type: object
+            required:
+            - mixer_id
+            - spec
+            properties:
+              mixer_id:
+                description: Mixer node id
+                allOf:
+                - $ref: '#/components/schemas/MixerNodeId'
+              spec:
+                description: Mixer node processing specification
+                allOf:
+                - $ref: '#/components/schemas/MixerNode'
+        additionalProperties: false
+      - description: Delete a mixer node from the task (including all referencing connections)
+        type: object
+        required:
+        - delete_mixer
+        properties:
+          delete_mixer:
+            type: object
+            required:
+            - mixer_id
+            properties:
+              mixer_id:
+                description: Moxer node id
+                allOf:
+                - $ref: '#/components/schemas/MixerNodeId'
+        additionalProperties: false
+      - description: Delete a fixed instance node from the task (including all referencing connections)
+        type: object
+        required:
+        - delete_fixed_instance
+        properties:
+          delete_fixed_instance:
+            type: object
+            required:
+            - fixed_id
+            properties:
+              fixed_id:
+                description: Fixed instance node id
+                allOf:
+                - $ref: '#/components/schemas/FixedInstanceNodeId'
+        additionalProperties: false
+      - description: Delete dynamic instance node from the task (including all referencing connections)
+        type: object
+        required:
+        - delete_dynamic_instance
+        properties:
+          delete_dynamic_instance:
+            type: object
+            required:
+            - dynamic_id
+            properties:
+              dynamic_id:
+                description: Dynamic instance node id
+                allOf:
+                - $ref: '#/components/schemas/DynamicInstanceNodeId'
+        additionalProperties: false
+      - description: Delete a connection from the task (preserving the referenced nodes even if they are now unconnected)
+        type: object
+        required:
+        - delete_connection
+        properties:
+          delete_connection:
+            type: object
+            required:
+            - connection_id
+            properties:
+              connection_id:
+                description: Connection id
+                allOf:
+                - $ref: '#/components/schemas/NodeConnectionId'
+        additionalProperties: false
+      - description: Add a connection to the task
+        type: object
+        required:
+        - add_connection
+        properties:
+          add_connection:
+            type: object
+            required:
+            - connection_id
+            - from
+            - from_channels
+            - pan
+            - to
+            - to_channels
+            - volume
+            properties:
+              connection_id:
+                description: Connection id
+                allOf:
+                - $ref: '#/components/schemas/NodeConnectionId'
+              from:
+                description: Source node pad
+                allOf:
+                - $ref: '#/components/schemas/OutputPadId'
+              from_channels:
+                description: Source channel mask
+                allOf:
+                - $ref: '#/components/schemas/ChannelMask'
+              pan:
+                description: Panning adjustment on the audio passing through the connection
+                type: number
+                format: double
+              to:
+                description: Destination node pad
+                allOf:
+                - $ref: '#/components/schemas/InputPadId'
+              to_channels:
+                description: Destination channel mask
+                allOf:
+                - $ref: '#/components/schemas/ChannelMask'
+              volume:
+                description: Volume adjustment on audio passing through the connection
+                type: number
+                format: double
+        additionalProperties: false
+      - description: Set connection values
+        type: object
+        required:
+        - set_connection_parameter_values
+        properties:
+          set_connection_parameter_values:
+            type: object
+            required:
+            - connection_id
+            - values
+            properties:
+              connection_id:
+                description: Connection id
+                allOf:
+                - $ref: '#/components/schemas/NodeConnectionId'
+              values:
+                description: Values (parameters) on the connection
+                allOf:
+                - $ref: '#/components/schemas/ConnectionValues'
+        additionalProperties: false
+      - description: Set fixed instance node values
+        type: object
+        required:
+        - set_fixed_instance_parameter_values
+        properties:
+          set_fixed_instance_parameter_values:
+            type: object
+            required:
+            - fixed_id
+            - values
+            properties:
+              fixed_id:
+                description: Fixed instance node id
+                allOf:
+                - $ref: '#/components/schemas/FixedInstanceNodeId'
+              values:
+                description: Values to set
+        additionalProperties: false
+      - description: Set dynamic instance node values
+        type: object
+        required:
+        - set_dynamic_instance_parameter_values
+        properties:
+          set_dynamic_instance_parameter_values:
+            type: object
+            required:
+            - dynamic_id
+            - values
+            properties:
+              dynamic_id:
+                description: Dynamic instance node id
+                allOf:
+                - $ref: '#/components/schemas/DynamicInstanceNodeId'
+              values:
+                description: Values to set
+        additionalProperties: false
+    NodeConnection:
+      description: Connection between nodes in a task
+      type: object
+      required:
+      - from
+      - from_channels
+      - pan
+      - to
+      - to_channels
+      - volume
+      properties:
+        from:
+          description: Source node pad
+          allOf:
+          - $ref: '#/components/schemas/OutputPadId'
+        from_channels:
+          description: Source channel mask
+          allOf:
+          - $ref: '#/components/schemas/ChannelMask'
+        pan:
+          description: |-
+            Panning adjustment
+
+            Zero is centered, -1 is fully left, 1 is fully right
+          type: number
+          format: double
+        to:
+          description: Destination node pad
+          allOf:
+          - $ref: '#/components/schemas/InputPadId'
+        to_channels:
+          description: Destination channel mask
+          allOf:
+          - $ref: '#/components/schemas/ChannelMask'
+        volume:
+          description: Volume adjustment as a factor
+          type: number
+          format: double
+    NodeConnectionId:
+      type: string
+    OutputPadId:
+      description: A pad that can receive connections on a node inside a task
+      oneOf:
+      - description: Mixer node output
+        type: object
+        required:
+        - mixer
+        properties:
+          mixer:
+            $ref: '#/components/schemas/MixerNodeId'
+        additionalProperties: false
+      - description: Fixed instance node output
+        type: object
+        required:
+        - fixed
+        properties:
+          fixed:
+            $ref: '#/components/schemas/FixedInstanceNodeId'
+        additionalProperties: false
+      - description: Dynamic instance node output
+        type: object
+        required:
+        - dynamic
+        properties:
+          dynamic:
+            $ref: '#/components/schemas/DynamicInstanceNodeId'
+        additionalProperties: false
+      - description: Track node output
+        type: object
+        required:
+        - track
+        properties:
+          track:
+            $ref: '#/components/schemas/TrackNodeId'
+        additionalProperties: false
+    PowerReportRole:
+      type: string
+      enum:
+      - powered
+      - current
+      - power_factor
+      - total_energy
+    ReportMediaJobProgress:
+      title: ReportMediaJobProgress
+      oneOf:
+      - description: Reporting upload progress
+        type: object
+        required:
+        - upload_from_domain
+        properties:
+          upload_from_domain:
+            type: object
+            required:
+            - app_id
+            - media_id
+            - state
+            properties:
+              app_id:
+                $ref: '#/components/schemas/AppId'
+              media_id:
+                $ref: '#/components/schemas/MediaObjectId'
+              state:
+                $ref: '#/components/schemas/MediaJobState'
+        additionalProperties: false
+      - description: Reporting download progress
+        type: object
+        required:
+        - download_to_domain
+        properties:
+          download_to_domain:
+            type: object
+            required:
+            - app_id
+            - media_id
+            - state
+            properties:
+              app_id:
+                $ref: '#/components/schemas/AppId'
+              media_id:
+                $ref: '#/components/schemas/MediaObjectId'
+              state:
+                $ref: '#/components/schemas/MediaJobState'
+              task_id:
+                anyOf:
+                - $ref: '#/components/schemas/TaskId'
+                - type: 'null'
+        additionalProperties: false
+    ResourceId:
+      type: string
+      enum:
+      - ram
+      - cpu
+      - gpu
+      - antelope_dsp
+      - universal_audio_dsp
+    SecureKey:
+      type: string
+    Task:
+      description: Task information
+      type: object
+      required:
+      - domain_id
+      - reservations
+      - security
+      - spec
+      properties:
+        domain_id:
+          description: Domain executing the task
+          allOf:
+          - $ref: '#/components/schemas/DomainId'
+        reservations:
+          description: Task reservations
+          allOf:
+          - $ref: '#/components/schemas/TaskReservation'
+        security:
+          description: Security keys and associateds permissions
+          allOf:
+          - $ref: '#/components/schemas/TaskSecurity'
+        spec:
+          description: Task specification
+          allOf:
+          - $ref: '#/components/schemas/TaskSpec'
+    TaskCreated:
+      title: TaskCreated
+      description: Task created successfully
+      oneOf:
+      - description: Created normally
+        type: object
+        required:
+        - created
+        properties:
+          created:
+            type: object
+            required:
+            - app_id
+            - task_id
+            properties:
+              app_id:
+                description: App creating the task
+                allOf:
+                - $ref: '#/components/schemas/AppId'
+              task_id:
+                description: Task Id
+                allOf:
+                - $ref: '#/components/schemas/TaskId'
+        additionalProperties: false
+      - description: Validated successfully, but not created
+        type: object
+        required:
+        - dry_run
+        properties:
+          dry_run:
+            type: object
+            required:
+            - app_id
+            - task_id
+            properties:
+              app_id:
+                description: App creating the task
+                allOf:
+                - $ref: '#/components/schemas/AppId'
+              task_id:
+                description: Task Id
+                allOf:
+                - $ref: '#/components/schemas/TaskId'
+        additionalProperties: false
+    TaskDeleted:
+      title: TaskDeleted
+      description: Task was deleted successfully
+      oneOf:
+      - description: Deleted normally
+        type: object
+        required:
+        - deleted
+        properties:
+          deleted:
+            type: object
+            required:
+            - app_id
+            - task_id
+            - version
+            properties:
+              app_id:
+                description: App creating the task
+                allOf:
+                - $ref: '#/components/schemas/AppId'
+              task_id:
+                description: Task Id
+                allOf:
+                - $ref: '#/components/schemas/TaskId'
+              version:
+                description: Version when deleted
+                type: integer
+                format: uint64
+                minimum: 0.0
+        additionalProperties: false
+    TaskId:
+      type: string
+    TaskPermissions:
+      type: object
+      required:
+      - audio
+      - media
+      - parameters
+      - structure
+      - transport
+      properties:
+        audio:
+          type: boolean
+        media:
+          type: boolean
+        parameters:
+          type: boolean
+        structure:
+          type: boolean
+        transport:
+          type: boolean
+    TaskReservation:
+      description: Timed resource reservations for the task (must contain all used resources)
+      type: object
+      required:
+      - fixed_instances
+      - from
+      - revision
+      - to
+      properties:
+        fixed_instances:
+          description: Fixed instances reserved for the task
+          type: array
+          items:
+            $ref: '#/components/schemas/FixedInstanceId'
+          uniqueItems: true
+        from:
+          description: Start of the reservation time
+          type: string
+          format: date-time
+        revision:
+          description: Revision number - starts at zero and change of task reservation increments it
+          type: integer
+          format: uint64
+          minimum: 0.0
+        to:
+          description: End of the reservation time
+          type: string
+          format: date-time
+    TaskSecurity:
+      description: Information about access keys and permissions of a task
+      type: object
+      required:
+      - security
+      properties:
+        revision:
+          description: Revision number - starts at zero and is incremented at every change of task security
+          default: 0
+          type: integer
+          format: uint64
+          minimum: 0.0
+        security:
+          description: Security settings per secure key
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TaskPermissions'
+    TaskSpec:
+      description: Task specification
+      type: object
+      properties:
+        connections:
+          description: Connections between nodes
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/NodeConnection'
+        dynamic:
+          description: Dynamic instance nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DynamicInstanceNode'
+        fixed:
+          description: Fixed instance nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/FixedInstanceNode'
+        mixers:
+          description: Mixer nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/MixerNode'
+        revision:
+          description: The revision number of the specification (starts at zero, increments for every change)
+          default: 0
+          type: integer
+          format: uint64
+          minimum: 0.0
+        tracks:
+          description: Track nodes of the task
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TrackNode'
+    TaskUpdated:
+      title: TaskUpdated
+      description: Task was updated successfully
+      oneOf:
+      - description: Updated normally
+        type: object
+        required:
+        - updated
+        properties:
+          updated:
+            type: object
+            required:
+            - app_id
+            - task_id
+            - version
+            properties:
+              app_id:
+                description: App creating the task
+                allOf:
+                - $ref: '#/components/schemas/AppId'
+              task_id:
+                description: Task Id
+                allOf:
+                - $ref: '#/components/schemas/TaskId'
+              version:
+                description: New version to be used with `If-Matches` when submitting further modifications
+                type: integer
+                format: uint64
+                minimum: 0.0
+        additionalProperties: false
+    TimeRange:
+      type: object
+      required:
+      - from
+      - to
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+    TimeSegment:
+      type: object
+      required:
+      - length
+      - start
+      properties:
+        length:
+          type: number
+          format: double
+        start:
+          type: number
+          format: double
+    TrackMedia:
+      description: Media item specification
+      type: object
+      required:
+      - channels
+      - format
+      - media_segment
+      - object_id
+      - timeline_segment
+      properties:
+        channels:
+          description: Number of channels
+          allOf:
+          - $ref: '#/components/schemas/MediaChannels'
+        format:
+          description: Media format
+          allOf:
+          - $ref: '#/components/schemas/TrackMediaFormat'
+        media_segment:
+          description: Subset of media that is used
+          allOf:
+          - $ref: '#/components/schemas/TimeSegment'
+        object_id:
+          description: Source media object id
+          allOf:
+          - $ref: '#/components/schemas/MediaObjectId'
+        timeline_segment:
+          description: Where to place the media in the task timeline
+          allOf:
+          - $ref: '#/components/schemas/TimeSegment'
+    TrackMediaFormat:
+      type: string
+      enum:
+      - wave
+      - mp3
+      - flac
+      - wavpack
+    TrackMediaId:
+      type: string
+    TrackNode:
+      description: Track node specification
+      type: object
+      required:
+      - channels
+      - media
+      properties:
+        channels:
+          description: Number of channels
+          allOf:
+          - $ref: '#/components/schemas/MediaChannels'
+        media:
+          description: Media items present on the track
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TrackMedia'
+    TrackNodeId:
+      type: string
+    UpdateApp:
+      title: UpdateApp
+      description: Request to update app
+      type: object
+      properties:
+        admin_email:
+          description: If not null, overwrite the administrator's email
+          type:
+          - string
+          - 'null'
+        enabled:
+          description: If not null, enable or disable the app
+          type:
+          - boolean
+          - 'null'
+        media_url:
+          description: If not null, overwrite the URL used for resolving object IDs to media information
+          type:
+          - string
+          - 'null'
+    UpdateTaskTrackMedia:
+      type: object
+      properties:
+        channels:
+          anyOf:
+          - $ref: '#/components/schemas/MediaChannels'
+          - type: 'null'
+        media_segment:
+          anyOf:
+          - $ref: '#/components/schemas/TimeSegment'
+          - type: 'null'
+        object_id:
+          anyOf:
+          - $ref: '#/components/schemas/MediaObjectId'
+          - type: 'null'
+        timeline_segment:
+          anyOf:
+          - $ref: '#/components/schemas/TimeSegment'
+          - type: 'null'
+    UploadCreated:
+      title: UploadCreated
+      description: Confirming upload is created
+      oneOf:
+      - type: object
+        required:
+        - created
+        properties:
+          created:
+            type: object
+            required:
+            - domain_id
+            - media_id
+            properties:
+              domain_id:
+                $ref: '#/components/schemas/DomainId'
+              media_id:
+                $ref: '#/components/schemas/AppMediaObjectId'
+        additionalProperties: false
+    UploadToDomain:
+      title: UploadToDomain
+      type: object
+      required:
+      - bytes
+      - channels
+      - format
+      - sample_rate
+      - seconds
+      - url
+      properties:
+        bytes:
+          type: integer
+          format: uint64
+          minimum: 0.0
+        channels:
+          $ref: '#/components/schemas/MediaChannels'
+        context: true
+        format:
+          $ref: '#/components/schemas/TrackMediaFormat'
+        notify_url:
+          type:
+          - string
+          - 'null'
+        sample_rate:
+          type: integer
+          format: uint
+          minimum: 0.0
+        seconds:
+          type: number
+          format: double
+        url:
+          type: string

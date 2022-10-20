@@ -486,8 +486,8 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "serde_with",
+ "serde_yaml 0.9.13",
  "thiserror",
- "utoipa",
  "uuid 1.2.1",
 ]
 
@@ -590,6 +590,7 @@ dependencies = [
 name = "audiocloud-models"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "askama",
  "audiocloud-api",
  "convert_case 0.6.0",
@@ -600,7 +601,6 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml 0.9.13",
- "utoipa",
 ]
 
 [[package]]
@@ -4975,31 +4975,6 @@ dependencies = [
  "idna",
  "percent-encoding",
  "serde",
-]
-
-[[package]]
-name = "utoipa"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6289c644ea23411b0f81773544ee2a59e7497b8867f268fb30b330dea87cb360"
-dependencies = [
- "indexmap",
- "serde",
- "serde_json",
- "utoipa-gen",
-]
-
-[[package]]
-name = "utoipa-gen"
-version = "2.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ecf8547910b3e16a2e3506c2edf30c569462b7a975a4435dc5001a92314b43f1"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn",
- "uuid 1.2.1",
 ]
 
 [[package]]

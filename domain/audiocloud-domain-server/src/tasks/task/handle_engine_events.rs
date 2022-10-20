@@ -23,13 +23,11 @@ impl Handler<NotifyEngineEvent> for TaskActor {
                     self.engine.set_actual_stopped();
                 }
             }
-            Playing {
-                task_id,
-                play_id,
-                audio,
-                peak_metering,
-                dynamic_reports,
-            } => {
+            Playing { task_id,
+                      play_id,
+                      audio,
+                      peak_metering,
+                      dynamic_reports, } => {
                 if &self.id == &task_id && self.engine.should_be_playing(&play_id) {
                     self.engine.set_actual_playing(play_id);
                     self.merge_peak_meters(peak_metering);
@@ -37,40 +35,26 @@ impl Handler<NotifyEngineEvent> for TaskActor {
                     self.maybe_send_packet();
                 }
             }
-            PlayingFailed {
-                task_id,
-                play_id,
-                error,
-            } => {
+            PlayingFailed { task_id, play_id, error } => {
                 if &self.id == &task_id {
                     self.engine.set_desired_state(DesiredTaskPlayState::Stopped);
                     self.engine.set_actual_stopped();
                 }
             }
-            Rendering {
-                task_id,
-                render_id,
-                completion,
-            } => {
+            Rendering { task_id,
+                        render_id,
+                        completion, } => {
                 if &self.id == &task_id {
                     self.engine.set_actual_rendering(render_id);
                 }
             }
-            RenderingFinished {
-                task_id,
-                render_id,
-                path,
-            } => {
+            RenderingFinished { task_id, render_id, path } => {
                 if &self.id == &task_id {
                     self.engine.set_desired_state(DesiredTaskPlayState::Stopped);
                     self.engine.set_actual_stopped();
                 }
             }
-            RenderingFailed {
-                task_id,
-                render_id,
-                error,
-            } => {
+            RenderingFailed { task_id, render_id, error } => {
                 if &self.id == &task_id {
                     self.engine.set_desired_state(DesiredTaskPlayState::Stopped);
                     self.engine.set_actual_stopped();

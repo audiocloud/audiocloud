@@ -10,18 +10,15 @@ use crate::common::media::{PlayId, RenderId};
 use crate::common::time::Timestamp;
 use crate::domain::tasks::TaskUpdated;
 use crate::domain::DomainError;
-use crate::{
-    AppTaskId, ClientSocketId, ModifyTaskSpec, RequestId, SecureKey, SerializableResult, SocketId,
-    TaskEvent, TaskPermissions,
-};
+use crate::{AppTaskId, ClientSocketId, ModifyTaskSpec, RequestId, SecureKey, SerializableResult, SocketId, TaskEvent, TaskPermissions};
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub struct StreamStats {
-    pub id: AppTaskId,
+    pub id:      AppTaskId,
     pub play_id: PlayId,
-    pub state: TaskPlayState,
-    pub low: Option<u64>,
-    pub high: Option<u64>,
+    pub state:   TaskPlayState,
+    pub low:     Option<u64>,
+    pub high:    Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -68,55 +65,55 @@ pub enum DomainServerMessage {
         /// Id of the task generating the event
         task_id: AppTaskId,
         /// Event details
-        event: TaskEvent,
+        event:   TaskEvent,
     },
     /// Response to a request to change a task play state
     SetDesiredPlayStateResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result
-        result: SerializableResult<TaskUpdated, DomainError>,
+        result:     SerializableResult<TaskUpdated, DomainError>,
     },
     /// Response to a request to change task specification
     ModifyTaskSpecResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result of the operation
-        result: SerializableResult<TaskUpdated, DomainError>,
+        result:     SerializableResult<TaskUpdated, DomainError>,
     },
     /// Response to initiating a new peer connection
     PeerConnectionResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result of the operation - the assigned socket ID
-        result: SerializableResult<PeerConnectionCreated, DomainError>,
+        result:     SerializableResult<PeerConnectionCreated, DomainError>,
     },
     AnswerPeerConnectionResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result of the operation or error
-        result: SerializableResult<(), DomainError>,
+        result:     SerializableResult<(), DomainError>,
     },
     /// Response to submitting a peer connection candidate
     PeerConnectionCandidateResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result of the operation
-        result: SerializableResult<(), DomainError>,
+        result:     SerializableResult<(), DomainError>,
     },
     /// Response to a request to attach the socket to a task
     AttachToTaskResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result of the operation
-        result: SerializableResult<(), DomainError>,
+        result:     SerializableResult<(), DomainError>,
     },
     /// Response to detach the socket from a task
     DetachFromTaskResponse {
         /// Request id this message is responding to
         request_id: RequestId,
         /// Result of the operation - will be success even if task does not exist
-        result: SerializableResult<(), DomainError>,
+        result:     SerializableResult<(), DomainError>,
     },
     /// Submit a new WebRTC peer connection ICE candidate
     SubmitPeerConnectionCandidate {
@@ -161,15 +158,15 @@ pub enum DomainClientMessage {
     /// Request to modify task specification
     RequestModifyTaskSpec {
         /// Request id (to reference the response to)
-        request_id: RequestId,
+        request_id:  RequestId,
         /// Id of the task to modify
-        task_id: AppTaskId,
+        task_id:     AppTaskId,
         /// List of modifications to apply
         modify_spec: Vec<ModifyTaskSpec>,
         /// If true, the modifications are optional (no error if task already diverged)
-        optional: bool,
+        optional:    bool,
         /// Task version
-        revision: u64,
+        revision:    u64,
     },
     /// Request a new WebRTC peer connection to the domain
     RequestPeerConnection {
@@ -178,27 +175,27 @@ pub enum DomainClientMessage {
     },
     AnswerPeerConnection {
         /// The socket for which we are generating an anwser
-        socket_id: SocketId,
+        socket_id:  SocketId,
         /// Request id (to reference the response to)
         request_id: RequestId,
         /// The domain server's WebRTC offer response (answer)
-        answer: String,
+        answer:     String,
     },
     /// Submit a new WebRTC peer connection ICE candidate
     SubmitPeerConnectionCandidate {
         /// Request id (to reference the response to)
         request_id: RequestId,
         /// Socket id of the peer connection
-        socket_id: SocketId,
+        socket_id:  SocketId,
         /// ICE Candidate
-        candidate: Option<String>,
+        candidate:  Option<String>,
     },
     /// Request attaching to a task
     RequestAttachToTask {
         /// Request id (to reference the response to)
         request_id: RequestId,
         /// Id of the task to attach to
-        task_id: AppTaskId,
+        task_id:    AppTaskId,
         /// Secure key to use for attachment
         secure_key: SecureKey,
     },
@@ -206,52 +203,10 @@ pub enum DomainClientMessage {
         /// Request id (to reference the response to)
         request_id: RequestId,
         /// Id of the task to attach to
-        task_id: AppTaskId,
+        task_id:    AppTaskId,
     },
     Pong {
         challenge: String,
-        response: String,
+        response:  String,
     },
 }
-
-/// Load packet data
-///
-/// For each PlayId, on a task, a stream is kept in memory with a history of packets, by ascending
-/// serial number. For a sane amount of time, the packets may be requested by the clients. If a
-/// packet is not yet models (but it is expected they will be, in the future) the request will
-/// block (wait) for `Timeout` milliseconds before giving up and returning 408.
-#[utoipa::path(
-  get,
-  path = "/v1/streams/{app_id}/{task_id}/{play_id}/packet/{serial}",
-  responses(
-    (status = 200, description = "Success", body = StreamingPacket),
-    (status = 401, description = "Not authorized", body = DomainError),
-    (status = 404, description = "App, task or stream not found", body = DomainError),
-    (status = 408, description = "Timed out waiting for packet", body = DomainError),
-  ),
-  params(
-    ("app_id" = AppId, Path, description = "App id"),
-    ("task_id" = TaskId, Path, description = "Task id"),
-    ("play_id" = PlayId, Path, description = "Play id"),
-    ("serial" = u64, Path, description = "Packet serial number"),
-    ("Timeout" = u64, Header, description = "Milliseconds to wait for the packet to be ready")
-  ))]
-pub(crate) fn stream_packets() {}
-
-/// Get stream statistics
-///
-/// Get statistics about cached packets available in the stream.
-#[utoipa::path(
-  get,
-  path = "/v1/streams/{app_id}/{task_id}/{play_id}",
-  responses(
-    (status = 200, description = "Success", body = StreamStats),
-    (status = 401, description = "Not authorized", body = DomainError),
-    (status = 404, description = "Not found", body = DomainError),
-  ),
-  params(
-    ("app_id" = AppId, Path, description = "App id"),
-    ("task_id" = TaskId, Path, description = "Task id"),
-    ("play_id" = PlayId, Path, description = "Play id")
-  ))]
-pub(crate) fn stream_stats() {}

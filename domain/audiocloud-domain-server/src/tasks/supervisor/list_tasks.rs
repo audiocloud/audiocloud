@@ -13,12 +13,10 @@ impl Handler<ListTasks> for TasksSupervisor {
         for (id, task) in &self.tasks {
             // TODO: missing `waiting_for_instances` and `waiting_for_media`
             // TODO: would be nice if TaskSummary included timestamps
-            rv.push(TaskSummary {
-                task_id: { id.clone() },
-                play_state: { task.state.play_state.value().clone() },
-                waiting_for_instances: { Default::default() },
-                waiting_for_media: { Default::default() },
-            });
+            rv.push(TaskSummary { task_id:               { id.clone() },
+                                  play_state:            { task.state.play_state.value().clone() },
+                                  waiting_for_instances: { Default::default() },
+                                  waiting_for_media:     { Default::default() }, });
         }
 
         rv

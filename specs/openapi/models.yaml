@@ -1,0 +1,327 @@
+definitions:
+  Dual1084Parameters:
+    title: Dual1084Parameters
+    type: object
+    properties:
+      eql_toggle:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_Boolean'
+        - type: 'null'
+      high_freq:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+        - type: 'null'
+      high_gain:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+      high_mid_freq:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+        - type: 'null'
+      high_mid_gain:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+      high_mid_width:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_Boolean'
+        - type: 'null'
+      high_pass_filter:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+        - type: 'null'
+      input_gain:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_int64'
+        - type: 'null'
+      low_freq:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+        - type: 'null'
+      low_gain:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+      low_mid_freq:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+        - type: 'null'
+      low_mid_gain:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+      low_mid_width:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_Boolean'
+        - type: 'null'
+      output_pad:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_ToggleOr_for_int64'
+        - type: 'null'
+  Dual1084Preset:
+    title: Dual1084Preset
+    type: object
+    required:
+    - eql_toggle
+    - high_freq
+    - high_gain
+    - high_mid_freq
+    - high_mid_gain
+    - high_mid_width
+    - high_pass_filter
+    - input_gain
+    - low_freq
+    - low_gain
+    - low_mid_freq
+    - low_mid_gain
+    - low_mid_width
+    - output_pad
+    properties:
+      eql_toggle:
+        $ref: '#/definitions/Stereo_for_Boolean'
+      high_freq:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+      high_gain:
+        $ref: '#/definitions/Stereo_for_double'
+      high_mid_freq:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+      high_mid_gain:
+        $ref: '#/definitions/Stereo_for_double'
+      high_mid_width:
+        $ref: '#/definitions/Stereo_for_Boolean'
+      high_pass_filter:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+      input_gain:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_int64'
+      low_freq:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+      low_gain:
+        $ref: '#/definitions/Stereo_for_double'
+      low_mid_freq:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_uint64'
+      low_mid_gain:
+        $ref: '#/definitions/Stereo_for_double'
+      low_mid_width:
+        $ref: '#/definitions/Stereo_for_Boolean'
+      output_pad:
+        $ref: '#/definitions/Stereo_for_ToggleOr_for_int64'
+  Dual1084Reports:
+    title: Dual1084Reports
+    type: object
+  Insert1X1Parameters:
+    title: Insert1X1Parameters
+    type: object
+  Insert1X1Preset:
+    title: Insert1X1Preset
+    type: object
+  Insert1X1Reports:
+    title: Insert1X1Reports
+    type: object
+    properties:
+      insert_input:
+        type:
+        - number
+        - 'null'
+        format: double
+      insert_output:
+        type:
+        - number
+        - 'null'
+        format: double
+  Insert24X2Parameters:
+    title: Insert24X2Parameters
+    type: object
+  Insert24X2Preset:
+    title: Insert24X2Preset
+    type: object
+  Insert24X2Reports:
+    title: Insert24X2Reports
+    type: object
+    properties:
+      insert_input:
+        type:
+        - array
+        - 'null'
+        items:
+          type: number
+          format: double
+      insert_output:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+  Insert2X2Parameters:
+    title: Insert2X2Parameters
+    type: object
+  Insert2X2Preset:
+    title: Insert2X2Preset
+    type: object
+  Insert2X2Reports:
+    title: Insert2X2Reports
+    type: object
+    properties:
+      insert_input:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+      insert_output:
+        anyOf:
+        - $ref: '#/definitions/Stereo_for_double'
+        - type: 'null'
+  PowerPdu4CParameters:
+    title: PowerPdu4CParameters
+    type: object
+    properties:
+      power:
+        type:
+        - array
+        - 'null'
+        items:
+          type: boolean
+  PowerPdu4CPreset:
+    title: PowerPdu4CPreset
+    type: object
+    required:
+    - power
+    properties:
+      power:
+        type: array
+        items:
+          type: boolean
+  PowerPdu4CReports:
+    title: PowerPdu4CReports
+    type: object
+    properties:
+      current:
+        type:
+        - array
+        - 'null'
+        items:
+          type: number
+          format: double
+      energy:
+        type:
+        - array
+        - 'null'
+        items:
+          type: number
+          format: double
+      power:
+        type:
+        - array
+        - 'null'
+        items:
+          type: boolean
+      power_factor:
+        type:
+        - array
+        - 'null'
+        items:
+          type: number
+          format: double
+  Stereo_for_Boolean:
+    type: object
+    required:
+    - left
+    - right
+    properties:
+      left:
+        type: boolean
+      right:
+        type: boolean
+  Stereo_for_ToggleOr_for_int64:
+    type: object
+    required:
+    - left
+    - right
+    properties:
+      left:
+        $ref: '#/definitions/ToggleOr_for_int64'
+      right:
+        $ref: '#/definitions/ToggleOr_for_int64'
+  Stereo_for_ToggleOr_for_uint64:
+    type: object
+    required:
+    - left
+    - right
+    properties:
+      left:
+        $ref: '#/definitions/ToggleOr_for_uint64'
+      right:
+        $ref: '#/definitions/ToggleOr_for_uint64'
+  Stereo_for_double:
+    type: object
+    required:
+    - left
+    - right
+    properties:
+      left:
+        type: number
+        format: double
+      right:
+        type: number
+        format: double
+  SummatraParameters:
+    title: SummatraParameters
+    type: object
+    properties:
+      bus_assign:
+        type:
+        - array
+        - 'null'
+        items:
+          type: integer
+          format: uint64
+          minimum: 0.0
+      input:
+        type:
+        - array
+        - 'null'
+        items:
+          type: number
+          format: double
+      pan:
+        type:
+        - array
+        - 'null'
+        items:
+          type: number
+          format: double
+  SummatraPreset:
+    title: SummatraPreset
+    type: object
+    required:
+    - bus_assign
+    - input
+    - pan
+    properties:
+      bus_assign:
+        type: array
+        items:
+          type: integer
+          format: uint64
+          minimum: 0.0
+      input:
+        type: array
+        items:
+          type: number
+          format: double
+      pan:
+        type: array
+        items:
+          type: number
+          format: double
+  SummatraReports:
+    title: SummatraReports
+    type: object
+  ToggleOr_for_int64:
+    anyOf:
+    - type: boolean
+    - type: integer
+      format: int64
+  ToggleOr_for_uint64:
+    anyOf:
+    - type: boolean
+    - type: integer
+      format: uint64
+      minimum: 0.0

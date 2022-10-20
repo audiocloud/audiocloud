@@ -5,9 +5,8 @@ use reqwest::Client;
 static HTTP_CLIENT: OnceCell<Client> = OnceCell::new();
 
 pub fn init() -> anyhow::Result<()> {
-    HTTP_CLIENT
-        .set(Client::new())
-        .map_err(|_| anyhow!("HTTP client init already called!"))?;
+    HTTP_CLIENT.set(Client::new())
+               .map_err(|_| anyhow!("HTTP client init already called!"))?;
 
     Ok(())
 }
