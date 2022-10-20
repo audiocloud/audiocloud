@@ -1,4 +1,4 @@
-name: Domain Client NPM Workflow
+name: Domain Web Client NPM Workflow
 on:
   push:
     branches: [ main ]
