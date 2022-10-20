@@ -1,0 +1,31 @@
+name: Check all crates build
+on:
+  push:
+    paths:
+      - "**.rs"
+      - "**/Cargo.toml"
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.cache-name }}-
+            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-
+      - name: Run build of all crates
+        run: |
+          cargo build --all
