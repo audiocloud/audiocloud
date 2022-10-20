@@ -26,6 +26,9 @@ jobs:
             ${{ runner.os }}-cargo-${{ env.cache-name }}-
             ${{ runner.os }}-cargo-
             ${{ runner.os }}-
+      - name: Install deps
+        run: |
+          sudo apt-get install -y libusb-1.0-0-dev libsasl2-dev protobuf-compiler
       - name: Run build of all crates
         run: |
           cargo build --all
