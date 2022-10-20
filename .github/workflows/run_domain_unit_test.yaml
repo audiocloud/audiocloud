@@ -1,12 +1,7 @@
 name: Run Domain Unit Tests on PRs and pushes to main
 on:
-  push:
-    branches: [main]
-    paths:
-      - "domain/audiocloud-domain-server/**"
-      - "specs/audiocloud-api/**"
   pull_request:
-    branches: [main]
+    branches: [ main ]
     paths:
       - "domain/audiocloud-domain-server/**"
       - "specs/audiocloud-api/**"
