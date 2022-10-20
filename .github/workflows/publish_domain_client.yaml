@@ -24,7 +24,7 @@ jobs:
           npm install
           npm run generate
           npm run build
-        working-directory: 'clients/audio-engine-client'
+        working-directory: 'clients/domain-client'
       - name: Bump version, if this is an actual push
         if: github.event_name == 'push'
         uses: 'phips28/gh-action-bump-version@master'
@@ -36,6 +36,6 @@ jobs:
       - name: Publish, if this is an actual push
         if: github.event_name == 'push'
         run: npm publish --access public
-        working-directory: 'clients/audio-engine-client'
+        working-directory: 'clients/domain-client'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
