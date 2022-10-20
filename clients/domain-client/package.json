@@ -1,32 +1,30 @@
 {
-  "name": "@audiocloud/$PACKAGE",
+  "name": "@audiocloud/domain-client",
   "version": "2.0.27",
-  "description": "AudioCloud $PACKAGE",
+  "description": "AudioCloud Domain Client",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/types/index.d.ts",
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=12.0.0"
   },
   "scripts": {
-    "generate": "npx @audiocloud/client-generator $SCHEMA",
-    "build": "tsc && tsc -p tsconfig-cjs.json && tsc -p tsconfig-types.json",
+    "generate": "npx @audiocloud/client-generator ../../specs/openapi/domain_api.yaml",
+    "build": "rimraf dist && tsc && tsc -p tsconfig-cjs.json && tsc -p tsconfig-types.json",
     "update": "npm update"
   },
   "devDependencies": {
     "@audiocloud/client-generator": "^1",
-    "typescript": "^4"
+    "typescript": "^4",
+    "rimraf": "^3"
   },
   "keywords": [
     "audiocloud",
     "audio",
     "api",
     "client",
-    "$PACKAGE"
+    "domain"
   ],
   "author": "Bojan Šernek",
-  "license": "ISC",
-  "dependencies": {
-    "typedoc": "^0.23.14"
-  }
+  "license": "ISC"
 }

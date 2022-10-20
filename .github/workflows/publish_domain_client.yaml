@@ -1,0 +1,41 @@
+name: Run unit tests on pull requests and pushes to main
+on:
+  push:
+    branches: [ main ]
+    paths: [ "specs/openapi/domain_api.yaml" ]
+  pull_request:
+    branches: [ main ]
+    paths: [ "specs/openapi/domain_api.yaml" ]
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Generate and build
+        run:
+          npm install
+          npm run generate
+          npm run build
+        working-directory: 'clients/audio-engine-client'
+      - name: Bump version, if this is an actual push
+        if: github.event_name == 'push'
+        uses: 'phips28/gh-action-bump-version@master'
+        with:
+          skip-tag: 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PACKAGEJSON_DIR: clients/domain-client
+      - name: Publish, if this is an actual push
+        if: github.event_name == 'push'
+        run: npm publish --access public
+        working-directory: 'clients/audio-engine-client'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
