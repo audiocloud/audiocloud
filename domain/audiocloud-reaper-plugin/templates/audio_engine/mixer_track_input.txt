@@ -1,0 +1,12 @@
+<TRACK
+    NAME "{{ mixer.input_pad_id.to_string() }}"
+    NCHAN {{ mixer.spec.input_channels }}
+    VOLPAN 1.0 0.0 -1.0
+    MUTESOLO 0 0 0
+    SHOWINMIX 1 0.6 0.5 0 0.5 -1 -1 -1
+    TRACKID {{ mixer.input_id.braced().to_string()|upper }}
+    MAINSEND 0
+    {% for (id, connection) in project.flows_to(mixer.input_pad_id) %}
+    {{ ConnectionTemplate::new(project, id, connection) }}
+    {% endfor %}
+>

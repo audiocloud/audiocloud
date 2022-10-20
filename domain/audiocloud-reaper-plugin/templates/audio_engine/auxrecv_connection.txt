@@ -1,0 +1,8 @@
+{% match project.track_index(NodePadId::from(connection.from.clone()).as_ref()) %}
+{% when Some with (index) %}
+AUXRECV {{ index }} 0 1.000 0.000 0 0 0 {{ self.source_reaper_channel() }} {{ self.dest_reaper_channel() }} 0 1.000 80 -1
+<EXT_AUXRECV
+  ID {{ id }}
+>
+{% when None %}
+{% endmatch %}

@@ -1,0 +1,15 @@
+<TRACK
+    NAME "{{ instance.return_pad_id.to_string() }}"
+    NCHAN {{ instance.return_count() }}
+    VOLPAN 1.0 0.0 -1.0
+    MUTESOLO 0 0 0
+    SHOWINMIX 1 0.6 0.5 0 0.5 -1 -1 -1
+    TRACKID {{ instance.return_id.braced().to_string()|upper }}
+    MAINSEND 0
+    {% match project.fixed_input_track_index(instance.fixed_id) %}
+    {% when Some with (index) %}
+    AUXRECV {{ index }} 0 1.000 0.000 0 0 0 0 0 1.000 80 -1
+    {% when None %}
+    {% endmatch %}
+    REC 1 {{ self.reaper_rec_input() }} 1 2 1 1 0
+>

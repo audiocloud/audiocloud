@@ -1,0 +1,51 @@
+resources: {}
+inputs: []
+outputs: []
+parameters:
+  power:
+    scope: !count 4
+    unit: toggle
+    role: power
+    values:
+    - false
+    - true
+reports:
+  power:
+    scope: !count 4
+    unit: toggle
+    role: !power powered
+    values:
+    - false
+    - true
+    public: true
+    volatile: true
+  energy:
+    scope: !count 4
+    unit: watthrs
+    role: !power total_energy
+    values:
+    - - 0.0
+      - 1.7976931348623157e308
+    public: false
+    volatile: false
+  power_factor:
+    scope: !count 4
+    unit: no
+    role: !power power_factor
+    values:
+    - - 0.0
+      - 1.0
+    public: false
+    volatile: false
+  current:
+    scope: !count 4
+    unit: amps
+    role: !power current
+    values:
+    - - 0.0
+      - 10.0
+    public: true
+    volatile: false
+media: false
+capabilities:
+- power_distributor

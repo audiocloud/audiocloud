@@ -1,0 +1,12 @@
+<TRACK
+    NAME "{{ track.output_pad_id.to_string() }}"
+    NCHAN {{ track.spec.channels.num_channels() }}
+    VOLPAN 1.0 0.0 -1.0
+    MUTESOLO 0 0 0
+    SHOWINMIX 1 0.6 0.5 1 0.5 -1 -1 -1
+    TRACKID {{ track.track_id.braced().to_string()|upper }}
+    MAINSEND 0
+    {%- for m in track.media.values() %}
+        {{ EngineMediaItemTemplate::new(m, track, project) }}
+    {%- endfor %}
+>

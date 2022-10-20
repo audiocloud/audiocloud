@@ -1,0 +1,58 @@
+resources: {}
+inputs:
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+- !audio generic
+outputs:
+- !audio left
+- !audio right
+parameters:
+  bus_assign:
+    scope: all_inputs
+    unit: no
+    role: no_role
+    values:
+    - 0.0
+    - 1.0
+    - 2.0
+  input:
+    scope: all_inputs
+    unit: dB
+    role: !amplifier
+    - input
+    - gain
+    values:
+    - - -48.0
+      - 10.0
+  pan:
+    scope: all_inputs
+    unit: no
+    role: !channel pan
+    values:
+    - - -1.0
+      - 1.0
+reports: {}
+media: false
+capabilities:
+- audio_mixer

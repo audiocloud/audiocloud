@@ -1,0 +1,24 @@
+{
+  "name": "tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@audiocloud/axios-resolver": "^0.1.0",
+    "@audiocloud/domain-client": "2.0.23",
+    "axios": "^1",
+    "date-fns": "^2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29",
+    "@types/node": "^18",
+    "ts-jest": "^29",
+    "typescript": "^4"
+  }
+}
