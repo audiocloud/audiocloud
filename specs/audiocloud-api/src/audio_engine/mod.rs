@@ -2,25 +2,22 @@
 
 use std::collections::HashMap;
 
+use schemars::{JsonSchema, schema_for};
 use schemars::schema::RootSchema;
-use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::OpenApi;
 
 pub use command::*;
 pub use event::*;
 
-use crate::common::media::PlayId;
 use crate::{
-    merge_schemas, AppId, AppMediaObjectId, AppTaskId, FixedInstanceId, MediaObject,
+    AppId, AppMediaObjectId, AppTaskId, FixedInstanceId, MediaObject, merge_schemas,
     ModifyTaskError, RenderId, TaskId, TaskPlayState, TaskSpec,
 };
+use crate::common::media::PlayId;
 
 pub mod command;
-pub mod environment;
 pub mod event;
-pub mod tasks;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CompressedAudio {
@@ -159,22 +156,6 @@ pub enum TaskRenderCancelled {
     },
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(
-    tasks::set_spec,
-    tasks::modify_spec,
-    tasks::delete,
-    tasks::list,
-    tasks::play,
-    tasks::seek,
-    tasks::stop_playing,
-    tasks::cancel_render,
-    tasks::render,
-    environment::set_media,
-    environment::set_instances
-))]
-pub struct EngineApi;
-
 pub fn schemas() -> RootSchema {
     merge_schemas(
         [
@@ -206,6 +187,6 @@ pub fn schemas() -> RootSchema {
             schema_for!(crate::ModifyTaskSpec),
             schema_for!(crate::TaskSpec),
         ]
-        .into_iter(),
+            .into_iter(),
     )
 }

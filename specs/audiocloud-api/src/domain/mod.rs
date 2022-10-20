@@ -5,23 +5,21 @@
 
 use std::collections::HashMap;
 
+use schemars::{JsonSchema, schema_for};
 use schemars::schema::RootSchema;
-use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::OpenApi;
 
+use crate::{
+    AppId, AppMediaObjectId, ClientSocketId, EngineId, FixedInstanceId, InstanceEvent,
+    merge_schemas, ModifyTaskError, PlayId, RequestId, SocketId, Task, TaskEvent, TaskId, TaskPlayStateSummary,
+};
 use crate::audio_engine::EngineError;
 use crate::common::change::{DesiredTaskPlayState, ModifyTaskSpec};
 use crate::common::task::TaskPermissions;
 use crate::common::task::TaskSpec;
-
 use crate::instance_driver::InstanceDriverError;
 use crate::newtypes::{AppTaskId, SecureKey};
-use crate::{
-    merge_schemas, AppId, AppMediaObjectId, ClientSocketId, EngineId, FixedInstanceId,
-    InstanceEvent, ModifyTaskError, PlayId, RequestId, SocketId, Task, TaskEvent, TaskId, TaskPlayStateSummary,
-};
 
 pub mod streaming;
 pub mod tasks;
@@ -215,23 +213,6 @@ impl DomainError {
     }
 }
 
-#[derive(OpenApi)]
-#[openapi(paths(
-    tasks::list_tasks,
-    tasks::get_task,
-    tasks::create_task,
-    tasks::modify_task,
-    tasks::delete_task,
-    tasks::render_task,
-    tasks::play_task,
-    tasks::seek_task,
-    tasks::cancel_render_task,
-    tasks::stop_playing_task,
-    streaming::stream_packets,
-    streaming::stream_stats
-))]
-pub struct DomainApi;
-
 pub fn schemas() -> RootSchema {
     merge_schemas(
         [
@@ -264,6 +245,6 @@ pub fn schemas() -> RootSchema {
             schema_for!(crate::RequestStopPlay),
             schema_for!(crate::RequestCancelRender),
         ]
-        .into_iter(),
+            .into_iter(),
     )
 }

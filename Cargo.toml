@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "specs/*",
+    "specs/audiocloud-api",
+    "specs/audiocloud-models",
     "domain/*",
     "cloud/*"
 ]

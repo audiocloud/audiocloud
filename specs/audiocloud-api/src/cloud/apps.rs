@@ -36,38 +36,3 @@ pub enum AppUpdated {
     /// Updated normally
     Updated(AppId),
 }
-
-/// Get app details
-///
-/// Get details of a registered app. Only administrators and app owners may do this.
-#[utoipa::path(
-  get,
-  path = "/v1/apps/{app_id}", 
-  responses(
-    (status = 200, description = "Success", body = GetAppResponse),
-    (status = 401, description = "Not authorized", body = CloudError),
-    (status = 404, description = "Not found", body = CloudError),
-  ),
-  params(
-    ("app_id" = AppId, Path, description = "App to get")
-  ))]
-pub(crate) fn get_app() {}
-
-/// Update app details
-///
-/// Update details of a registered app. Only administrators and app owners may do this. If the media
-/// URL is changed, it will only be used for newly submitted upload and download jobs.
-#[utoipa::path(
-  patch,
-  path = "/v1/apps/{app_id}",
-  request_body = UpdateApp,
-  responses(
-    (status = 200, description = "Success", body = AppUpdated),
-    (status = 401, description = "Not authorized", body = CloudError),
-    (status = 404, description = "Not found", body = CloudError),
-  ),
-  params(
-    ("app_id" = AppId, Path, description = "App to update")
-  )
-)]
-pub(crate) fn update_app() {}

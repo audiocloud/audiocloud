@@ -5,15 +5,15 @@ use chrono::Utc;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::common::change::TaskPlayState;
-use crate::common::media::{PlayId, RenderId};
-use crate::common::time::Timestamp;
-use crate::domain::tasks::TaskUpdated;
-use crate::domain::DomainError;
 use crate::{
     AppTaskId, ClientSocketId, ModifyTaskSpec, RequestId, SecureKey, SerializableResult, SocketId,
     TaskEvent, TaskPermissions,
 };
+use crate::common::change::TaskPlayState;
+use crate::common::media::{PlayId, RenderId};
+use crate::common::time::Timestamp;
+use crate::domain::DomainError;
+use crate::domain::tasks::TaskUpdated;
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub struct StreamStats {
@@ -213,45 +213,3 @@ pub enum DomainClientMessage {
         response: String,
     },
 }
-
-/// Load packet data
-///
-/// For each PlayId, on a task, a stream is kept in memory with a history of packets, by ascending
-/// serial number. For a sane amount of time, the packets may be requested by the clients. If a
-/// packet is not yet models (but it is expected they will be, in the future) the request will
-/// block (wait) for `Timeout` milliseconds before giving up and returning 408.
-#[utoipa::path(
-  get,
-  path = "/v1/streams/{app_id}/{task_id}/{play_id}/packet/{serial}",
-  responses(
-    (status = 200, description = "Success", body = StreamingPacket),
-    (status = 401, description = "Not authorized", body = DomainError),
-    (status = 404, description = "App, task or stream not found", body = DomainError),
-    (status = 408, description = "Timed out waiting for packet", body = DomainError),
-  ),
-  params(
-    ("app_id" = AppId, Path, description = "App id"),
-    ("task_id" = TaskId, Path, description = "Task id"),
-    ("play_id" = PlayId, Path, description = "Play id"),
-    ("serial" = u64, Path, description = "Packet serial number"),
-    ("Timeout" = u64, Header, description = "Milliseconds to wait for the packet to be ready")
-  ))]
-pub(crate) fn stream_packets() {}
-
-/// Get stream statistics
-///
-/// Get statistics about cached packets available in the stream.
-#[utoipa::path(
-  get,
-  path = "/v1/streams/{app_id}/{task_id}/{play_id}",
-  responses(
-    (status = 200, description = "Success", body = StreamStats),
-    (status = 401, description = "Not authorized", body = DomainError),
-    (status = 404, description = "Not found", body = DomainError),
-  ),
-  params(
-    ("app_id" = AppId, Path, description = "App id"),
-    ("task_id" = TaskId, Path, description = "Task id"),
-    ("play_id" = PlayId, Path, description = "Play id")
-  ))]
-pub(crate) fn stream_stats() {}

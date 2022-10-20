@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::common::model::{Model, ResourceId};
 use crate::common::task::Task;
+use crate::EngineId;
 use crate::newtypes::{AppId, AppTaskId, DomainId, FixedInstanceId, ModelId};
 use crate::time::{TimeRange, Timestamp};
-use crate::EngineId;
 
 /// Used by domain for booting
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
@@ -308,116 +308,3 @@ pub enum DomainUpdated {
     /// Updated normally
     Updated(DomainId),
 }
-
-/// Get domain details
-///
-/// Get details about a domain. Available to owners, administrators and apps where the app has
-/// permission to access domain details.
-#[utoipa::path(
-get,
-path = "/v1/domains/{domain_id}",
-responses(
-(status = 200, description = "Success", body = GetDomainResponse),
-(status = 401, description = "Not authorized", body = CloudError),
-(status = 404, description = "Not found", body = CloudError),
-),
-params(
-("domain_id" = DomainId, Path, description = "Domain to get")
-))]
-pub(crate) fn get_domain() {}
-
-/// Domain requests to get its configuration
-///
-/// When a domain starts in cloud mode, it will get the details of its configuration from the cloud.
-/// This endpoint delivers all of the cloud information about the domain, including instances,
-/// audio engines and cloud synchronization endpoints.
-#[utoipa::path(
-get,
-path = "/v1/domains/{domain_id}/config",
-responses(
-(status = 200, description = "Success", body = DomainConfig),
-(status = 401, description = "Not authorized", body = CloudError),
-(status = 404, description = "Not found", body = CloudError),
-),
-params(
-("domain_id" = DomainId, Path, description = "Domain to get config for")
-))]
-pub(crate) fn get_domain_config() {}
-
-/// Add maitenance time to domain
-///
-/// Add a designated time of maitnenance to the whole domain. When a domain is in maintenance, it
-/// cannot serve API requests or process tasks. Apps will not be able to create bookings against the
-/// domain that intersect with maintenance windows.
-#[utoipa::path(
-post,
-path = "/v1/domains/{domain_id}/maintenance",
-request_body = AddMaintenance,
-responses(
-(status = 200, description = "Success", body = DomainUpdated),
-(status = 401, description = "Not authorized", body = CloudError),
-(status = 404, description = "Not found", body = CloudError),
-),
-params(
-("domain_id" = DomainId, Path, description = "Domain to add maintenance to"),
-))]
-pub(crate) fn add_domain_maintenance() {}
-
-/// Clear domain maintenance time
-///
-/// Clear any maitnenance on the domain that matches the time predicates provided.
-#[utoipa::path(
-delete,
-path = "/v1/domains/{domain_id}/maintenance",
-request_body = ClearMaintenance,
-responses(
-(status = 200, description = "Success", body = DomainUpdated),
-(status = 401, description = "Not authorized", body = CloudError),
-(status = 404, description = "Not found", body = CloudError),
-),
-params(
-("domain_id" = DomainId, Path, description = "Domain to clear maitnenance on"),
-))]
-pub(crate) fn clear_domain_maintenance() {}
-
-/// Add maitenance time to instance
-///
-/// Add a designated time of maitnenance to an instance in a domain. When an instance is in
-/// maintenance, it cannot process tasks. Apps will not be able to create bookings against the
-/// instance that intersect with maintenance windows.
-#[utoipa::path(
-post,
-path = "/v1/domains/{domain_id}/instances/{manufacturer}/{name}/{instance}/maintenance",
-request_body = AddMaintenance,
-responses(
-(status = 200, description = "Success", body = DomainUpdated),
-(status = 401, description = "Not authorized", body = CloudError),
-(status = 404, description = "Not found", body = CloudError),
-),
-params(
-("domain_id" = DomainId, Path, description = "Domain hosting the instance"),
-("manufacturer" = String, Path, description = "Instance manufacturer"),
-("name" = String, Path, description = "Instance (product) name"),
-("instance" = String, Path, description = "Instance unique identifier"),
-))]
-pub(crate) fn add_fixed_instance_maintenance() {}
-
-/// Clear instance maintenance time
-///
-/// Clear any maitnenance on the instance that matches the time predicates provided.
-#[utoipa::path(
-delete,
-path = "/v1/domains/{domain_id}/instances/{manufacturer}/{name}/{instance}/maintenance",
-request_body = ClearMaintenance,
-responses(
-(status = 200, description = "Success", body = DomainUpdated),
-(status = 401, description = "Not authorized", body = CloudError),
-(status = 404, description = "Not found", body = CloudError),
-),
-params(
-("domain_id" = DomainId, Path, description = "Domain hosting the instance"),
-("manufacturer" = String, Path, description = "Instance manufacturer"),
-("name" = String, Path, description = "Instance (product) name"),
-("instance" = String, Path, description = "Instance unique identifier"),
-))]
-pub(crate) fn clear_fixed_instance_maintenance() {}

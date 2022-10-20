@@ -486,8 +486,8 @@ dependencies = [
  "serde_bytes",
  "serde_json",
  "serde_with",
+ "serde_yaml 0.9.13",
  "thiserror",
- "utoipa",
  "uuid 1.2.1",
 ]
 

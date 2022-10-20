@@ -1,16 +1,15 @@
 //! Types used to communicate with the instance_driver
 
+use schemars::{JsonSchema, schema_for};
 use schemars::schema::RootSchema;
-use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::OpenApi;
 
+use crate::{merge_schemas, Request, SerializableResult};
 use crate::common::instance::{DesiredInstancePlayState, InstancePlayState};
 use crate::common::media::{PlayId, RenderId};
 use crate::common::task::InstanceReports;
 use crate::newtypes::FixedInstanceId;
-use crate::{merge_schemas, Request, SerializableResult};
 
 /// A command that can be sent to the instance driver
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -108,63 +107,6 @@ pub enum InstanceCommandAccepted {
     Updated { id: FixedInstanceId },
 }
 
-mod instance {
-    /// Set desired play state
-    ///
-    /// If the instance has media capabilities, set an instance's desired play state.
-    #[utoipa::path(
-     put,
-     request_body = InstanceDriverCommand,
-     path = "/v1/instances/{manufacturer}/{name}/{instance}/play-state",
-     responses(
-      (status = 200, description = "Success", body = InstanceCommandAccepted),
-      (status = 404, description = "Not found", body = InstanceDriverError),
-     ),
-    params(
-     ("manufacturer" = String, Path, description = "Model manufacturer"),
-     ("name" = String, Path, description = "Model product name"),
-     ("instance" = String, Path, description = "Unique instance identifier"),
-    ))]
-    fn accept_command() {}
-
-    /// Set parameters
-    ///
-    /// Update instance parameter values.
-    #[utoipa::path(
-     patch,
-     request_body = SetInstanceParameters,
-     path = "/v1/instances/{manufacturer}/{name}/{instance}/parameters",
-     responses(
-      (status = 200, description = "Success", body = InstanceParametersUpdated),
-      (status = 404, description = "Not found", body = InstanceDriverError),
-     ), params(
-      ("manufacturer" = String, Path, description = "Model manufacturer"),
-      ("name" = String, Path, description = "Model product name"),
-      ("instance" = String, Path, description = "Unique instance identifier"),
-    ))]
-    fn set_parameters() {}
-}
-
-mod driver {
-    /// List running instances
-    ///
-    /// List instances running on this driver enddpoint.
-    #[utoipa::path(
-     get,
-     path = "/v1/instances",
-     responses(
-      (status = 200, description = "Success", body = InstanceWithStatusList),
-     ))]
-    fn list_instances() {}
-}
-
-#[derive(OpenApi)]
-#[openapi(paths(
-    instance::accept_command,
-    instance::set_parameters,
-    driver::list_instances
-))]
-pub struct InstanceDriverApi;
 
 pub fn schemas() -> RootSchema {
     merge_schemas(
@@ -176,6 +118,6 @@ pub fn schemas() -> RootSchema {
             schema_for!(SetInstanceParameters),
             schema_for!(InstanceWithStatusList),
         ]
-        .into_iter(),
+            .into_iter(),
     )
 }

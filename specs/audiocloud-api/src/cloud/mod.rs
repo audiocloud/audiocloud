@@ -6,7 +6,6 @@ use schemars::schema::RootSchema;
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::OpenApi;
 
 use crate::common::change::ModifyTaskError;
 use crate::common::model::ResourceId;
@@ -142,27 +141,6 @@ pub enum CloudError {
     #[error("All retries exhausted while trying to obtain a lock")]
     BlockingLock,
 }
-
-#[derive(OpenApi)]
-#[openapi(paths(
-    apps::get_app,
-    apps::update_app,
-    tasks::create_task,
-    tasks::adjust_task_time,
-    tasks::delete_task,
-    tasks::modify_task_spec,
-    domains::get_domain,
-    domains::get_domain_config,
-    domains::add_domain_maintenance,
-    domains::clear_domain_maintenance,
-    domains::add_fixed_instance_maintenance,
-    domains::clear_fixed_instance_maintenance,
-    media::upload_media_object,
-    media::download_media_object,
-    media::delete_media_object,
-    media::report_media_job_progress
-))]
-pub struct CloudApi;
 
 pub fn schemas() -> RootSchema {
     merge_schemas(

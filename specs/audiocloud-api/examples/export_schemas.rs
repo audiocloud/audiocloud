@@ -1,98 +1,47 @@
-use serde_json::json;
-use std::fs;
-use utoipa::OpenApi;
+use std::fs::{self, File};
+use std::path::PathBuf;
 
-use audiocloud_api::api::*;
+use anyhow::{anyhow, Result};
+use schemars::schema::RootSchema;
+use serde_yaml::Value;
 
-fn export_cloud_openapi() {
-    use audiocloud_api::cloud::*;
+use audiocloud_api::{audio_engine, cloud, domain, instance_driver};
 
-    fs::write(
-        "openapi_cloud.json",
-        openapi_with_schemas_to_json(
-            CloudApi::openapi(),
-            schemas(),
-            json!([
-                openapi_set_version("3.1.0"),
-                openapi_add_apache_license(),
-                openapi_set_info_title("Audio Cloud Orchestrator"),
-                openapi_create_empty_servers(),
-                openapi_add_server("https://api.audiocloud.io", "Production"),
-                openapi_add_server("http://localhost:7100", "Local development"),
-            ]),
-        )
-        .expect("API convert to JSON"),
-    )
-    .expect("Write JSON to file");
+fn update_schemas_of_openapi_file(api_file: PathBuf, schemas: RootSchema) -> Result<()> {
+    let mut yaml: Value = serde_yaml::from_reader(File::open(&api_file)?)?;
+    yaml.get_mut("components")
+        .ok_or_else(|| anyhow!("no components in openapi file"))?
+        .as_mapping_mut().ok_or_else(|| anyhow!("components is not a mapping"))?
+        .insert(Value::String("schemas".to_owned()), serde_yaml::to_value(schemas.definitions)?);
+
+    let as_string = serde_yaml::to_string(&yaml)?.replace("#/definitions/", "#/components/schemas/");
+
+    fs::write(api_file, as_string)?;
+
+    Ok(())
 }
 
-fn export_audio_engine_openapi() {
-    use audiocloud_api::audio_engine::*;
-
-    fs::write(
-        "openapi_audio_engine.json",
-        openapi_with_schemas_to_json(
-            EngineApi::openapi(),
-            schemas(),
-            json!([
-                openapi_set_version("3.1.0"),
-                openapi_add_apache_license(),
-                openapi_set_info_title("Audio Cloud Audio Engine"),
-                openapi_create_empty_servers(),
-                openapi_add_server("http://localhost:7300", "Local development")
-            ]),
-        )
-        .expect("API convert to JSON"),
-    )
-    .expect("Write JSON to file");
+fn export_cloud_openapi() -> Result<()> {
+    update_schemas_of_openapi_file(PathBuf::from("specs/openapi/cloud_api.yaml"), cloud::schemas())
 }
 
-fn export_instance_driver_openapi() {
-    use audiocloud_api::instance_driver::*;
-
-    fs::write(
-        "openapi_instance_driver.json",
-        openapi_with_schemas_to_json(
-            InstanceDriverApi::openapi(),
-            schemas(),
-            json!([
-                openapi_set_version("3.1.0"),
-                openapi_add_apache_license(),
-                openapi_set_info_title("Audio Cloud Instance Driver"),
-                openapi_create_empty_servers(),
-                openapi_add_server("http://localhost:7400", "Local development")
-            ]),
-        )
-        .expect("API convert to JSON"),
-    )
-    .expect("Write JSON to file");
+fn export_audio_engine_openapi() -> Result<()> {
+    update_schemas_of_openapi_file(PathBuf::from("specs/openapi/audio_engine_api.yaml"), audio_engine::schemas())
 }
 
-fn export_domain_openapi() {
-    use audiocloud_api::domain::*;
-
-    fs::write(
-        "openapi_domain.json",
-        openapi_with_schemas_to_json(
-            DomainApi::openapi(),
-            schemas(),
-            json!([
-                openapi_set_version("3.1.0"),
-                openapi_add_apache_license(),
-                openapi_set_info_title("Audio Cloud Domain"),
-                openapi_create_empty_servers(),
-                openapi_add_server("https://distopik-hq.eu.audiocloud.io", "Distopik HQ"),
-                openapi_add_server("http://localhost:7200", "Local development")
-            ]),
-        )
-        .expect("API convert to JSON"),
-    )
-    .expect("Write JSON to file");
+fn export_instance_driver_openapi() -> Result<()> {
+    update_schemas_of_openapi_file(PathBuf::from("specs/openapi/instance_driver_api.yaml"), instance_driver::schemas())
 }
 
-fn main() {
-    export_cloud_openapi();
-    export_audio_engine_openapi();
-    export_instance_driver_openapi();
-    export_domain_openapi();
+fn export_domain_openapi() -> Result<()> {
+    update_schemas_of_openapi_file(PathBuf::from("specs/openapi/domain_api.yaml"), domain::schemas())
+}
+
+fn main() -> Result<()> {
+    export_cloud_openapi()?;
+    export_audio_engine_openapi()?;
+    export_instance_driver_openapi()?;
+    export_domain_openapi()?;
+
+    Ok(())
 }
