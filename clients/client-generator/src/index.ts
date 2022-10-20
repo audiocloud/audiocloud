@@ -5,6 +5,7 @@ import * as fs from "fs/promises";
 import {format as prettier} from "prettier"
 import minimist from "minimist"
 import {snakeCase} from "change-case"
+import yaml from 'yaml'
 
 async function main(): Promise<void> {
     let args = minimist(process.argv.slice(2))
@@ -15,7 +16,14 @@ async function main(): Promise<void> {
         throw new Error('No input file specified')
     }
 
-    let json = JSON.parse((await fs.readFile(fileName)).toString('utf-8'));
+    let contents = (await fs.readFile(fileName)).toString('utf-8')
+    let json
+
+    if (fileName.endsWith('.json')) {
+        json = JSON.parse(contents);
+    } else {
+        json = yaml.parse(contents)
+    }
     json.definitions = json.components.schemas;
 
     for (const d in json.definitions) {

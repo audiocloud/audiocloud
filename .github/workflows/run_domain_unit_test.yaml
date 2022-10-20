@@ -1,0 +1,49 @@
+name: Run Domain Unit Tests on PRs and pushes to main
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "domain/audiocloud-domain-server/**"
+      - "specs/audiocloud-api/**"
+  pull_request:
+    branches: [ main ]
+    paths:
+      - "domain/audiocloud-domain-server/**"
+      - "specs/audiocloud-api/**"
+env:
+  CARGO_TERM_COLOR: always
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.cache-name }}-
+            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-
+      - name: Install sqlx CLI
+        run: |
+          cargo install sqlx-cli --no-default-features --features native-tls,sqlite
+      - name: Init database
+        run: |
+          rm domain.sqlite || true
+          sqlite3 domain.sqlite "VACUUM"
+          sqlx migrate run --source domain/audiocloud-domain-server/src/db/migrations
+        env:
+          DATABASE_URL: "sqlite:domain.sqlite"
+      - name: Run tests
+        run: |
+          cargo test -p audiocloud-domain-server -- --test-threads=1 
+        env:
+          DATABASE_URL: "sqlite:domain.sqlite"

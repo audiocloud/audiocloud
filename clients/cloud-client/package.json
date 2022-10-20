@@ -1,0 +1,30 @@
+{
+  "name": "@audiocloud/cloud-client",
+  "version": "2.0.27",
+  "description": "AudioCloud Cloud Client",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/types/index.d.ts",
+  "engines": {
+    "node": ">=12.0.0"
+  },
+  "scripts": {
+    "generate": "npx @audiocloud/client-generator ../../specs/openapi/cloud_api.yaml",
+    "build": "rimraf dist && tsc && tsc -p tsconfig-cjs.json && tsc -p tsconfig-types.json",
+    "update": "npm update"
+  },
+  "devDependencies": {
+    "@audiocloud/client-generator": "^1",
+    "typescript": "^4",
+    "rimraf": "^3"
+  },
+  "keywords": [
+    "audiocloud",
+    "audio",
+    "api",
+    "client",
+    "cloud"
+  ],
+  "author": "Bojan Šernek",
+  "license": "ISC"
+}
