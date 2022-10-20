@@ -1,0 +1,97 @@
+{
+  "db": "SQLite",
+  "2dd43fe9595aa16cd87dfe8759cca59a4c4f34ce04b062b7e0c2cf4f1bc92e4a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "name",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "SELECT name FROM sqlite_master WHERE type='table'"
+  },
+  "34a360b90cb2d275aa823ba545b3d1ea8c9f6d35758c33081551919b0154534b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "DELETE FROM media_job WHERE id = ?"
+  },
+  "5f473fd67b929ea9688ad2f68a15372610276a1e7d186eee43ac35d3f18f268a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 0
+      }
+    },
+    "query": "DELETE FROM model WHERE true"
+  },
+  "711e6d25440a8e8ed860d415f63f15ab2fa1c055843f943238dc74c9ce2cd297": {
+    "describe": {
+      "columns": [
+        {
+          "name": "value",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT value FROM sys_props WHERE id=?"
+  },
+  "9ebadf09e9c34eafdefb3b0715291c51feeec99a46d232cb71718cac7fbaa49a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT OR REPLACE INTO model (id, spec) VALUES (?, ?)"
+  },
+  "c7549d61e9b033870a1d636ed650531fd6ce27b5779f40d15effdf94bf84ac1e": {
+    "describe": {
+      "columns": [
+        {
+          "name": "spec",
+          "ordinal": 0,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT spec FROM model WHERE id=?"
+  },
+  "ff4046252975f01b60083ba6099a7f94c4aaa29237eebbb95017c35e7e4189f3": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 2
+      }
+    },
+    "query": "INSERT OR REPLACE INTO sys_props (id, value) VALUES (?, ?)"
+  }
+}

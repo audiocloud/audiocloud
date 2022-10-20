@@ -67,7 +67,7 @@ features = ["tracing", "static"]
 
 [dependencies.sqlx]
 version = "0.6"
-features = ["runtime-actix-native-tls", "sqlite", "all-types"]
+features = ["runtime-actix-native-tls", "sqlite", "all-types", "offline"]
 
 [dependencies.uuid]
 version = "1"
