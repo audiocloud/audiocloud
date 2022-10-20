@@ -1,12 +1,12 @@
 name: Run Domain Unit Tests on PRs and pushes to main
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "domain/audiocloud-domain-server/**"
       - "specs/audiocloud-api/**"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
       - "domain/audiocloud-domain-server/**"
       - "specs/audiocloud-api/**"
@@ -14,7 +14,7 @@ env:
   CARGO_TERM_COLOR: always
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -32,6 +32,9 @@ jobs:
             ${{ runner.os }}-cargo-${{ env.cache-name }}-
             ${{ runner.os }}-cargo-
             ${{ runner.os }}-
+      - name: Install deps
+        run: |
+          sudo apt-get install -y libusb-1.0-0-dev
       - name: Install sqlx CLI
         run: |
           cargo install sqlx-cli --no-default-features --features native-tls,sqlite
@@ -44,6 +47,6 @@ jobs:
           DATABASE_URL: "sqlite:domain.sqlite"
       - name: Run tests
         run: |
-          cargo test -p audiocloud-domain-server -- --test-threads=1 
+          cargo test -p audiocloud-domain-server -- --test-threads=1
         env:
           DATABASE_URL: "sqlite:domain.sqlite"
