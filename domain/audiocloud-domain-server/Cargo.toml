@@ -41,6 +41,11 @@ opentelemetry-prometheus = "0.11"
 prometheus = "0.13"
 tracing-loki = "0.2"
 
+[dependencies.surrealdb]
+version = "1.0.0-beta.8"
+default-features = false
+features = ["parallel", "kv-mem", "kv-rocksdb"]
+
 [dependencies.sentry]
 version = "0.27"
 features = ["tracing"]
@@ -64,10 +69,6 @@ features = ["metrics", "http-proto", "reqwest-client"]
 version = "0.7"
 default_features = false
 features = ["tracing", "static"]
-
-[dependencies.sqlx]
-version = "0.6"
-features = ["runtime-actix-native-tls", "sqlite", "all-types", "offline"]
 
 [dependencies.uuid]
 version = "1"

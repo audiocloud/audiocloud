@@ -1,32 +1,12 @@
 use std::collections::HashSet;
 
-use maplit::hashmap;
+use maplit::{hashmap, hashset};
 use serde_json::json;
 
-use audiocloud_api::{
-    now, AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaJobState, MediaMetadata, MediaObject,
-    MediaObjectId, MediaUpload, TrackMediaFormat, UploadToDomain,
-};
+use audiocloud_api::{AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaJobState, MediaMetadata, MediaObject, MediaObjectId, MediaUpload, Model, ModelId, now, TrackMediaFormat, UploadToDomain};
 
 use crate::db::DataOpts;
 use crate::media::{DownloadJobId, UploadJobId};
-
-#[actix::test]
-async fn test_migrations() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
-    let mut conn = db.pool.acquire().await?;
-    let res = sqlx::query!("SELECT name FROM sqlite_master WHERE type='table'").fetch_all(&mut conn)
-                                                                               .await?;
-    assert_eq!(res.len(), 5);
-    let set = res.into_iter().filter_map(|r| r.name).collect::<HashSet<_>>();
-
-    assert_eq!(set,
-               ["_sqlx_migrations", "media_object", "sys_props", "model", "media_job"].into_iter()
-                                                                                      .map(String::from)
-                                                                                      .collect());
-
-    Ok(())
-}
 
 #[actix::test]
 async fn test_media_create() -> anyhow::Result<()> {
@@ -59,16 +39,20 @@ async fn test_create_download_job() -> anyhow::Result<()> {
 
     let initial_state = not_completed_job_state();
 
-    let download = MediaDownload { media_id: media_id.clone(),
-                                   download: upload_settings,
-                                   state:    initial_state, };
+    let download = MediaDownload {
+        media_id: media_id.clone(),
+        download: upload_settings,
+        state: initial_state,
+    };
 
-    let media = MediaObject { id:       media_id.clone(),
-                              metadata: None,
-                              path:     None,
-                              download: None,
-                              upload:   None,
-                              revision: 0, };
+    let media = MediaObject {
+        id: media_id.clone(),
+        metadata: None,
+        path: None,
+        download: None,
+        upload: None,
+        revision: 0,
+    };
 
     db.save_media(media).await?;
 
@@ -93,16 +77,20 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
 
     let initial_state = not_completed_job_state();
 
-    let upload = MediaUpload { media_id: media_id.clone(),
-                               upload:   upload_settings.clone(),
-                               state:    initial_state, };
+    let upload = MediaUpload {
+        media_id: media_id.clone(),
+        upload: upload_settings.clone(),
+        state: initial_state,
+    };
 
-    let media = MediaObject { id:       media_id.clone(),
-                              metadata: None,
-                              path:     None,
-                              download: None,
-                              upload:   None,
-                              revision: 0, };
+    let media = MediaObject {
+        id: media_id.clone(),
+        metadata: None,
+        path: None,
+        download: None,
+        upload: None,
+        revision: 0,
+    };
 
     db.save_media(media).await?;
 
@@ -115,46 +103,111 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[actix::test]
+async fn test_sys_props() -> anyhow::Result<()> {
+    let db = super::init(DataOpts::memory()).await?;
+
+    db.set_sys_prop("test", &"value".to_owned()).await?;
+    let value: Option<String> = db.get_sys_prop("test").await?;
+
+    assert_eq!(value, Some("value".to_owned()));
+
+    Ok(())
+}
+
+#[actix::test]
+async fn test_models_get_set() -> anyhow::Result<()> {
+    let db = super::init(DataOpts::memory()).await?;
+
+    let a_id = ModelId { manufacturer: "distopik".to_owned(), name: "a".to_owned() };
+    let b_id = ModelId { manufacturer: "distopik".to_owned(), name: "b".to_owned() };
+
+    let model_a = Model {
+        resources: Default::default(),
+        inputs: vec![],
+        outputs: vec![],
+        parameters: Default::default(),
+        reports: Default::default(),
+        media: false,
+        capabilities: Default::default(),
+    };
+
+    let model_b = Model {
+        resources: Default::default(),
+        inputs: vec![],
+        outputs: vec![],
+        parameters: Default::default(),
+        reports: Default::default(),
+        media: true,
+        capabilities: Default::default(),
+    };
+
+    assert_eq!(db.get_model(&a_id).await?, None);
+
+    db.set_model(&a_id, &model_a).await?;
+    db.set_model(&b_id, &model_b).await?;
+
+    assert_eq!(db.get_model(&a_id).await?, Some(model_a.clone()));
+    assert_eq!(db.get_model(&b_id).await?, Some(model_b.clone()));
+
+    db.delete_all_models_except(&hashset! { b_id.clone() }).await?;
+
+    assert_eq!(db.get_model(&a_id).await?, None);
+    assert_eq!(db.get_model(&b_id).await?, Some(model_b.clone()));
+
+    Ok(())
+}
+
 fn test_media_object(media_id: &AppMediaObjectId, media_metadata: &MediaMetadata) -> MediaObject {
-    MediaObject { id:       media_id.clone(),
-                  metadata: Some(media_metadata.clone()),
-                  path:     Some(format!("random-path/{media_id}")),
-                  download: None,
-                  upload:   None,
-                  revision: 2, }
+    MediaObject {
+        id: media_id.clone(),
+        metadata: Some(media_metadata.clone()),
+        path: Some(format!("random-path/{media_id}")),
+        download: None,
+        upload: None,
+        revision: 2,
+    }
 }
 
 fn test_media_metadata() -> MediaMetadata {
-    MediaMetadata { channels:    MediaChannels::Mono,
-                    format:      TrackMediaFormat::Wave,
-                    seconds:     69.0,
-                    sample_rate: 44_100,
-                    bytes:       5294831, }
+    MediaMetadata {
+        channels: MediaChannels::Mono,
+        format: TrackMediaFormat::Wave,
+        seconds: 69.0,
+        sample_rate: 44_100,
+        bytes: 5294831,
+    }
 }
 
 fn test_media_download_settings() -> DownloadFromDomain {
-    DownloadFromDomain { url:        "http://test.local/file.wav".to_string(),
-                         notify_url: Some("http://test.local/api/notify".to_string()),
-                         context:    Some(json!({"test_int": 123, "test_bool": true})), }
+    DownloadFromDomain {
+        url: "http://test.local/file.wav".to_string(),
+        notify_url: Some("http://test.local/api/notify".to_string()),
+        context: Some(json!({"test_int": 123, "test_bool": true})),
+    }
 }
 
 fn test_media_upload_settings() -> UploadToDomain {
-    UploadToDomain { channels:    MediaChannels::Mono,
-                     format:      TrackMediaFormat::Wave,
-                     seconds:     10.0,
-                     sample_rate: 44_1000,
-                     bytes:       234582,
-                     url:         "http://test.local/file.wav".to_string(),
-                     notify_url:  Some("http://test.local/api/notify".to_string()),
-                     context:     Some(json!({"test_int": 123, "test_bool": true})), }
+    UploadToDomain {
+        channels: MediaChannels::Mono,
+        format: TrackMediaFormat::Wave,
+        seconds: 10.0,
+        sample_rate: 44_1000,
+        bytes: 234582,
+        url: "http://test.local/file.wav".to_string(),
+        notify_url: Some("http://test.local/api/notify".to_string()),
+        context: Some(json!({"test_int": 123, "test_bool": true})),
+    }
 }
 
 fn not_completed_job_state() -> MediaJobState {
-    MediaJobState { progress:    0.0,
-                    retry:       1,
-                    error:       None,
-                    in_progress: true,
-                    updated_at:  now(), }
+    MediaJobState {
+        progress: 0.0,
+        retry: 1,
+        error: None,
+        in_progress: true,
+        updated_at: now(),
+    }
 }
 
 fn new_random_test_media_id() -> AppMediaObjectId {

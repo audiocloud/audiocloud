@@ -1,8 +1,11 @@
-use std::fmt::{Debug, Formatter};
+use std::{
+    fmt::{Debug, Formatter},
+    sync::Arc,
+};
 
 use clap::Args;
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use surrealdb::Datastore;
 use tracing::*;
 
 mod media;
@@ -14,7 +17,7 @@ mod tests;
 
 #[derive(Clone)]
 pub struct Db {
-    pool: SqlitePool,
+    db: Arc<Datastore>,
 }
 
 impl Debug for Db {
@@ -29,13 +32,13 @@ struct TaskInfo {}
 #[derive(Args)]
 pub struct DataOpts {
     /// Sqlite database file where data for media and session cache will be stored. Use :memory: for an in-memory store
-    #[clap(long, env, default_value = "sqlite:domain.sqlite")]
+    #[clap(long, env, default_value = "file://domain.db")]
     pub database_url: String,
 }
 
 impl DataOpts {
     pub fn memory() -> Self {
-        Self { database_url: ":memory:".to_string(), }
+        Self { database_url: "memory".to_string() }
     }
 }
 
@@ -44,13 +47,13 @@ pub async fn init(cfg: DataOpts) -> anyhow::Result<Db> {
     let database_url = &cfg.database_url;
     debug!(?database_url, "Initializing database");
 
-    let pool = SqlitePool::connect(database_url).await?;
+    let pool = Datastore::new(database_url).await?;
 
-    debug!("Running migrations");
+    // debug!("Running migrations");
 
-    sqlx::migrate!("src/db/migrations").run(&pool).await?;
+    // sqlx::migrate!("src/db/migrations").run(&pool).await?;
 
-    debug!("Migrations done");
+    // debug!("Migrations done");
 
-    Ok(Db { pool })
+    Ok(Db { db: Arc::new(pool) })
 }

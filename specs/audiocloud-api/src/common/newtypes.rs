@@ -387,6 +387,12 @@ impl<'de> Deserialize<'de> for AppMediaObjectId {
     }
 }
 
+impl AppMediaObjectId {
+    pub fn slashed(&self) -> String {
+        format!("{}/{}", &self.app_id, &self.media_id)
+    }
+}
+
 /// A password for direct task control on the domain
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
 #[repr(transparent)]

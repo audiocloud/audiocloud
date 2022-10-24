@@ -462,3 +462,4 @@ $RECYCLE.BIN/
 fleet.toml
 .idea/dataSources.xml
 .cargo
+/domain/surreal-tests

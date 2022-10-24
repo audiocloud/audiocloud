@@ -5,8 +5,9 @@ use std::str::FromStr;
 
 use actix::{Actor, Addr};
 use clap::Args;
-use derive_more::{Display, From, FromStr};
+use derive_more::{Deref, Display, From, FromStr};
 use once_cell::sync::OnceCell;
+use serde::{Deserialize, Serialize};
 use tracing::*;
 use uuid::Uuid;
 
@@ -24,15 +25,9 @@ pub mod upload;
 
 static MEDIA_SUPERVISOR: OnceCell<Addr<MediaSupervisor>> = OnceCell::new();
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, From, FromStr)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, FromStr, Deref)]
 #[repr(transparent)]
-pub struct UploadJobId(Uuid);
-
-impl UploadJobId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
-    }
-}
+pub struct UploadJobId(String);
 
 impl From<String> for UploadJobId {
     fn from(s: String) -> Self {
@@ -40,19 +35,13 @@ impl From<String> for UploadJobId {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, From, FromStr)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, FromStr, Deref)]
 #[repr(transparent)]
-pub struct DownloadJobId(Uuid);
+pub struct DownloadJobId(String);
 
 impl From<String> for DownloadJobId {
     fn from(s: String) -> Self {
         Self::from_str(&s).unwrap()
-    }
-}
-
-impl DownloadJobId {
-    pub fn new() -> Self {
-        Self(Uuid::new_v4())
     }
 }
 

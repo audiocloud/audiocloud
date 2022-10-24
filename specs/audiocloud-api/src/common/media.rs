@@ -99,9 +99,10 @@ impl ImportToDomain {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaDownload {
-    pub media_id: AppMediaObjectId,
-    pub download: DownloadFromDomain,
-    pub state:    MediaJobState,
+    pub media_id:  AppMediaObjectId,
+    pub download:  DownloadFromDomain,
+    pub state:     MediaJobState,
+    pub crated_at: Timestamp,
 }
 
 impl MediaDownload {
@@ -112,9 +113,10 @@ impl MediaDownload {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaUpload {
-    pub media_id: AppMediaObjectId,
-    pub upload:   UploadToDomain,
-    pub state:    MediaJobState,
+    pub media_id:  AppMediaObjectId,
+    pub upload:    UploadToDomain,
+    pub state:     MediaJobState,
+    pub crated_at: Timestamp,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
