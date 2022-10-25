@@ -14,6 +14,7 @@ mod sys_props;
 mod tasks;
 #[cfg(test)]
 mod tests;
+mod utils;
 
 #[derive(Clone)]
 pub struct Db {

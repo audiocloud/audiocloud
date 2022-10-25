@@ -16,7 +16,6 @@ use tracing::Subscriber;
 use tracing_opentelemetry::OpenTelemetryLayer;
 
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::util::SubscriberInitExt;
 
 use crate::o11y::O11yOpts;
 

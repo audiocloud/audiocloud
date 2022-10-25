@@ -1,9 +1,9 @@
 use anyhow::anyhow;
 use maplit::btreemap;
-use serde::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
-use surrealdb::{Session, sql};
+use serde::{Deserialize, Serialize};
 use surrealdb::sql::{json, Strand, Value};
+use surrealdb::Session;
 
 use crate::db::Db;
 

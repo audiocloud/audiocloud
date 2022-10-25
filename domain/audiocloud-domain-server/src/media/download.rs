@@ -83,7 +83,7 @@ impl Downloader {
     async fn save_and_notify(&mut self) {
         self.download.state.updated_at = now();
         let _ = self.db.save_download_job(&self.job_id, &self.download).await;
-        self.issue_system_async(NotifyDownloadProgress { job_id:   self.job_id,
+        self.issue_system_async(NotifyDownloadProgress { job_id:   self.job_id.clone(),
                                                          download: self.download.clone(), });
     }
 }

@@ -1,7 +1,6 @@
 use actix::{Actor, ActorContext, Addr, Context, Handler};
 use actix_broker::BrokerSubscribe;
 use anyhow::anyhow;
-use bytes::Bytes;
 use once_cell::sync::OnceCell;
 use rdkafka::config::FromClientConfigAndContext;
 use rdkafka::producer::{BaseProducer, BaseRecord, DefaultProducerContext};

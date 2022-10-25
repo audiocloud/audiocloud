@@ -1,9 +1,11 @@
-use std::collections::HashSet;
-
 use maplit::{hashmap, hashset};
+use nanoid::nanoid;
 use serde_json::json;
 
-use audiocloud_api::{AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaJobState, MediaMetadata, MediaObject, MediaObjectId, MediaUpload, Model, ModelId, now, TrackMediaFormat, UploadToDomain};
+use audiocloud_api::{
+    now, AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaJobState, MediaMetadata, MediaObject,
+    MediaObjectId, MediaUpload, Model, ModelId, TrackMediaFormat, UploadToDomain,
+};
 
 use crate::db::DataOpts;
 use crate::media::{DownloadJobId, UploadJobId};
@@ -18,7 +20,7 @@ async fn test_media_create() -> anyhow::Result<()> {
 
     let media = test_media_object(&media_id, &media_metadata);
 
-    db.save_media(media.clone()).await?;
+    db.create_initial_media(&media_id, Some(media_metadata), None).await?;
 
     let loaded = db.fetch_media_by_id(&media_id).await?;
 
@@ -39,20 +41,17 @@ async fn test_create_download_job() -> anyhow::Result<()> {
 
     let initial_state = not_completed_job_state();
 
-    let download = MediaDownload {
-        media_id: media_id.clone(),
-        download: upload_settings,
-        state: initial_state,
-    };
+    let download = MediaDownload { media_id:   { media_id.clone() },
+                                   download:   { upload_settings },
+                                   state:      { initial_state },
+                                   created_at: { now() }, };
 
-    let media = MediaObject {
-        id: media_id.clone(),
-        metadata: None,
-        path: None,
-        download: None,
-        upload: None,
-        revision: 0,
-    };
+    let media = MediaObject { id:       media_id.clone(),
+                              metadata: None,
+                              path:     None,
+                              download: None,
+                              upload:   None,
+                              revision: 0, };
 
     db.save_media(media).await?;
 
@@ -77,24 +76,23 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
 
     let initial_state = not_completed_job_state();
 
-    let upload = MediaUpload {
-        media_id: media_id.clone(),
-        upload: upload_settings.clone(),
-        state: initial_state,
-    };
+    let upload = MediaUpload { media_id:   { media_id.clone() },
+                               upload:     { upload_settings.clone() },
+                               state:      { initial_state },
+                               created_at: { now() }, };
 
-    let media = MediaObject {
-        id: media_id.clone(),
-        metadata: None,
-        path: None,
-        download: None,
-        upload: None,
-        revision: 0,
-    };
+    let media = MediaObject { id:       media_id.clone(),
+                              metadata: None,
+                              path:     None,
+                              download: None,
+                              upload:   None,
+                              revision: 0, };
 
     db.save_media(media).await?;
 
     db.save_upload_job(&job_id, &upload).await?;
+
+    db.debug_jobs().await?;
 
     let upload_jobs = db.fetch_pending_upload_jobs(1).await?;
 
@@ -119,28 +117,26 @@ async fn test_sys_props() -> anyhow::Result<()> {
 async fn test_models_get_set() -> anyhow::Result<()> {
     let db = super::init(DataOpts::memory()).await?;
 
-    let a_id = ModelId { manufacturer: "distopik".to_owned(), name: "a".to_owned() };
-    let b_id = ModelId { manufacturer: "distopik".to_owned(), name: "b".to_owned() };
+    let a_id = ModelId { manufacturer: "distopik".to_owned(),
+                         name:         "a".to_owned(), };
+    let b_id = ModelId { manufacturer: "distopik".to_owned(),
+                         name:         "b".to_owned(), };
 
-    let model_a = Model {
-        resources: Default::default(),
-        inputs: vec![],
-        outputs: vec![],
-        parameters: Default::default(),
-        reports: Default::default(),
-        media: false,
-        capabilities: Default::default(),
-    };
+    let model_a = Model { resources:    Default::default(),
+                          inputs:       vec![],
+                          outputs:      vec![],
+                          parameters:   Default::default(),
+                          reports:      Default::default(),
+                          media:        false,
+                          capabilities: Default::default(), };
 
-    let model_b = Model {
-        resources: Default::default(),
-        inputs: vec![],
-        outputs: vec![],
-        parameters: Default::default(),
-        reports: Default::default(),
-        media: true,
-        capabilities: Default::default(),
-    };
+    let model_b = Model { resources:    Default::default(),
+                          inputs:       vec![],
+                          outputs:      vec![],
+                          parameters:   Default::default(),
+                          reports:      Default::default(),
+                          media:        true,
+                          capabilities: Default::default(), };
 
     assert_eq!(db.get_model(&a_id).await?, None);
 
@@ -159,55 +155,45 @@ async fn test_models_get_set() -> anyhow::Result<()> {
 }
 
 fn test_media_object(media_id: &AppMediaObjectId, media_metadata: &MediaMetadata) -> MediaObject {
-    MediaObject {
-        id: media_id.clone(),
-        metadata: Some(media_metadata.clone()),
-        path: Some(format!("random-path/{media_id}")),
-        download: None,
-        upload: None,
-        revision: 2,
-    }
+    MediaObject { id:       media_id.clone(),
+                  metadata: Some(media_metadata.clone()),
+                  path:     Some(format!("random-path/{media_id}")),
+                  download: None,
+                  upload:   None,
+                  revision: 2, }
 }
 
 fn test_media_metadata() -> MediaMetadata {
-    MediaMetadata {
-        channels: MediaChannels::Mono,
-        format: TrackMediaFormat::Wave,
-        seconds: 69.0,
-        sample_rate: 44_100,
-        bytes: 5294831,
-    }
+    MediaMetadata { channels:    MediaChannels::Mono,
+                    format:      TrackMediaFormat::Wave,
+                    seconds:     69.0,
+                    sample_rate: 44_100,
+                    bytes:       5294831, }
 }
 
 fn test_media_download_settings() -> DownloadFromDomain {
-    DownloadFromDomain {
-        url: "http://test.local/file.wav".to_string(),
-        notify_url: Some("http://test.local/api/notify".to_string()),
-        context: Some(json!({"test_int": 123, "test_bool": true})),
-    }
+    DownloadFromDomain { url:        "http://test.local/file.wav".to_string(),
+                         notify_url: Some("http://test.local/api/notify".to_string()),
+                         context:    Some(json!({"test_int": 123, "test_bool": true})), }
 }
 
 fn test_media_upload_settings() -> UploadToDomain {
-    UploadToDomain {
-        channels: MediaChannels::Mono,
-        format: TrackMediaFormat::Wave,
-        seconds: 10.0,
-        sample_rate: 44_1000,
-        bytes: 234582,
-        url: "http://test.local/file.wav".to_string(),
-        notify_url: Some("http://test.local/api/notify".to_string()),
-        context: Some(json!({"test_int": 123, "test_bool": true})),
-    }
+    UploadToDomain { channels:    MediaChannels::Mono,
+                     format:      TrackMediaFormat::Wave,
+                     seconds:     10.0,
+                     sample_rate: 44_1000,
+                     bytes:       234582,
+                     url:         "http://test.local/file.wav".to_string(),
+                     notify_url:  Some("http://test.local/api/notify".to_string()),
+                     context:     Some(json!({"test_int": 123, "test_bool": true})), }
 }
 
 fn not_completed_job_state() -> MediaJobState {
-    MediaJobState {
-        progress: 0.0,
-        retry: 1,
-        error: None,
-        in_progress: true,
-        updated_at: now(),
-    }
+    MediaJobState { progress:    0.0,
+                    retry:       1,
+                    error:       None,
+                    in_progress: false,
+                    updated_at:  now(), }
 }
 
 fn new_random_test_media_id() -> AppMediaObjectId {
@@ -215,9 +201,9 @@ fn new_random_test_media_id() -> AppMediaObjectId {
 }
 
 fn new_random_download_job_id() -> DownloadJobId {
-    DownloadJobId::new()
+    DownloadJobId::new(nanoid!())
 }
 
 fn new_random_upload_job_id() -> UploadJobId {
-    UploadJobId::new()
+    UploadJobId::new(nanoid!())
 }

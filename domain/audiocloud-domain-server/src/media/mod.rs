@@ -5,11 +5,10 @@ use std::str::FromStr;
 
 use actix::{Actor, Addr};
 use clap::Args;
-use derive_more::{Deref, Display, From, FromStr};
+use derive_more::{Deref, Display, FromStr, Constructor};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use tracing::*;
-use uuid::Uuid;
 
 pub use messages::*;
 use supervisor::MediaSupervisor;
@@ -25,7 +24,7 @@ pub mod upload;
 
 static MEDIA_SUPERVISOR: OnceCell<Addr<MediaSupervisor>> = OnceCell::new();
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, FromStr, Deref)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, FromStr, Deref, Constructor)]
 #[repr(transparent)]
 pub struct UploadJobId(String);
 
@@ -35,7 +34,7 @@ impl From<String> for UploadJobId {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, FromStr, Deref)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Display, Hash, FromStr, Deref, Constructor)]
 #[repr(transparent)]
 pub struct DownloadJobId(String);
 

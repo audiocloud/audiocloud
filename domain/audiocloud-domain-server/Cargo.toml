@@ -40,11 +40,8 @@ sentry-tracing = "0.27"
 opentelemetry-prometheus = "0.11"
 prometheus = "0.13"
 tracing-loki = "0.2"
-
-[dependencies.surrealdb]
-version = "1.0.0-beta.8"
-default-features = false
-features = ["parallel", "kv-mem", "kv-rocksdb"]
+ejdb2-sys = "2.61.0"
+ejdb2 = "0.0.6"
 
 [dependencies.sentry]
 version = "0.27"

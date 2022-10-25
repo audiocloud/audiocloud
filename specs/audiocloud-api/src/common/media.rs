@@ -102,7 +102,7 @@ pub struct MediaDownload {
     pub media_id:  AppMediaObjectId,
     pub download:  DownloadFromDomain,
     pub state:     MediaJobState,
-    pub crated_at: Timestamp,
+    pub created_at: Timestamp,
 }
 
 impl MediaDownload {
@@ -116,7 +116,7 @@ pub struct MediaUpload {
     pub media_id:  AppMediaObjectId,
     pub upload:    UploadToDomain,
     pub state:     MediaJobState,
-    pub crated_at: Timestamp,
+    pub created_at: Timestamp,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

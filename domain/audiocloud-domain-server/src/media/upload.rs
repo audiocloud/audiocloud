@@ -108,7 +108,7 @@ impl Uploader {
 
     fn notify_supervisor(&mut self) {
         self.state.updated_at = now();
-        self.issue_system_async(NotifyUploadProgress { job_id: self.job_id,
+        self.issue_system_async(NotifyUploadProgress { job_id: self.job_id.clone(),
                                                        upload: self.upload.clone(), });
     }
 }
