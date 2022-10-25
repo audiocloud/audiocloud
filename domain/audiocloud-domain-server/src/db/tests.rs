@@ -1,32 +1,16 @@
-use std::collections::HashSet;
+use std::env;
 
-use maplit::hashmap;
+use maplit::{hashmap, hashset};
+use nanoid::nanoid;
 use serde_json::json;
 
 use audiocloud_api::{
     now, AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaJobState, MediaMetadata, MediaObject,
-    MediaObjectId, MediaUpload, TrackMediaFormat, UploadToDomain,
+    MediaObjectId, MediaUpload, Model, ModelId, TrackMediaFormat, UploadToDomain,
 };
 
 use crate::db::DataOpts;
 use crate::media::{DownloadJobId, UploadJobId};
-
-#[actix::test]
-async fn test_migrations() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
-    let mut conn = db.pool.acquire().await?;
-    let res = sqlx::query!("SELECT name FROM sqlite_master WHERE type='table'").fetch_all(&mut conn)
-                                                                               .await?;
-    assert_eq!(res.len(), 5);
-    let set = res.into_iter().filter_map(|r| r.name).collect::<HashSet<_>>();
-
-    assert_eq!(set,
-               ["_sqlx_migrations", "media_object", "sys_props", "model", "media_job"].into_iter()
-                                                                                      .map(String::from)
-                                                                                      .collect());
-
-    Ok(())
-}
 
 #[actix::test]
 async fn test_media_create() -> anyhow::Result<()> {
@@ -36,13 +20,13 @@ async fn test_media_create() -> anyhow::Result<()> {
 
     let media_metadata = test_media_metadata();
 
-    let media = test_media_object(&media_id, &media_metadata);
-
-    db.save_media(media.clone()).await?;
+    let media = db.create_initial_media(&media_id, Some(media_metadata.clone()), None).await?;
 
     let loaded = db.fetch_media_by_id(&media_id).await?;
 
     assert_eq!(loaded.as_ref(), Some(&media));
+    assert_eq!(loaded.as_ref().and_then(|media| media.metadata.as_ref()), Some(&media_metadata));
+    assert_eq!(loaded.as_ref().and_then(|media| media.path.as_ref()), None);
 
     Ok(())
 }
@@ -59,18 +43,12 @@ async fn test_create_download_job() -> anyhow::Result<()> {
 
     let initial_state = not_completed_job_state();
 
-    let download = MediaDownload { media_id: media_id.clone(),
-                                   download: upload_settings,
-                                   state:    initial_state, };
+    let download = MediaDownload { media_id:   { media_id.clone() },
+                                   download:   { upload_settings },
+                                   state:      { initial_state },
+                                   created_at: { now() }, };
 
-    let media = MediaObject { id:       media_id.clone(),
-                              metadata: None,
-                              path:     None,
-                              download: None,
-                              upload:   None,
-                              revision: 0, };
-
-    db.save_media(media).await?;
+    db.create_initial_media(&media_id, None, None).await?;
 
     db.save_download_job(&job_id, &download).await?;
 
@@ -93,20 +71,16 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
 
     let initial_state = not_completed_job_state();
 
-    let upload = MediaUpload { media_id: media_id.clone(),
-                               upload:   upload_settings.clone(),
-                               state:    initial_state, };
+    let upload = MediaUpload { media_id:   { media_id.clone() },
+                               upload:     { upload_settings.clone() },
+                               state:      { initial_state },
+                               created_at: { now() }, };
 
-    let media = MediaObject { id:       media_id.clone(),
-                              metadata: None,
-                              path:     None,
-                              download: None,
-                              upload:   None,
-                              revision: 0, };
-
-    db.save_media(media).await?;
+    db.create_initial_media(&media_id, None, None).await?;
 
     db.save_upload_job(&job_id, &upload).await?;
+
+    db.debug_jobs().await?;
 
     let upload_jobs = db.fetch_pending_upload_jobs(1).await?;
 
@@ -115,13 +89,65 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[actix::test]
+async fn test_sys_props() -> anyhow::Result<()> {
+    let db = super::init(DataOpts::memory()).await?;
+
+    db.set_sys_prop("test", &"value".to_owned()).await?;
+    let value: Option<String> = db.get_sys_prop("test").await?;
+
+    assert_eq!(value, Some("value".to_owned()));
+
+    Ok(())
+}
+
+#[actix::test]
+async fn test_models_get_set() -> anyhow::Result<()> {
+    let db = super::init(DataOpts::memory()).await?;
+
+    let a_id = ModelId { manufacturer: "distopik".to_owned(),
+                         name:         "a".to_owned(), };
+    let b_id = ModelId { manufacturer: "distopik".to_owned(),
+                         name:         "b".to_owned(), };
+
+    let model_a = Model { resources:    Default::default(),
+                          inputs:       vec![],
+                          outputs:      vec![],
+                          parameters:   Default::default(),
+                          reports:      Default::default(),
+                          media:        false,
+                          capabilities: Default::default(), };
+
+    let model_b = Model { resources:    Default::default(),
+                          inputs:       vec![],
+                          outputs:      vec![],
+                          parameters:   Default::default(),
+                          reports:      Default::default(),
+                          media:        true,
+                          capabilities: Default::default(), };
+
+    assert_eq!(db.get_model(&a_id).await?, None);
+
+    db.set_model(&a_id, &model_a).await?;
+    db.set_model(&b_id, &model_b).await?;
+
+    assert_eq!(db.get_model(&a_id).await?, Some(model_a.clone()));
+    assert_eq!(db.get_model(&b_id).await?, Some(model_b.clone()));
+
+    db.delete_all_models_except(&hashset! { b_id.clone() }).await?;
+
+    assert_eq!(db.get_model(&a_id).await?, None);
+    assert_eq!(db.get_model(&b_id).await?, Some(model_b.clone()));
+
+    Ok(())
+}
+
 fn test_media_object(media_id: &AppMediaObjectId, media_metadata: &MediaMetadata) -> MediaObject {
-    MediaObject { id:       media_id.clone(),
-                  metadata: Some(media_metadata.clone()),
-                  path:     Some(format!("random-path/{media_id}")),
-                  download: None,
-                  upload:   None,
-                  revision: 2, }
+    MediaObject { id:        media_id.clone(),
+                  metadata:  Some(media_metadata.clone()),
+                  path:      Some(format!("random-path/{media_id}")),
+                  last_used: now(),
+                  revision:  2, }
 }
 
 fn test_media_metadata() -> MediaMetadata {
@@ -153,7 +179,7 @@ fn not_completed_job_state() -> MediaJobState {
     MediaJobState { progress:    0.0,
                     retry:       1,
                     error:       None,
-                    in_progress: true,
+                    in_progress: false,
                     updated_at:  now(), }
 }
 
@@ -162,9 +188,9 @@ fn new_random_test_media_id() -> AppMediaObjectId {
 }
 
 fn new_random_download_job_id() -> DownloadJobId {
-    DownloadJobId::new()
+    DownloadJobId::new(nanoid!())
 }
 
 fn new_random_upload_job_id() -> UploadJobId {
-    UploadJobId::new()
+    UploadJobId::new(nanoid!())
 }

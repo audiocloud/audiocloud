@@ -30,18 +30,6 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get install -y libusb-1.0-0-dev libsasl2-dev protobuf-compiler
-      - name: Install sqlx CLI
-        run: |
-          cargo install sqlx-cli --no-default-features --features native-tls,sqlite
-      - name: Init database
-        run: |
-          rm domain.sqlite || true
-          sqlite3 domain.sqlite "VACUUM"
-          sqlx migrate run --source domain/audiocloud-domain-server/src/db/migrations
-        env:
-          DATABASE_URL: "sqlite:domain.sqlite"
       - name: Run tests
         run: |
-          cargo test -p audiocloud-domain-server -- --test-threads=1
-        env:
-          DATABASE_URL: "sqlite:domain.sqlite"
+          cargo test -p audiocloud-domain-server

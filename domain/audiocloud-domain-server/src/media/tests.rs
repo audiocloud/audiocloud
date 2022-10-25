@@ -3,12 +3,14 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use actix::Actor;
+use nanoid::nanoid;
 use serde_json::json;
 use tempfile::NamedTempFile;
 use tokio::time::sleep;
 
 use audiocloud_api::{
-    AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaObjectId, MediaUpload, TrackMediaFormat, UploadToDomain,
+    now, AppId, AppMediaObjectId, DownloadFromDomain, MediaChannels, MediaDownload, MediaObjectId, MediaUpload, TrackMediaFormat,
+    UploadToDomain,
 };
 
 use crate::db;
@@ -21,7 +23,7 @@ use crate::media::{DownloadJobId, UploadJobId};
 async fn test_download_success() -> anyhow::Result<()> {
     let db = db::init(DataOpts::memory()).await?;
 
-    let job_id = DownloadJobId::new();
+    let job_id = DownloadJobId::new(nanoid!());
 
     let client = reqwest::Client::new();
 
@@ -35,9 +37,10 @@ async fn test_download_success() -> anyhow::Result<()> {
                                         notify_url: Some("https://en1205p765d7rp.x.pipedream.net".to_string()),
                                         context:    Some(json!({"context": "is here"})), };
 
-    let download_info = MediaDownload { media_id: media_id.clone(),
-                                        download: settings,
-                                        state:    Default::default(), };
+    let download_info = MediaDownload { media_id:   media_id.clone(),
+                                        download:   settings,
+                                        state:      Default::default(),
+                                        created_at: now(), };
 
     let upload = Downloader::new(db.clone(), job_id, client, source, download_info)?;
 
@@ -61,10 +64,6 @@ async fn test_download_success() -> anyhow::Result<()> {
 
 #[actix::test]
 async fn test_upload_success() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
-
-    tracing_subscriber::fmt::init();
-
     let db = db::init(DataOpts::memory()).await?;
 
     let source_url = "http://speedtest.ftp.otenet.gr/files/test100k.db".to_owned();
@@ -73,7 +72,7 @@ async fn test_upload_success() -> anyhow::Result<()> {
 
     let media_id = AppMediaObjectId::new(AppId::admin(), MediaObjectId::new("object-1".to_owned()));
 
-    let job_id = UploadJobId::new();
+    let job_id = UploadJobId::new(nanoid!());
 
     // monitor at https://requestbin.com/r/en1205p765d7rp
 
@@ -86,9 +85,10 @@ async fn test_upload_success() -> anyhow::Result<()> {
                                     notify_url:  { Some("https://en1205p765d7rp.x.pipedream.net".to_string()) },
                                     context:     { Some(json!({"context": "is here"})) }, };
 
-    let upload_info = MediaUpload { media_id: media_id.clone(),
-                                    upload:   settings,
-                                    state:    Default::default(), };
+    let upload_info = MediaUpload { media_id:   media_id.clone(),
+                                    upload:     settings,
+                                    state:      Default::default(),
+                                    created_at: now(), };
 
     let temp_file = NamedTempFile::new()?;
 

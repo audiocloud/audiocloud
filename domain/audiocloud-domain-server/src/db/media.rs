@@ -1,190 +1,217 @@
+#![allow(non_snake_case)]
+
 use std::collections::HashMap;
-use std::str::FromStr;
 
 use anyhow::anyhow;
-use sqlx::prelude::*;
+use maplit::btreemap;
+use rbs::to_value;
+use serde::{Deserialize, Serialize};
 
-use audiocloud_api::{now, AppMediaObjectId, MediaDownload, MediaJobState, MediaMetadata, MediaObject, MediaUpload, Timestamp};
+use audiocloud_api::{now, AppMediaObjectId, MediaDownload, MediaMetadata, MediaObject, MediaUpload, Timestamp};
 
 use crate::db::Db;
 use crate::media::{DownloadJobId, UploadJobId};
-
-#[derive(Debug, FromRow)]
-struct MediaJobRow {
-    id:            String,
-    media_id:      String,
-    kind:          String,
-    spec:          sqlx::types::Json<serde_json::Value>,
-    state:         sqlx::types::Json<MediaJobState>,
-    last_modified: Timestamp,
-    active:        i64,
-}
-
-impl TryInto<MediaDownload> for MediaJobRow {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<MediaDownload, Self::Error> {
-        let Self { media_id,
-                   kind,
-                   spec,
-                   state,
-                   .. } = self;
-        if kind != KIND_DOWNLOAD {
-            return Err(anyhow!("Job is not download"));
-        }
-
-        Ok(MediaDownload { media_id: { AppMediaObjectId::from_str(&media_id)? },
-                           download: { serde_json::from_value(spec.0)? },
-                           state:    { state.0 }, })
-    }
-}
-
-impl TryInto<MediaUpload> for MediaJobRow {
-    type Error = anyhow::Error;
-
-    fn try_into(self) -> Result<MediaUpload, Self::Error> {
-        let Self { media_id,
-                   kind,
-                   spec,
-                   state,
-                   .. } = self;
-        if kind != KIND_UPLOAD {
-            return Err(anyhow!("Job is not upload"));
-        }
-
-        Ok(MediaUpload { media_id: { AppMediaObjectId::from_str(&media_id)? },
-                         upload:   { serde_json::from_value(spec.0)? },
-                         state:    { state.0 }, })
-    }
-}
-
-#[derive(Debug, FromRow)]
-struct MediaObjectRow {
-    id:        String,
-    path:      Option<String>,
-    metadata:  Option<sqlx::types::Json<MediaMetadata>>,
-    revision:  i64,
-    last_used: Timestamp,
-}
-
-const KIND_DOWNLOAD: &str = "download";
-const KIND_UPLOAD: &str = "upload";
 
 pub type UploadJobs = HashMap<UploadJobId, MediaUpload>;
 pub type DownloadJobs = HashMap<DownloadJobId, MediaDownload>;
 
 impl Db {
-    pub async fn fetch_pending_download_jobs(&self, limit: usize) -> anyhow::Result<DownloadJobs> {
-        let mut rv = HashMap::new();
-        for row in self.fetch_jobs(false, KIND_DOWNLOAD, limit).await? {
-            let job_id = DownloadJobId::from_str(&row.id)?;
+    pub async fn clear_in_progress_for_all_jobs(&self) -> anyhow::Result<()> {
+        self.db.exec(include_str!("sql/clear_in_progress_for_all_jobs.sql"), vec![]).await?;
 
-            rv.insert(job_id, row.try_into()?);
+        Ok(())
+    }
+
+    pub async fn fetch_pending_download_jobs(&self, limit: usize) -> anyhow::Result<DownloadJobs> {
+        let sql = include_str!("sql/fetch_pending_download_jobs.sql");
+
+        #[derive(Deserialize)]
+        struct DownloadJobRow {
+            id:         DownloadJobId,
+            media_id:   AppMediaObjectId,
+            state:      String,
+            download:   String,
+            created_at: Timestamp,
+        }
+
+        let rows: Vec<DownloadJobRow> = self.db.fetch_decode(sql, vec![limit.into()]).await?;
+        let mut rv = HashMap::new();
+
+        for row in rows {
+            rv.insert(row.id,
+                      MediaDownload { media_id:   row.media_id,
+                                      download:   serde_json::from_str(&row.download)?,
+                                      state:      serde_json::from_str(&row.state)?,
+                                      created_at: row.created_at, });
         }
 
         Ok(rv)
     }
 
     pub async fn fetch_pending_upload_jobs(&self, limit: usize) -> anyhow::Result<UploadJobs> {
+        let sql = include_str!("sql/fetch_pending_upload_jobs.sql");
+
+        #[derive(Deserialize)]
+        struct UploadJobRow {
+            id:         UploadJobId,
+            media_id:   AppMediaObjectId,
+            state:      String,
+            upload:     String,
+            created_at: Timestamp,
+        }
+
+        let rows: Vec<UploadJobRow> = self.db.fetch_decode(sql, vec![limit.into()]).await?;
         let mut rv = HashMap::new();
-        for row in self.fetch_jobs(false, KIND_UPLOAD, limit).await? {
-            let job_id = UploadJobId::from_str(&row.id)?;
-            rv.insert(job_id, row.try_into()?);
+
+        for row in rows {
+            rv.insert(row.id,
+                      MediaUpload { media_id:   row.media_id,
+                                    upload:     serde_json::from_str(&row.upload)?,
+                                    state:      serde_json::from_str(&row.state)?,
+                                    created_at: row.created_at, });
         }
 
         Ok(rv)
     }
 
-    async fn fetch_jobs(&self, active: bool, kind: &'static str, limit: usize) -> anyhow::Result<Vec<MediaJobRow>> {
-        let query = r#"SELECT * FROM media_job WHERE active = ? AND kind = ? AND media_id IS NOT NULL ORDER BY media_id LIMIT ?"#;
-
-        Ok(sqlx::query_as(query).bind(active)
-                                .bind(kind)
-                                .bind(limit as u32)
-                                .fetch_all(&self.pool)
-                                .await?)
-    }
-
     pub async fn fetch_media_by_id(&self, id: &AppMediaObjectId) -> anyhow::Result<Option<MediaObject>> {
-        let opt: Option<MediaObjectRow> = sqlx::query_as(r#"SELECT * FROM media_object WHERE id = ?"#).bind(id.to_string())
-                                                                                                      .fetch_optional(&self.pool)
-                                                                                                      .await?;
+        #[derive(Deserialize)]
+        struct MediaRow {
+            id:         AppMediaObjectId,
+            metadata:   String,
+            path:       Option<String>,
+            created_at: Timestamp,
+            last_used:  Timestamp,
+            revision:   u64,
+        }
 
-        Ok(match opt {
+        let sql = include_str!("sql/fetch_media_by_id.sql");
+        let media: Option<MediaRow> = self.db.fetch_decode(sql, vec![to_value!(id.to_string())]).await?;
+
+        Ok(match media {
             None => None,
-            Some(MediaObjectRow { id,
-                                  path,
-                                  metadata,
-                                  revision,
-                                  .. }) => Some(MediaObject { id:       { AppMediaObjectId::from_str(&id)? },
-                                                              metadata: { metadata.map(|json| json.0) },
-                                                              path:     { path },
-                                                              download: { None },
-                                                              upload:   { None },
-                                                              revision: { revision } as u64, }),
+            Some(row) => {
+                let mut rv = MediaObject { id:        { row.id },
+                                           metadata:  { serde_json::from_str(&row.metadata)? },
+                                           path:      { row.path },
+                                           last_used: { row.last_used },
+                                           revision:  { row.revision }, };
+
+                if rv.path.as_ref().map(|path| path.is_empty()).unwrap_or(false) {
+                    rv.path = None;
+                }
+
+                Some(rv)
+            }
         })
     }
 
-    pub async fn save_media(&self, media: MediaObject) -> anyhow::Result<()> {
-        let MediaObject { id,
-                          metadata,
-                          path,
-                          revision,
-                          .. } = media;
+    pub async fn create_initial_media(&self,
+                                      id: &AppMediaObjectId,
+                                      metadata: Option<MediaMetadata>,
+                                      path: Option<String>)
+                                      -> anyhow::Result<MediaObject> {
+        let serialized_metadata = match metadata.as_ref() {
+            None => None,
+            Some(metadata) => Some(serde_json::to_string_pretty(metadata)?),
+        };
 
-        let query = r#"INSERT OR REPLACE INTO media_object (id, path, metadata, revision, last_used) VALUES (?, ?, ?, ?, ?)"#;
+        let last_used = now();
+        let sql = include_str!("sql/create_initial_media.sql");
+        let vars = vec![to_value!(id.to_string()),
+                        to_value!(last_used),
+                        to_value!(serialized_metadata),
+                        to_value!(path.clone())];
 
-        sqlx::query(query).bind(id.to_string())
-                          .bind(path)
-                          .bind(metadata.map(|m| sqlx::types::Json(m)))
-                          .bind(revision as i64)
-                          .bind(now())
-                          .execute(&self.pool)
-                          .await?;
+        self.db.exec(sql, vars).await?;
+
+        Ok(MediaObject { id:        { id.clone() },
+                         metadata:  { metadata },
+                         path:      { path },
+                         last_used: { last_used },
+                         revision:  { 0 }, })
+    }
+
+    pub async fn update_media(&self, media: MediaObject) -> anyhow::Result<()> {
+        let serialized_metadata = match media.metadata.as_ref() {
+            None => None,
+            Some(metadata) => Some(serde_json::to_string_pretty(metadata)?),
+        };
+
+        let sql = include_str!("sql/save_media.sql");
+        let vars = vec![to_value!(media.id.to_string()),
+                        to_value!(serialized_metadata),
+                        to_value!(&media.path),
+                        to_value!(media.last_used.to_string())];
+
+        if self.db.exec(sql, vars).await?.rows_affected != 1 {
+            return Err(anyhow!("Failed to update media, incorrect nubmer of rows affected"));
+        }
 
         Ok(())
     }
 
-    pub async fn delete_upload(&self, id: &UploadJobId) -> anyhow::Result<()> {
-        self.delete_job(id.to_string()).await
-    }
-
     pub async fn save_download_job(&self, id: &DownloadJobId, download: &MediaDownload) -> anyhow::Result<()> {
-        sqlx::query(r#"INSERT OR REPLACE INTO media_job (id, kind, spec, state, last_modified, active, media_id) VALUES(?, ?, ?, ?, ?, ?, ?)"#)
-      .bind(id.to_string())
-      .bind(KIND_DOWNLOAD.to_string())
-      .bind(serde_json::to_string(&download.download)?)
-      .bind(serde_json::to_string(&download.state)?)
-      .bind(now())
-      .bind(!download.state.in_progress)
-      .bind(download.media_id.to_string())
-      .execute(&self.pool).await?;
+        let serialized_state = serde_json::to_string_pretty(&download.state)?;
+        let serialized_download = serde_json::to_string_pretty(&download.download)?;
+
+        let sql = include_str!("sql/save_download_job.sql");
+        let vars = vec![to_value!(id.to_string()),
+                        to_value!(download.media_id.to_string()),
+                        to_value!(serialized_state),
+                        to_value!(serialized_download),
+                        to_value!(download.created_at)];
+
+        self.db.exec(sql, vars).await?;
 
         Ok(())
     }
 
     pub async fn save_upload_job(&self, id: &UploadJobId, upload: &MediaUpload) -> anyhow::Result<()> {
-        sqlx::query(r#"INSERT OR REPLACE INTO media_job (id, kind, spec, state, last_modified, active, media_id) VALUES(?, ?, ?, ?, ?, ?, ?)"#)
-            .bind(id.to_string())
-            .bind(KIND_UPLOAD.to_string())
-            .bind(serde_json::to_string(&upload.upload)?)
-            .bind(serde_json::to_string(&upload.state)?)
-            .bind(now())
-            .bind(!upload.state.in_progress)
-            .bind(upload.media_id.to_string())
-            .execute(&self.pool).await?;
+        let serialized_state = serde_json::to_string_pretty(&upload.state)?;
+        let serialized_upload = serde_json::to_string_pretty(&upload.upload)?;
+
+        let sql = include_str!("sql/save_upload_job.sql");
+        let vars = vec![to_value!(id.to_string()),
+                        to_value!(upload.media_id.to_string()),
+                        to_value!(serialized_state),
+                        to_value!(serialized_upload),
+                        to_value!(upload.created_at)];
+
+        self.db.exec(sql, vars).await?;
 
         Ok(())
+    }
+
+    pub async fn delete_upload(&self, id: &UploadJobId) -> anyhow::Result<()> {
+        self.delete_job(id.as_str()).await
     }
 
     pub async fn delete_download(&self, id: &DownloadJobId) -> anyhow::Result<()> {
-        self.delete_job(id.to_string()).await
+        self.delete_job(id.as_str()).await
     }
 
-    async fn delete_job(&self, id: String) -> anyhow::Result<()> {
-        let id = id.to_string();
-        sqlx::query!(r#"DELETE FROM media_job WHERE id = ?"#, id).execute(&self.pool)
-                                                                 .await?;
+    async fn delete_job(&self, id: &str) -> anyhow::Result<()> {
+        let sql = include_str!("sql/delete_job.sql");
+        let vars = vec![to_value!(id)];
+
+        self.db.exec(sql, vars).await?;
+
         Ok(())
     }
+
+    pub async fn debug_jobs(&self) -> anyhow::Result<()> {
+        let sql = "select * from media_jobs";
+        let rows = self.db.fetch(sql, vec![]).await?;
+        eprintln!("jobs: {rows:?}");
+
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct WithId<K, V> {
+    id:    K,
+    #[serde(flatten)]
+    value: V,
 }

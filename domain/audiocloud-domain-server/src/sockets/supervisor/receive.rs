@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use actix::{fut, Actor, ActorFutureExt, ContextFutureSpawner, MailboxError, WrapFuture};
-use futures::{FutureExt, TryFutureExt};
+use futures::TryFutureExt;
 use tracing::*;
 
 use audiocloud_api::domain::streaming::{DomainClientMessage, DomainServerMessage};
