@@ -36,7 +36,7 @@ jobs:
           - build: aarch64-apple-darwin
             os: macos-latest
 
-    name: Build release for (${{ matrix.target }})
+    name: Build release for (${{ matrix.build }})
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -72,7 +72,7 @@ jobs:
       - name: Install rust toolchain
         run: |
           rustup update --no-self-update stable
-          rustup target add ${{ matrix.target }}
+          rustup target add ${{ matrix.build }}
       - name: Build
         run: cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
       - name: Upload release asset
