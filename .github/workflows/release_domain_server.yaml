@@ -21,67 +21,67 @@ jobs:
           release_name: Release ${{ github.ref }}
           draft: false
           prerelease: false
-    build_and_upload_release_asset:
-      needs: create_release
-      strategy:
-        matrix:
-          include:
-            - build: x86_64-unknown-linux-gnu
-              os: ubuntu-latest
-            - build: x86_64-pc-windows-msvc
-              os: windows-latest
-              exe: ".exe"
-            - build: x86_64-apple-darwin
-              os: macos-latest
-            - build: aarch64-apple-darwin
-              os: macos-latest
+  build_and_upload_release_asset:
+    needs: create_release
+    strategy:
+      matrix:
+        include:
+          - build: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - build: x86_64-pc-windows-msvc
+            os: windows-latest
+            exe: ".exe"
+          - build: x86_64-apple-darwin
+            os: macos-latest
+          - build: aarch64-apple-darwin
+            os: macos-latest
 
-      name: Build release for (${{ matrix.target }})
-      runs-on: ${{ matrix.os }}
+    name: Build release for (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
 
-      steps:
-        - name: Checkout repository
-          uses: actions/checkout@v3
-        - name: Cache build artifacts
-          uses: actions/cache@v3
-          with:
-            path: |
-              ~/.cargo/bin/
-              ~/.cargo/registry/index/
-              ~/.cargo/registry/cache/
-              ~/.cargo/git/db/
-              target/
-            key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-            restore-keys: |
-              ${{ runner.os }}-cargo-${{ env.cache-name }}-
-              ${{ runner.os }}-cargo-
-              ${{ runner.os }}-
-        - name: Install Linux dependencies
-          if: matrix.os == 'ubuntu-latest'
-          run: |
-            sudo apt-get install -y libsasl2-dev protobuf-compiler
-        - name: Install macOS dependencies
-          if: matrix.os == 'macos-latest'
-          run: |
-            brew install protobuf gsasl
-        - name: Install windows dependencies
-          if: matrix.os == 'windows-latest'
-          run: |
-            choco install protobuf
-            choco install gsasl
-        - name: Install rust toolchain
-          run: |
-            rustup update --no-self-update stable
-            rustup target add ${{ matrix.target }}
-        - name: Build
-          run: cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
-          use-cross: ${{ matrix.cross }}
-        - name: Upload release asset
-          uses: actions/upload-release-asset@v1
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          with:
-            upload_url: ${{ needs.create_release.outputs.upload_url }}
-            asset_path: ./target/${{ matrix.build }}/release/audiocloud-domain-server${{ matrix.exe }}
-            asset_name: audiocloud-domain-server-${{ matrix.build }}${{ matrix.exe }}
-            asset_content_type: application/octet-stream
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ env.cache-name }}-
+            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y libsasl2-dev protobuf-compiler
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install protobuf gsasl
+      - name: Install windows dependencies
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install protobuf
+          choco install gsasl
+      - name: Install rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
+        use-cross: ${{ matrix.cross }}
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.build }}/release/audiocloud-domain-server${{ matrix.exe }}
+          asset_name: audiocloud-domain-server-${{ matrix.build }}${{ matrix.exe }}
+          asset_content_type: application/octet-stream
