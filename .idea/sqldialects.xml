@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="SqlDialectMappings">
-    <file url="file://$PROJECT_DIR$/domain/audiocloud-domain-server/src/db/migrations/2022-10-25T10:45:54.093Z_init.sql" dialect="SQLite" />
+    <file url="file://$PROJECT_DIR$/domain/audiocloud-domain-server/src/db/migrations/2022-10-25T1045Z_init.sql" dialect="SQLite" />
     <file url="file://$PROJECT_DIR$/domain/audiocloud-domain-server/src/db/sql/clear_in_progress_for_all_jobs.sql" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/domain/audiocloud-domain-server/src/db/sql/save_download_job.sql" dialect="SQLite" />
     <file url="file://$PROJECT_DIR$/domain/audiocloud-domain-server/src/db/sql/save_upload_job.sql" dialect="SQLite" />
