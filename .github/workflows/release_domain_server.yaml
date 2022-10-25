@@ -75,7 +75,6 @@ jobs:
           rustup target add ${{ matrix.target }}
       - name: Build
         run: cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
-        use-cross: ${{ matrix.cross }}
       - name: Upload release asset
         uses: actions/upload-release-asset@v1
         env:
