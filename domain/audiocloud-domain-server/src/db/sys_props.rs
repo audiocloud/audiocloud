@@ -2,45 +2,28 @@ use anyhow::anyhow;
 use maplit::btreemap;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use surrealdb::sql::{json, Strand, Value};
-use surrealdb::Session;
 
 use crate::db::Db;
 
 impl Db {
     pub async fn get_sys_prop<T: DeserializeOwned>(&self, prop_id: &str) -> anyhow::Result<Option<T>> {
-        let ses = Session::for_db("audiocloud", "domain");
-        let ast = r#"SELECT value FROM sys_prop WHERE id = type::thing("sys_prop", $prop_id);"#;
-        let vars = btreemap! {"prop_id".to_owned() => Value::from(Strand::from(prop_id.to_owned()))};
+        let value: Option<String> = self.db
+                                        .fetch_decode("select value from sys_props where id = ?1", vec![prop_id.into()])
+                                        .await?;
 
-        let res = self.db.execute(ast, &ses, Some(vars), false).await?;
-
-        let response = res.into_iter().next().ok_or_else(|| anyhow!("No response"))?;
-        let result = response.result?;
-
-        #[derive(Deserialize)]
-        struct QueryResult<T> {
-            value: T,
-        }
-
-        let value: Vec<QueryResult<T>> = serde_json::from_value(serde_json::to_value(&result)?)?;
-        Ok(value.into_iter().next().map(|qr| qr.value))
+        Ok(match value {
+            None => None,
+            Some(value) => serde_json::from_str(&value)?,
+        })
     }
 
     pub async fn set_sys_prop<T: Serialize>(&self, prop_id: &str, value: &T) -> anyhow::Result<()> {
-        let value = json(&serde_json::to_string(value)?)?;
+        let value = serde_json::to_string(value)?;
 
-        let ses = Session::for_db("audiocloud", "domain");
-        let ast = r#"UPDATE type::thing("sys_prop", $prop_id) CONTENT {value: $value};"#;
-        let vars = btreemap! {
-            "prop_id".to_owned() => Value::from(Strand::from(prop_id.to_owned())),
-            "value".to_owned() => value,
-        };
-
-        let res = self.db.execute(ast, &ses, Some(vars), false).await?;
-
-        // we just need to know that the query was successful
-        let _ = res.into_iter().next().ok_or_else(|| anyhow!("No response"))?;
+        self.db
+            .exec("insert or replace into sys_props (id, value) values (?1, ?2)",
+                  vec![prop_id.into(), value.into()])
+            .await?;
 
         Ok(())
     }

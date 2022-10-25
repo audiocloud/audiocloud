@@ -1,3 +1,5 @@
+use std::env;
+
 use maplit::{hashmap, hashset};
 use nanoid::nanoid;
 use serde_json::json;
@@ -18,13 +20,13 @@ async fn test_media_create() -> anyhow::Result<()> {
 
     let media_metadata = test_media_metadata();
 
-    let media = test_media_object(&media_id, &media_metadata);
-
-    db.create_initial_media(&media_id, Some(media_metadata), None).await?;
+    let media = db.create_initial_media(&media_id, Some(media_metadata.clone()), None).await?;
 
     let loaded = db.fetch_media_by_id(&media_id).await?;
 
     assert_eq!(loaded.as_ref(), Some(&media));
+    assert_eq!(loaded.as_ref().and_then(|media| media.metadata.as_ref()), Some(&media_metadata));
+    assert_eq!(loaded.as_ref().and_then(|media| media.path.as_ref()), None);
 
     Ok(())
 }
@@ -46,14 +48,7 @@ async fn test_create_download_job() -> anyhow::Result<()> {
                                    state:      { initial_state },
                                    created_at: { now() }, };
 
-    let media = MediaObject { id:       media_id.clone(),
-                              metadata: None,
-                              path:     None,
-                              download: None,
-                              upload:   None,
-                              revision: 0, };
-
-    db.save_media(media).await?;
+    db.create_initial_media(&media_id, None, None).await?;
 
     db.save_download_job(&job_id, &download).await?;
 
@@ -81,14 +76,7 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
                                state:      { initial_state },
                                created_at: { now() }, };
 
-    let media = MediaObject { id:       media_id.clone(),
-                              metadata: None,
-                              path:     None,
-                              download: None,
-                              upload:   None,
-                              revision: 0, };
-
-    db.save_media(media).await?;
+    db.create_initial_media(&media_id, None, None).await?;
 
     db.save_upload_job(&job_id, &upload).await?;
 
@@ -155,12 +143,11 @@ async fn test_models_get_set() -> anyhow::Result<()> {
 }
 
 fn test_media_object(media_id: &AppMediaObjectId, media_metadata: &MediaMetadata) -> MediaObject {
-    MediaObject { id:       media_id.clone(),
-                  metadata: Some(media_metadata.clone()),
-                  path:     Some(format!("random-path/{media_id}")),
-                  download: None,
-                  upload:   None,
-                  revision: 2, }
+    MediaObject { id:        media_id.clone(),
+                  metadata:  Some(media_metadata.clone()),
+                  path:      Some(format!("random-path/{media_id}")),
+                  last_used: now(),
+                  revision:  2, }
 }
 
 fn test_media_metadata() -> MediaMetadata {

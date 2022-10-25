@@ -64,10 +64,6 @@ async fn test_download_success() -> anyhow::Result<()> {
 
 #[actix::test]
 async fn test_upload_success() -> anyhow::Result<()> {
-    env::set_var("RUST_LOG", "debug");
-
-    tracing_subscriber::fmt::init();
-
     let db = db::init(DataOpts::memory()).await?;
 
     let source_url = "http://speedtest.ftp.otenet.gr/files/test100k.db".to_owned();

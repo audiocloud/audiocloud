@@ -4,11 +4,14 @@ use std::{
 };
 
 use clap::Args;
+use futures::lock::Mutex;
+use rbatis::Rbatis;
+use rbdc_sqlite::driver::SqliteDriver;
 use serde::{Deserialize, Serialize};
-use surrealdb::Datastore;
 use tracing::*;
 
 mod media;
+mod migrations;
 mod models;
 mod sys_props;
 mod tasks;
@@ -18,7 +21,7 @@ mod utils;
 
 #[derive(Clone)]
 pub struct Db {
-    db: Arc<Datastore>,
+    db: Rbatis,
 }
 
 impl Debug for Db {
@@ -33,13 +36,18 @@ struct TaskInfo {}
 #[derive(Args)]
 pub struct DataOpts {
     /// Sqlite database file where data for media and session cache will be stored. Use :memory: for an in-memory store
-    #[clap(long, env, default_value = "file://domain.db")]
+    #[clap(long, env, default_value = "sqlite://domain.sqlite")]
     pub database_url: String,
+
+    /// Use write-ahead logging as journal mode to speed up writes
+    #[clap(long, env)]
+    pub database_use_wal: bool,
 }
 
 impl DataOpts {
     pub fn memory() -> Self {
-        Self { database_url: "memory".to_string() }
+        Self { database_url:     "sqlite://:memory:".to_string(),
+               database_use_wal: false, }
     }
 }
 
@@ -48,13 +56,20 @@ pub async fn init(cfg: DataOpts) -> anyhow::Result<Db> {
     let database_url = &cfg.database_url;
     debug!(?database_url, "Initializing database");
 
-    let pool = Datastore::new(database_url).await?;
+    let mut db = Rbatis::new();
+    db.init(SqliteDriver {}, database_url)?;
 
-    // debug!("Running migrations");
+    if cfg.database_use_wal {
+        db.exec("PRAGMA journal_mode = WAL", vec![]).await?;
+    } else {
+        debug!("Write ahead logging disabled");
+    }
 
-    // sqlx::migrate!("src/db/migrations").run(&pool).await?;
+    debug!("Running migrations");
 
-    // debug!("Migrations done");
+    let count = migrations::execute(&mut db).await?;
 
-    Ok(Db { db: Arc::new(pool) })
+    debug!(count, "Migrations executed");
+
+    Ok(Db { db })
 }

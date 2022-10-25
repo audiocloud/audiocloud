@@ -1,5 +1,6 @@
-use audiocloud_api::{ModelParameter, ModelValue, ModelValueOption, ToggleOr};
 use std::ops::Range;
+
+use audiocloud_api::{ModelParameter, ModelValue, ModelValueOption, ToggleOr};
 
 pub fn rescale(value: f64, options: &[ModelValueOption], scale: f64) -> f64 {
     for (i, value_opt) in options.iter().enumerate() {
@@ -87,20 +88,15 @@ mod tests {
 
     #[test]
     fn test_repoint() {
-        let options = vec![
-            ModelValueOption::Single(ModelValue::Bool(true)),
-            ModelValueOption::Single(ModelValue::Bool(false)),
-        ];
+        let options = vec![ModelValueOption::Single(ModelValue::Bool(true)),
+                           ModelValueOption::Single(ModelValue::Bool(false)),];
         assert_eq!(repoint(ToggleOr::Toggle(true), &options), 0);
         assert_eq!(repoint(ToggleOr::Toggle(false), &options), 1);
     }
 
     #[test]
     fn test_rescale() {
-        let options = vec![
-            ModelValueOption::Single(ModelValue::Number(0.0)),
-            ModelValueOption::Single(ModelValue::Number(1.0)),
-        ];
+        let options = vec![ModelValueOption::Range(ModelValue::Number(0.0), ModelValue::Number(1.0)),];
         assert_eq!(rescale(0.0, &options, 1.0), 0.0);
         assert_eq!(rescale(0.5, &options, 1.0), 0.5);
         assert_eq!(rescale(1.0, &options, 4.0), 4.0);

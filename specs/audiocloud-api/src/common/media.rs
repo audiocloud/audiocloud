@@ -99,9 +99,9 @@ impl ImportToDomain {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaDownload {
-    pub media_id:  AppMediaObjectId,
-    pub download:  DownloadFromDomain,
-    pub state:     MediaJobState,
+    pub media_id:   AppMediaObjectId,
+    pub download:   DownloadFromDomain,
+    pub state:      MediaJobState,
     pub created_at: Timestamp,
 }
 
@@ -113,30 +113,28 @@ impl MediaDownload {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaUpload {
-    pub media_id:  AppMediaObjectId,
-    pub upload:    UploadToDomain,
-    pub state:     MediaJobState,
+    pub media_id:   AppMediaObjectId,
+    pub upload:     UploadToDomain,
+    pub state:      MediaJobState,
     pub created_at: Timestamp,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MediaObject {
-    pub id:       AppMediaObjectId,
-    pub metadata: Option<MediaMetadata>,
-    pub path:     Option<String>,
-    pub download: Option<MediaDownload>,
-    pub upload:   Option<MediaUpload>,
-    pub revision: u64,
+    pub id:        AppMediaObjectId,
+    pub metadata:  Option<MediaMetadata>,
+    pub path:      Option<String>,
+    pub last_used: Timestamp,
+    pub revision:  u64,
 }
 
 impl MediaObject {
     pub fn new(id: &AppMediaObjectId) -> Self {
-        Self { id:       id.clone(),
-               metadata: None,
-               path:     None,
-               download: None,
-               upload:   None,
-               revision: 0, }
+        Self { id:        id.clone(),
+               metadata:  None,
+               path:      None,
+               last_used: now(),
+               revision:  0, }
     }
 }
 
