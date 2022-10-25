@@ -67,8 +67,7 @@ jobs:
       - name: Install windows dependencies
         if: matrix.os == 'windows-latest'
         run: |
-          choco install protobuf
-          choco install gsasl
+          choco install protoc
       - name: Install rust toolchain
         run: |
           rustup update --no-self-update stable
