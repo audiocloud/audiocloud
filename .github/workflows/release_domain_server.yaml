@@ -56,11 +56,10 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.build }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-${{ env.cache-name }}-
-            ${{ runner.os }}-cargo-
-            ${{ runner.os }}-
+            ${{ matrix.build }}-cargo-${{ env.cache-name }}-
+            ${{ matrix.build }}-cargo-
       - name: Setup MSVC toolchain
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
