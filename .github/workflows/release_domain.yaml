@@ -221,8 +221,16 @@ jobs:
           rustup update --no-self-update stable
           rustup target add ${{ matrix.build }}
       - name: Build Driver
+        if: matrix.build != 'armv7-unknown-linux-gnueabihf'
         run: |
           cargo build --release --target=${{ matrix.build }} -p audiocloud-driver
+      - uses: actions-rs/cargo@v1
+        if: matrix.build == 'armv7-unknown-linux-gnueabihf'
+        name: Build Driver for Raspberry Pi
+        with:
+          args: --release --target armv7-unknown-linux-gnueabihf -p audiocloud-driver
+          command: build
+          use-cross: true
       - name: Upload driver binary
         uses: actions/upload-release-asset@v1
         env:
