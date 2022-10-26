@@ -245,21 +245,14 @@ jobs:
           restore-keys: |
             armv7-unknown-linux-gnueabihf-driver-${{ env.cache-name }}-
             armv7-unknown-linux-gnueabihf-driver-
-      - name: Install Linux cross compiler
-        run: |
-          sudo apt-get install -y gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf pkg-config-arm-linux-gnueabihf
-      - name: Install Linux cross compiling deps
-        uses: ryankurte/action-apt@v0.3.0
+      - uses: actions-rs/cargo@v1
+        name: Build Driver
         with:
-          arch: armhf
-          packages: "libssl-dev:armhf libusb-1.0-0-dev:armhf"
-      - name: Install rust toolchain
-        run: |
-          rustup update --no-self-update stable
-          rustup target add armv7-unknown-linux-gnueabihf
-      - name: Build Driver
-        run: |
-          cargo build --release --target=armv7-unknown-linux-gnueabihf -p audiocloud-driver
+          use-cross: true
+          command: build
+          args: --release --target armv7-unknown-linux-gnueabihf --manifest-path ./domain/audiocloud-driver/Cargo.toml
+        env:
+          CROSS_CONFIG: ./domain/audiocloud-driver/Cross.toml
       - name: Upload driver binary
         uses: actions/upload-release-asset@v1
         env:
