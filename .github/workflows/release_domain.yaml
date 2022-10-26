@@ -97,16 +97,16 @@ jobs:
         include:
           - build: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            dll: ".so"
+            binary: libaudiocloud_reaper_plugin.so
           - build: x86_64-pc-windows-msvc
             os: windows-latest
-            dll: ".dll"
+            binary: audiocloud_reaper_plugin.dll
           - build: x86_64-apple-darwin
             os: macos-latest
-            dll: ".dylib"
+            binary: libaudiocloud_reaper_plugin.dylib
           - build: aarch64-apple-darwin
             os: macos-latest
-            dlL: ".dylib"
+            binary: libaudiocloud_reaper_plugin.dylib
 
     name: (${{ matrix.build }}) REAPER Plugin
     runs-on: ${{ matrix.os }}
@@ -155,7 +155,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./target/${{ matrix.build }}/release/libaudiocloud_reaper_plugin${{ matrix.dll }}
+          asset_path: ./target/${{ matrix.build }}/release/${{ matrix.binary }}
           asset_name: audiocloud_reaper_plugin-${{ matrix.build }}${{ matrix.dll }}
           asset_content_type: application/octet-stream
   build_and_upload_instance_driver:
