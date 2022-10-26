@@ -83,6 +83,8 @@ jobs:
       - name: Build domain binary
         run: |
           cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
+        env:
+          NO_LEASH: 1 # do not build the stupid KRB5 leash
       - name: Build REAPER plugin
         run: |
           cargo build --release --target=${{ matrix.build }} -p audiocloud-reaper-plugin
