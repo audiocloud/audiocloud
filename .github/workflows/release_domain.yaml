@@ -173,10 +173,8 @@ jobs:
             exe: ".exe"
           - build: x86_64-apple-darwin
             os: macos-latest
-            dlL: ".dylib"
           - build: aarch64-apple-darwin
             os: macos-latest
-            dlL: ".dylib"
 
     name: (${{ matrix.build }}) REAPER Plugin
     runs-on: ${{ matrix.os }}
