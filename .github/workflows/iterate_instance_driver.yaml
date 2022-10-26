@@ -26,5 +26,5 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --release --target armv7-unknown-linux-gnueabihf --manifest-path ./domains/audiocloud-driver/Cargo.toml
+          args: --release --target armv7-unknown-linux-gnueabihf --manifest-path ./domain/audiocloud-driver/Cargo.toml
 
