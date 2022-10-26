@@ -29,13 +29,17 @@ jobs:
         include:
           - build: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            dlL: ".so"
           - build: x86_64-pc-windows-msvc
             os: windows-latest
             exe: ".exe"
+            dll: ".dll"
           - build: x86_64-apple-darwin
             os: macos-latest
+            dlL: ".dylib"
           - build: aarch64-apple-darwin
             os: macos-latest
+            dlL: ".dylib"
 
     name: Build release for (${{ matrix.build }})
     runs-on: ${{ matrix.os }}
@@ -59,11 +63,7 @@ jobs:
             ${{ runner.os }}-
       - name: Setup MSVC toolchain
         if: matrix.os == 'windows-latest'
-        shell: cmd
-        #uses: ilammy/msvc-dev-cmd@v1
-        run: |
-          call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat"
-          set PATH=%PATH%;%wix%bin;"%WindowsSdkVerBinPath%"\x86
+        uses: ilammy/msvc-dev-cmd@v1
       - name: Install Linux dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -80,14 +80,27 @@ jobs:
         run: |
           rustup update --no-self-update stable
           rustup target add ${{ matrix.build }}
-      - name: Build
-        run: cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
-      - name: Upload release asset
+      - name: Build domain binary
+        run: |
+          cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server
+      - name: Build REAPER plugin
+        run: |
+          cargo build --release --target=${{ matrix.build }} -p audiocloud-reaper-plugin
+      - name: Upload domain server binary
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./target/${{ matrix.build }}/release/audiocloud-domain-server${{ matrix.exe }}
-          asset_name: audiocloud-domain-server-${{ matrix.build }}${{ matrix.exe }}
+          asset_name: audiocloud_domain_server-${{ matrix.build }}${{ matrix.exe }}
+          asset_content_type: application/octet-stream
+      - name: Upload reaper plugin binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.build }}/release/audiocloud-reaper-plugin${{ matrix.dll }}
+          asset_name: audiocloud_reaper_plugin-${{ matrix.build }}${{ matrix.dll }}
           asset_content_type: application/octet-stream
