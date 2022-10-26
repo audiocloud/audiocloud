@@ -206,7 +206,7 @@ jobs:
       - name: Install Linux cross compiler
         if: matrix.build == 'armv7-unknown-linux-gnueabihf'
         run: |
-          apt -y install gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
+          sudo apt -y install gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
       - name: Install Linux cross compiling deps
         uses: ryankurte/action-apt@v0.3.0
         if: matrix.build == 'armv7-unknown-linux-gnueabihf'
