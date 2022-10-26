@@ -176,7 +176,7 @@ jobs:
           - build: aarch64-apple-darwin
             os: macos-latest
 
-    name: (${{ matrix.build }}) REAPER Plugin
+    name: (${{ matrix.build }}) Instance Driver
     runs-on: ${{ matrix.os }}
 
     steps:
