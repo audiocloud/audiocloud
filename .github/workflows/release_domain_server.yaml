@@ -103,6 +103,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./target/${{ matrix.build }}/release/audiocloud-reaper-plugin${{ matrix.dll }}
+          asset_path: ./target/${{ matrix.build }}/release/libaudiocloud_reaper_plugin${{ matrix.dll }}
           asset_name: audiocloud_reaper_plugin-${{ matrix.build }}${{ matrix.dll }}
           asset_content_type: application/octet-stream
