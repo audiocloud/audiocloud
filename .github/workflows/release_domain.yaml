@@ -166,7 +166,6 @@ jobs:
         include:
           - build: armv7-unknown-linux-gnueabihf
             os: ubuntu-latest
-            features: --features "alsa"
           - build: x86_64-unknown-linux-gnu
             os: ubuntu-latest
           - build: x86_64-pc-windows-msvc
