@@ -1,0 +1,10 @@
+[target.x86_64-pc-windows-msvc]
+rustflags = ['-Zshare-generics=y']
+linker = 'rust-lld.exe'
+
+[profile.release]
+opt-level = 3
+debug = 0
+incremental = false
+codegen-units = 256
+split-debuginfo = '...'

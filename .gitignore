@@ -461,5 +461,4 @@ $RECYCLE.BIN/
 /domain.sqlite
 fleet.toml
 .idea/dataSources.xml
-.cargo
 /domain/surreal-tests

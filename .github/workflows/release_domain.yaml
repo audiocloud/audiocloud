@@ -54,10 +54,10 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ matrix.build }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.build }}-domain-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.build }}-cargo-${{ env.cache-name }}-
-            ${{ matrix.build }}-cargo-
+            ${{ matrix.build }}-domain-${{ env.cache-name }}-
+            ${{ matrix.build }}-domain-
       - name: Setup MSVC toolchain
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
@@ -97,13 +97,13 @@ jobs:
         include:
           - build: x86_64-unknown-linux-gnu
             os: ubuntu-latest
-            dlL: ".so"
+            dll: ".so"
           - build: x86_64-pc-windows-msvc
             os: windows-latest
             dll: ".dll"
           - build: x86_64-apple-darwin
             os: macos-latest
-            dlL: ".dylib"
+            dll: ".dylib"
           - build: aarch64-apple-darwin
             os: macos-latest
             dlL: ".dylib"
@@ -123,10 +123,10 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ matrix.build }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ matrix.build }}-plugin-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
-            ${{ matrix.build }}-cargo-${{ env.cache-name }}-
-            ${{ matrix.build }}-cargo-
+            ${{ matrix.build }}-plugin-${{ env.cache-name }}-
+            ${{ matrix.build }}-plugin-
       - name: Setup MSVC toolchain
         if: matrix.os == 'windows-latest'
         uses: ilammy/msvc-dev-cmd@v1
@@ -157,4 +157,81 @@ jobs:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./target/${{ matrix.build }}/release/libaudiocloud_reaper_plugin${{ matrix.dll }}
           asset_name: audiocloud_reaper_plugin-${{ matrix.build }}${{ matrix.dll }}
+          asset_content_type: application/octet-stream
+  build_and_upload_instance_driver:
+    needs: create_release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build: armv7-unknown-linux-gnueabihf
+            os: ubuntu-latest
+            features: --features "alsa"
+          - build: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - build: x86_64-pc-windows-msvc
+            os: windows-latest
+            exe: ".exe"
+          - build: x86_64-apple-darwin
+            os: macos-latest
+            dlL: ".dylib"
+          - build: aarch64-apple-darwin
+            os: macos-latest
+            dlL: ".dylib"
+
+    name: (${{ matrix.build }}) REAPER Plugin
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ matrix.build }}-driver-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.build }}-driver-${{ env.cache-name }}-
+            ${{ matrix.build }}-driver-
+      - name: Setup MSVC toolchain
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Install Linux ARMHF dependencies
+        uses: ryankurte/action-apt@v0.3.0
+        if: matrix.build == 'armv7-unknown-linux-gnueabihf'
+        with:
+          arch: armhf
+          packages: "libssl-dev:armhf libusb-1.0-0-dev:armhf"
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get install -y protobuf-compiler libusb-1.0-0-dev libssl-dev
+      - name: Install macOS dependencies
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install protobuf libusb
+      - name: Install windows dependencies
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install protoc
+      - name: Install rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.build }}
+      - name: Build Driver
+        run: |
+          cargo build --release --target=${{ matrix.build }} -p audiocloud-driver
+      - name: Upload driver binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.build }}/release/audiocloud-driver${{ matrix.exe }}
+          asset_name: audiocloud_driver-${{ matrix.build }}${{ matrix.exe }}
           asset_content_type: application/octet-stream
