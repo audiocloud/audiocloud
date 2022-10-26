@@ -165,8 +165,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - build: armv7-unknown-linux-gnueabihf
-            os: ubuntu-latest
           - build: x86_64-unknown-linux-gnu
             os: ubuntu-latest
           - build: x86_64-pc-windows-msvc
@@ -203,16 +201,6 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get install -y protobuf-compiler libusb-1.0-0-dev libssl-dev
-      - name: Install Linux cross compiler
-        if: matrix.build == 'armv7-unknown-linux-gnueabihf'
-        run: |
-          sudo apt -y install gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
-      - name: Install Linux cross compiling deps
-        uses: ryankurte/action-apt@v0.3.0
-        if: matrix.build == 'armv7-unknown-linux-gnueabihf'
-        with:
-          arch: armhf
-          packages: "libssl-dev:armhf libusb-1.0-0-dev:armhf"
       - name: Install macOS dependencies
         if: matrix.os == 'macos-latest'
         run: |
@@ -236,4 +224,48 @@ jobs:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
           asset_path: ./target/${{ matrix.build }}/release/audiocloud-driver${{ matrix.exe }}
           asset_name: audiocloud_driver-${{ matrix.build }}${{ matrix.exe }}
+          asset_content_type: application/octet-stream
+  instance_driver_arm7:
+    needs: create_release
+    name: armv7-unknown-linux-gnueabihf Instance Driver
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: armv7-unknown-linux-gnueabihf-driver-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            armv7-unknown-linux-gnueabihf-driver-${{ env.cache-name }}-
+            armv7-unknown-linux-gnueabihf-driver-
+      - name: Install Linux cross compiler
+        run: |
+          sudo apt-get install -y gcc-arm-linux-gnueabihf binutils-arm-linux-gnueabihf pkg-config-arm-linux-gnueabihf
+      - name: Install Linux cross compiling deps
+        uses: ryankurte/action-apt@v0.3.0
+        with:
+          arch: armhf
+          packages: "libssl-dev:armhf libusb-1.0-0-dev:armhf"
+      - name: Install rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add armv7-unknown-linux-gnueabihf
+      - name: Build Driver
+        run: |
+          cargo build --release --target=armv7-unknown-linux-gnueabihf -p audiocloud-driver
+      - name: Upload driver binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./target/${{ matrix.build }}/release/audiocloud-driver
+          asset_name: audiocloud_driver-armv7-unknown-linux-gnueabihf
           asset_content_type: application/octet-stream
