@@ -63,6 +63,13 @@ fn default_min_task_length() -> i64 {
 pub enum DomainCommandSource {
     /// Domain command source disabled
     Disabled,
+    /// Pulls events from NATS JetStream
+    JetStream {
+        /// where to connect to
+        url:   String,
+        /// Topic to load for commands
+        topic: String,
+    },
     /// Consume a kafka topic
     Kafka {
         /// Topic where commands to the domain will be sent
@@ -92,6 +99,13 @@ pub enum DomainEventSink {
     Disabled,
     /// Emit events as logs
     Log,
+    /// Emit events to NATS JetStream
+    JetStream {
+        /// Valid NATS URL to connect to
+        url:   String,
+        /// Topic to write events to
+        topic: String,
+    },
     /// Produce to a kafka topic
     Kafka {
         /// Topic where events from the domain may be sent

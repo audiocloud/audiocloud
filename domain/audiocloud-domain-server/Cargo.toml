@@ -90,10 +90,12 @@ version = "0.11"
 features = ["stream", "brotli", "gzip", "multipart", "json"]
 
 [dependencies.rdkafka]
+optional = true
 version = "0.28.0"
 features = ["ssl-vendored", "cmake-build", "sasl"]
 
 [dependencies.sasl2-sys]
+optional = true
 version = "0.1.20+2.1.28"
 features = ["scram", "plain"]
 
@@ -113,3 +115,6 @@ path = "../../specs/audiocloud-models"
 
 [dev-dependencies]
 tempfile = "3.3.0"
+
+[features]
+kafka = ["rdkafka", "sasl2-sys"]
