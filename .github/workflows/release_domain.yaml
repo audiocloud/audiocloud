@@ -101,6 +101,7 @@ jobs:
           - build: x86_64-pc-windows-msvc
             os: windows-latest
             binary: audiocloud_reaper_plugin.dll
+            dll: ".dll"
           - build: x86_64-apple-darwin
             os: macos-latest
             binary: libaudiocloud_reaper_plugin.dylib
