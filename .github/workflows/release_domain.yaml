@@ -259,6 +259,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.create_release.outputs.upload_url }}
-          asset_path: ./target/${{ matrix.build }}/release/audiocloud-driver
+          asset_path: ./target/armv7-unknown-linux-gnueabihf/release/audiocloud-driver
           asset_name: audiocloud_driver-armv7-unknown-linux-gnueabihf
           asset_content_type: application/octet-stream
