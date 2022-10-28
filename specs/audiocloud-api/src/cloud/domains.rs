@@ -178,7 +178,7 @@ pub struct DynamicInstanceLimits {
 pub struct DomainFixedInstanceConfig {
     /// Configuration of how a fixed instance is connected to the domain
     #[serde(default)]
-    pub attachment:    DomainFixedInstanceAttachment,
+    pub engine:        Option<DomainFixedInstanceEngine>,
     /// Additional models with parameters or reports that are merged with the instance model
     #[serde(default)]
     pub sidecars:      HashSet<ModelId>,
@@ -199,24 +199,13 @@ pub struct DomainFixedInstanceConfig {
 /// Configuration of how a fixed instance is connected to the domain
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum DomainFixedInstanceAttachment {
-    /// Instance is free floating
-    FreeFloating,
-    /// Connected to an engine
-    Engine {
-        /// Engine hosting the instance, if any
-        engine_id:    EngineId,
-        /// Instance inputs start at index on engine
-        input_start:  u32,
-        /// Instance outputs start at index on engine
-        output_start: u32,
-    },
-}
-
-impl Default for DomainFixedInstanceAttachment {
-    fn default() -> Self {
-        Self::FreeFloating
-    }
+pub struct DomainFixedInstanceEngine {
+    /// Engine hosting the instance, if any
+    pub engine_id:    EngineId,
+    /// Instance inputs start at index on engine
+    pub input_start:  u32,
+    /// Instance outputs start at index on engine
+    pub output_start: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]

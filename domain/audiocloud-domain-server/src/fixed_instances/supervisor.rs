@@ -8,7 +8,7 @@ use futures::executor::block_on;
 use tracing::*;
 
 use audiocloud_api::cloud::domains::{
-    DomainConfig, DomainFixedInstanceAttachment, DomainFixedInstanceConfig, FixedInstanceRouting, FixedInstanceRoutingMap,
+    DomainConfig, DomainFixedInstanceConfig, DomainFixedInstanceEngine, FixedInstanceRouting, FixedInstanceRoutingMap,
 };
 use audiocloud_api::domain::DomainError;
 use audiocloud_api::{hashmap_changes, FixedInstanceId, HashMapChanges};
@@ -49,7 +49,7 @@ impl FixedInstancesSupervisor {
 
             let actor = InstanceActor::new(id.clone(), config.clone(), model)?;
 
-            if let DomainFixedInstanceAttachment::Engine { input_start, output_start, .. } = &config.attachment {
+            if let Some(DomainFixedInstanceEngine { input_start, output_start, .. }) = &config.engine {
                 routing.insert(id.clone(),
                                FixedInstanceRouting { send_count:     { send_count },
                                                       send_channel:   { *output_start as usize },

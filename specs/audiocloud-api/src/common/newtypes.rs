@@ -15,7 +15,7 @@ use crate::{InputPadId, OutputPadId};
 
 /// Id of a fixed instance
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Display, Constructor)]
-#[display(fmt = "{manufacturer}:{name}:{instance}")]
+#[display(fmt = "{manufacturer}/{name}/{instance}")]
 pub struct FixedInstanceId {
     /// manufacturer name, may not contain ':' or whitespace
     pub manufacturer: String,
