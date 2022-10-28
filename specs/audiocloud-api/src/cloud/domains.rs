@@ -222,15 +222,30 @@ pub type FixedInstanceRoutingMap = HashMap<FixedInstanceId, FixedInstanceRouting
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DomainPowerInstanceConfig {
     /// Number of milliseconds to wait to warm up after powering on
+    #[serde(default = "default_power_warmup_ms")]
     pub warm_up_ms:        usize,
     /// Number of milliseconds to wait to cool down after powering down
+    #[serde(default = "default_power_cool_down_ms")]
     pub cool_down_ms:      usize,
     /// Number of milliseconds to wait before automatically powering down after idle
+    #[serde(default = "default_power_idle_ms")]
     pub idle_off_delay_ms: usize,
     /// Power instance used to distribute power to this instance
     pub instance:          FixedInstanceId,
     /// Which channel on the power instance is distributing power to this instance
     pub channel:           usize,
+}
+
+fn default_power_warmup_ms() -> usize {
+    2_500
+}
+
+fn default_power_cool_down_ms() -> usize {
+    2_500
+}
+
+fn default_power_idle_ms() -> usize {
+    60_000
 }
 
 /// Instance media settings
