@@ -4,5 +4,5 @@ linker = 'rust-lld.exe'
 [profile.release]
 opt-level = 3
 debug = 0
-incremental = false
+incremental = true
 codegen-units = 256
