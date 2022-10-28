@@ -49,86 +49,52 @@ impl InstanceConfig for Config {
 }
 
 struct Summatra {
-    id:               FixedInstanceId,
-    config:           Config,
-    last_update:      Timestamp,
-    hid_api:          HidDevice,
-    pages:            [[u16; 32]; 2],
-    values:           SummatraPreset,
-    bus_assign:       [UnirelRegion; 1], //[CH_x, CH_x+1 ...]
-    input:            [DigipotRegion; 1],
-    pan:              [DigipotRegion; 1],
+    id:                FixedInstanceId,
+    config:            Config,
+    last_update:       Timestamp,
+    hid_api:           HidDevice,
+    pages:             [[u16; 32]; 2],
+    input_gain_memory: [[u16; 32]; 2],
+    values:            SummatraPreset,
+    bus_assign:        [BusRegion; 24], //[CH_x, CH_x+1 ...]
+    input:             [DigipotRegion; 24],
+    pan:               [DigipotRegion; 24],
 }
 
-// TODO: move to separate utils file, as we think there will be many more "unipot" etc drivers
 struct DigipotRegion {
-    bits:   Vec<usize>,
-    pot_id: usize,
+    index_left:    usize,
+    index_right:   usize,
+    page:          usize,
 }
 
 impl DigipotRegion {
-    pub fn new(pot_id: usize, bits: impl Iterator<Item = usize>) -> Self {
-        Self { bits: bits.collect(),
-               pot_id }
+    pub fn new(page: usize, index_left: usize, index_right: usize) -> Self {
+        Self { index_left,
+               index_right,
+               page }
     }
 
-    pub fn write(&self, memory: &mut [[u16; 6]; 8], value: u16) {
-        // for every i-th bit set in the value, we set self.bits[i]-th bit in `memory`
-        // bits can be arbitrarily far from the beginning of the buffer, as long as there
-        // is space
-        for (i, bit) in self.bits.iter().copied().enumerate() {
-            let bit_value = value & (1 << i);
-            write_bit_16(&mut memory[self.pot_id][(bit / 16) + 1], (bit % 16) as u16, bit_value);
-        }
-        memory[self.pot_id][0] = 1;
+    pub fn write(&self, memory: &mut [[u16; 32]; 2], value: u16) {
+        //writes a value to a correct location in memory
+        memory[self.page][self.index_left] = (memory[self.page][self.index_left] & 0xE000) | (value & 0x3FF);
+        memory[self.page][self.index_right] = (memory[self.page][self.index_right] & 0xE000) | (value & 0x3FF);
     }
 }
 
-struct UnirelRegion {
-    bits:   Vec<usize>,
-    pot_id: usize,
+struct BusRegion {
+    index:   usize,
+    page:    usize,
 }
 
-impl UnirelRegion {
-    pub fn new(pot_id: usize, bits: impl Iterator<Item = usize>) -> Self {
-        Self { bits: bits.collect(),
-               pot_id }
+impl BusRegion {
+    pub fn new(page: usize, index: usize) -> Self {
+        Self { index,
+               page }
     }
 
-    pub fn write_switch(&self, memory: &mut [[u16; 6]; 8], value: u16) {
+    pub fn write(&self, memory: &mut [[u16; 32]; 2], value: u16) {
         //writes a bit to a correct location in memory
-        for (_i, bit) in self.bits.iter().copied().enumerate() {
-            write_bit_16(&mut memory[self.pot_id][(bit / 16) + 1], (bit % 16) as u16, value);
-        }
-        memory[self.pot_id][0] = 1;
-    }
-    pub fn write_rot_switch(&self, memory: &mut [[u16; 6]; 8], value: u16) {
-        // rotation switches use moving bits 0000 -> 0001 -> 0010 -> 0100...
-        for (i, bit) in self.bits.iter().copied().enumerate() {
-            write_bit_16(&mut memory[self.pot_id][(bit / 16) + 1],
-                         (bit % 16) as u16,
-                         (value == i as u16) as u16);
-        }
-        memory[self.pot_id][0] = 1;
-    }
-    pub fn write_nrot_switch(&self, memory: &mut [[u16; 6]; 8], value: u16) {
-        // negated rot switch has negated first bit/switch
-        for (i, bit) in self.bits.iter().copied().enumerate() {
-            let mut temp: bool = false;
-            if value as usize == i {
-                temp = true;
-            }
-            if i == 0 {
-                if temp == false {
-                    temp = true;
-                } else {
-                    temp = false;
-                }
-            }
-
-            write_bit_16(&mut memory[self.pot_id][(bit / 16) + 1], (bit % 16) as u16, temp as u16);
-        }
-        memory[self.pot_id][0] = 1;
+        memory[self.page][self.index] = 1 << (value + 13);
     }
 }
 
@@ -149,20 +115,32 @@ impl Summatra {
                       values,
                       last_update: now(),
                       pages: [[0; 32]; 2],
-                      bus_assign: [UnirelRegion::new(0, [0,1,2].into_iter())],
-                      input: [DigipotRegion::new(0, [0,1,2].into_iter())],
-                      pan: [DigipotRegion::new(0, [0,1,2].into_iter().clone())],})
+                      input_gain_memory: [[0; 32]; 2],
+                      bus_assign: [BusRegion::new(0, 14), BusRegion::new(0, 15), BusRegion::new(0, 16), BusRegion::new(0, 17), BusRegion::new(0, 18), BusRegion::new(0, 19),
+                                   BusRegion::new(0, 20), BusRegion::new(0, 21), BusRegion::new(0, 22), BusRegion::new(0, 23), BusRegion::new(0, 24), BusRegion::new(0, 25),
+                                   BusRegion::new(1, 14), BusRegion::new(1, 15), BusRegion::new(1, 16), BusRegion::new(1, 17), BusRegion::new(1, 18), BusRegion::new(1, 19),
+                                   BusRegion::new(1, 20), BusRegion::new(1, 21), BusRegion::new(1, 22), BusRegion::new(1, 23), BusRegion::new(1, 24), BusRegion::new(1, 25)],
+                                   
+                      input: [DigipotRegion::new(0, 2, 14), DigipotRegion::new(0, 3, 15), DigipotRegion::new(0, 4, 16), DigipotRegion::new(0, 5, 17), DigipotRegion::new(0, 6, 18), DigipotRegion::new(0, 7, 19), 
+                              DigipotRegion::new(0, 8, 20), DigipotRegion::new(0, 9, 21), DigipotRegion::new(0, 10, 22), DigipotRegion::new(0, 11, 23), DigipotRegion::new(0, 12, 24), DigipotRegion::new(0, 13, 25),
+                              DigipotRegion::new(1, 2, 14), DigipotRegion::new(1, 3, 15), DigipotRegion::new(1, 4, 16), DigipotRegion::new(1, 5, 17), DigipotRegion::new(1, 6, 18), DigipotRegion::new(1, 7, 19), 
+                              DigipotRegion::new(1, 8, 20), DigipotRegion::new(1, 9, 21), DigipotRegion::new(1, 11, 22), DigipotRegion::new(1, 11, 23), DigipotRegion::new(1, 12, 24), DigipotRegion::new(1, 13, 25)],
+
+                      pan: [DigipotRegion::new(0, 2, 14), DigipotRegion::new(0, 3, 15), DigipotRegion::new(0, 4, 16), DigipotRegion::new(0, 5, 17), DigipotRegion::new(0, 6, 18), DigipotRegion::new(0, 7, 19), 
+                            DigipotRegion::new(0, 8, 20), DigipotRegion::new(0, 9, 21), DigipotRegion::new(0, 10, 22), DigipotRegion::new(0, 11, 23), DigipotRegion::new(0, 12, 24), DigipotRegion::new(0, 13, 25),
+                            DigipotRegion::new(1, 2, 14), DigipotRegion::new(1, 3, 15), DigipotRegion::new(1, 4, 16), DigipotRegion::new(1, 5, 17), DigipotRegion::new(1, 6, 18), DigipotRegion::new(1, 7, 19), 
+                            DigipotRegion::new(1, 8, 20), DigipotRegion::new(1, 9, 21), DigipotRegion::new(1, 11, 22), DigipotRegion::new(1, 11, 23), DigipotRegion::new(1, 12, 24), DigipotRegion::new(1, 13, 25)]})
                       
     }
 
-    fn set_input_gain(&mut self, left: ToggleOr<i64>, right: ToggleOr<i64>) {
+    fn set_input(&mut self, channels: Vec<f64>) {
         // self.input_gain[0].write_nrot_switch(&mut self.io_exp_data, repoint(left.to_f64(), &INPUT_GAIN_VALUES) as u16);
         // self.input_gain[1].write_nrot_switch(&mut self.io_exp_data, repoint(right.to_f64(), &INPUT_GAIN_VALUES) as u16);
 
         // self.values.input_gain = Stereo { left, right };
     }
 
-    fn set_high_pass_filter(&mut self, left: ToggleOr<u64>, right: ToggleOr<u64>) {
+    fn set_pan(&mut self, channels: Vec<f64>) {
         // let rescaled = repoint(left.to_f64(), &HIGH_PASS_FILTER_VALUES);
         // self.high_pass_filter[0].write_nrot_switch(&mut self.io_exp_data, rescaled as u16);
         // self.high_pass_filter[2].write_nrot_switch(&mut self.io_exp_data, rescaled as u16);
@@ -174,7 +152,7 @@ impl Summatra {
         // self.values.high_pass_filter = Stereo { left, right };
     }
 
-    fn set_low_gain(&mut self, left: f64, right: f64) {
+    fn set_bus_assign(&mut self, channels: Vec<u64>) {
         // let rescaled = rescale(left, &LOW_GAIN_VALUES, 128_f64);
         // self.low_gain[0].write(&mut self.io_exp_data, rescaled as u16);
 
@@ -207,15 +185,15 @@ impl Handler<Command> for Summatra {
                         }
                                                                                      })?;
 
-                // if let Some(Stereo { left, right }) = params.input_gain.take() {
-                //     self.set_input_gain(left, right);
-                // }
-                // if let Some(Stereo { left, right }) = params.high_pass_filter.take() {
-                //     self.set_high_pass_filter(left, right);
-                // }
-                // if let Some(Stereo { left, right }) = params.low_gain.take() {
-                //     self.set_low_gain(left, right);
-                // }
+                if let Some(channels) = params.input.take() {
+                    self.set_input(channels);
+                }
+                if let Some(channels) = params.pan.take() {
+                    self.set_pan(channels);
+                }
+                if let Some(channels) = params.bus_assign.take() {
+                    self.set_bus_assign(channels);
+                }
 
                 todo!("set func and pages");
                 // self.write_io_expanders();
