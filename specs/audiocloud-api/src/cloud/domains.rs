@@ -176,14 +176,9 @@ pub struct DynamicInstanceLimits {
 /// Configuration of a fixed instance
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DomainFixedInstanceConfig {
-    /// Engine hosting the instance
-    pub engine_id:     EngineId,
-    /// Instance inputs start at index on engine
+    /// Configuration of how a fixed instance is connected to the domain
     #[serde(default)]
-    pub input_start:   Option<u32>,
-    /// Instance outputs start at index on engine
-    #[serde(default)]
-    pub output_start:  Option<u32>,
+    pub engine:        Option<DomainFixedInstanceEngine>,
     /// Additional models with parameters or reports that are merged with the instance model
     #[serde(default)]
     pub sidecars:      HashSet<ModelId>,
@@ -201,6 +196,18 @@ pub struct DomainFixedInstanceConfig {
     pub maintenance:   Vec<Maintenance>,
 }
 
+/// Configuration of how a fixed instance is connected to the domain
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct DomainFixedInstanceEngine {
+    /// Engine hosting the instance, if any
+    pub engine_id:    EngineId,
+    /// Instance inputs start at index on engine
+    pub input_start:  u32,
+    /// Instance outputs start at index on engine
+    pub output_start: u32,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub struct FixedInstanceRouting {
     pub send_count:     usize,
@@ -215,15 +222,30 @@ pub type FixedInstanceRoutingMap = HashMap<FixedInstanceId, FixedInstanceRouting
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DomainPowerInstanceConfig {
     /// Number of milliseconds to wait to warm up after powering on
+    #[serde(default = "default_power_warmup_ms")]
     pub warm_up_ms:        usize,
     /// Number of milliseconds to wait to cool down after powering down
+    #[serde(default = "default_power_cool_down_ms")]
     pub cool_down_ms:      usize,
     /// Number of milliseconds to wait before automatically powering down after idle
+    #[serde(default = "default_power_idle_ms")]
     pub idle_off_delay_ms: usize,
     /// Power instance used to distribute power to this instance
     pub instance:          FixedInstanceId,
     /// Which channel on the power instance is distributing power to this instance
     pub channel:           usize,
+}
+
+fn default_power_warmup_ms() -> usize {
+    2_500
+}
+
+fn default_power_cool_down_ms() -> usize {
+    2_500
+}
+
+fn default_power_idle_ms() -> usize {
+    60_000
 }
 
 /// Instance media settings
