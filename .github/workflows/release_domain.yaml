@@ -271,7 +271,7 @@ jobs:
       - name: Zip models
         run: |
           zip -r ../../models.zip models
-        working-directory: ./domain/audiocloud-models
+        working-directory: ./specs/audiocloud-models
       - name: Upload models zip
         uses: actions/upload-release-asset@v1
         env:
