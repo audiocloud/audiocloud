@@ -49,8 +49,6 @@ pub struct DomainConfig {
     pub event_sink:           DomainEventSink,
     /// Source of model information for the domain (can include unused models)
     pub models:               DomainModelSource,
-    /// The public host or IP where domain API is visible to the outside world
-    pub public_host:          String,
 }
 
 fn default_min_task_length() -> i64 {

@@ -262,3 +262,21 @@ jobs:
           asset_path: ./target/armv7-unknown-linux-gnueabihf/release/audiocloud-driver
           asset_name: audiocloud_driver-armv7-unknown-linux-gnueabihf
           asset_content_type: application/octet-stream
+  models:
+    runs-on: ubuntu-latest
+    needs: create_release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Zip models
+        run: |
+          zip -r models.zip specs/audiocloud-models/models/*.yaml
+      - name: Upload models zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ./models.zip
+          asset_name: models.zip
+          asset_content_type: application/zip
