@@ -1710,18 +1710,6 @@ components:
                 additionalProperties:
                   $ref: '#/components/schemas/TaskPermissions'
         additionalProperties: false
-    DownloadFromDomain:
-      type: object
-      required:
-      - url
-      properties:
-        context: true
-        notify_url:
-          type:
-          - string
-          - 'null'
-        url:
-          type: string
     DynamicInstanceNode:
       description: Dynamic node specification
       type: object
@@ -2033,43 +2021,6 @@ components:
         type: string
         enum:
         - stereo
-    MediaDownload:
-      type: object
-      required:
-      - download
-      - media_id
-      - state
-      properties:
-        download:
-          $ref: '#/components/schemas/DownloadFromDomain'
-        media_id:
-          $ref: '#/components/schemas/AppMediaObjectId'
-        state:
-          $ref: '#/components/schemas/MediaJobState'
-    MediaJobState:
-      type: object
-      required:
-      - in_progress
-      - progress
-      - retry
-      - updated_at
-      properties:
-        error:
-          type:
-          - string
-          - 'null'
-        in_progress:
-          type: boolean
-        progress:
-          type: number
-          format: double
-        retry:
-          type: integer
-          format: uint
-          minimum: 0.0
-        updated_at:
-          type: string
-          format: date-time
     MediaMetadata:
       type: object
       required:
@@ -2098,14 +2049,14 @@ components:
       type: object
       required:
       - id
+      - last_used
       - revision
       properties:
-        download:
-          anyOf:
-          - $ref: '#/components/schemas/MediaDownload'
-          - type: 'null'
         id:
           $ref: '#/components/schemas/AppMediaObjectId'
+        last_used:
+          type: string
+          format: date-time
         metadata:
           anyOf:
           - $ref: '#/components/schemas/MediaMetadata'
@@ -2118,25 +2069,8 @@ components:
           type: integer
           format: uint64
           minimum: 0.0
-        upload:
-          anyOf:
-          - $ref: '#/components/schemas/MediaUpload'
-          - type: 'null'
     MediaObjectId:
       type: string
-    MediaUpload:
-      type: object
-      required:
-      - media_id
-      - state
-      - upload
-      properties:
-        media_id:
-          $ref: '#/components/schemas/AppMediaObjectId'
-        state:
-          $ref: '#/components/schemas/MediaJobState'
-        upload:
-          $ref: '#/components/schemas/UploadToDomain'
     MixerNode:
       description: Mixer node specification
       type: object
@@ -3646,35 +3580,3 @@ components:
           anyOf:
           - $ref: '#/components/schemas/TimeSegment'
           - type: 'null'
-    UploadToDomain:
-      type: object
-      required:
-      - bytes
-      - channels
-      - format
-      - sample_rate
-      - seconds
-      - url
-      properties:
-        bytes:
-          type: integer
-          format: uint64
-          minimum: 0.0
-        channels:
-          $ref: '#/components/schemas/MediaChannels'
-        context: true
-        format:
-          $ref: '#/components/schemas/TrackMediaFormat'
-        notify_url:
-          type:
-          - string
-          - 'null'
-        sample_rate:
-          type: integer
-          format: uint
-          minimum: 0.0
-        seconds:
-          type: number
-          format: double
-        url:
-          type: string

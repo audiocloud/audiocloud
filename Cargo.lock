@@ -493,6 +493,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "audiocloud-comms"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "serde",
+]
+
+[[package]]
 name = "audiocloud-domain-server"
 version = "0.2.0"
 dependencies = [

@@ -3,5 +3,6 @@ members = [
     "specs/audiocloud-api",
     "specs/audiocloud-models",
     "domain/*",
-    "cloud/*"
+    "cloud/*",
+    "lib/*"
 ]
