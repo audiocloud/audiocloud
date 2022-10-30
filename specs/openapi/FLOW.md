@@ -17,9 +17,23 @@ sequenceDiagram
         Audio Engine->>Domain Server: Yes!
         Note right of Domain Server: On failure set audio engine as down
     end
+    
+    Instance Driver->>Domain Server: Register (with ID and static config)
+    Note right of Domain Server: Lookup configuration for Instance Driver, merge, mark instance as potentially up (half open)
+    Domain Server->>Instance Driver: Here is the configuration
+
+
+    loop Healthcheck
+        Domain Server->>Instance Driver: Are you alive?
+        Instance Driver->>Domain Server: Yes!
+        Note right of Domain Server: On failure set instance driver as down
+    end
 ```
 
 ## Orchestrated boot flow
+```mermaid
+sequenceDiagram
+```
 
 ## Reservation flow
 
