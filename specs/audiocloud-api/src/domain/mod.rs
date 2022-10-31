@@ -173,6 +173,9 @@ pub enum DomainError {
 
     #[error("WebRTC error: {error}")]
     WebRTCError { error: String },
+
+    #[error("Remote procedure call failed: {error}")]
+    RPC { error: String },
 }
 
 impl DomainError {

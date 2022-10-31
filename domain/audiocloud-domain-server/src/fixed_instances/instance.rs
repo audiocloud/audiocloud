@@ -7,7 +7,7 @@ use actix_broker::BrokerIssue;
 use futures::FutureExt;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::DomainFixedInstanceConfig;
+use audiocloud_api::cloud::domains::InstanceDriverConfig;
 use audiocloud_api::domain::DomainError;
 use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverEvent};
 use audiocloud_api::{
@@ -29,7 +29,7 @@ use super::power::Power;
 pub struct InstanceActor {
     id:                  FixedInstanceId,
     connected:           Timestamped<bool>,
-    config:              DomainFixedInstanceConfig,
+    config: InstanceDriverConfig,
     power:               Option<Power>,
     media:               Option<Media>,
     spec:                Timestamped<Option<NotifyTaskSpec>>,
@@ -39,7 +39,7 @@ pub struct InstanceActor {
 }
 
 impl InstanceActor {
-    pub fn new(id: FixedInstanceId, config: DomainFixedInstanceConfig, model: Model) -> anyhow::Result<Self> {
+    pub fn new(id: FixedInstanceId, config: InstanceDriverConfig, model: Model) -> anyhow::Result<Self> {
         let power = config.power.clone().map(Power::new);
         let media = config.media.clone().map(Media::new);
         let instance_driver_cmd = id.driver_command_subject();

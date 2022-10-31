@@ -106,7 +106,7 @@ paths:
 
         Delete an existing task spec. This will interrupt any playback or rendering and will free
         resources associated with the task (such as instances or locks on media files).
-      operationId: delete
+      operationId: delete_task
       parameters:
         - deprecated: false
           description: App id
@@ -145,7 +145,7 @@ paths:
 
         Apply a modification to an existing spec. Changing the spec even trivially could result in a
         rendering or playback interruption. The task must exist in order to be modified.
-      operationId: modify_spec
+      operationId: modify_task_spec
       parameters:
         - deprecated: false
           description: App id
@@ -196,7 +196,7 @@ paths:
 
         Create or update a task by providing its spec. Changing the spec even trivially could result
         in a rendering or playback interruption.
-      operationId: set_spec
+      operationId: set_task_spec
       parameters:
         - deprecated: false
           description: App id
@@ -380,7 +380,7 @@ paths:
         Seek while task is playing
 
         If the task is playing, change the playing position.
-      operationId: seek
+      operationId: seek_task_play
       parameters:
         - deprecated: false
           description: App id

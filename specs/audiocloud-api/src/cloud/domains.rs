@@ -9,9 +9,9 @@ use crate::common::model::{Model, ResourceId};
 use crate::common::task::Task;
 use crate::newtypes::{AppId, AppTaskId, DomainId, FixedInstanceId, ModelId};
 use crate::time::{TimeRange, Timestamp};
-use crate::EngineId;
+use crate::{EngineId, InstanceDriverId};
 
-/// Used by domain for booting
+/// Used by domain for booting up.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct DomainConfig {
@@ -19,13 +19,13 @@ pub struct DomainConfig {
     pub domain_id:            DomainId,
     /// Fixed instances configured on the domain
     #[serde(default)]
-    pub fixed_instances:      HashMap<FixedInstanceId, DomainFixedInstanceConfig>,
+    pub fixed_instances:      HashMap<FixedInstanceId, InstanceDriverConfig>,
     /// Dynamic instances configured on the domain, with associated limits
     #[serde(default)]
     pub dynamic_instances:    HashMap<ModelId, DynamicInstanceLimits>,
     /// Engines configured on the domain
     #[serde(default)]
-    pub engines:              HashMap<EngineId, DomainEngineConfig>,
+    pub engines:              HashMap<EngineId, EngineConfig>,
     /// Currently configured tasks
     #[serde(default)]
     pub tasks:                HashMap<AppTaskId, Task>,
@@ -148,7 +148,7 @@ pub enum DomainModelSource {
 
 /// Information about a media engine within a domain
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
-pub struct DomainEngineConfig {
+pub struct EngineConfig {
     /// Dynamic instances configured on the audio engine, with associated limits
     #[serde(default)]
     pub dynamic_instances:    HashMap<ModelId, DynamicInstanceLimits>,
@@ -159,6 +159,9 @@ pub struct DomainEngineConfig {
     pub resources:            HashMap<ResourceId, f64>,
     /// Native audio sample rate
     pub sample_rate:          usize,
+    /// Additional configuration, specific to the engine configuration
+    #[serde(default)]
+    pub additional:           HashMap<String, serde_json::Value>,
 }
 
 /// Limits on dynamic instances
@@ -173,7 +176,10 @@ pub struct DynamicInstanceLimits {
 
 /// Configuration of a fixed instance
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct DomainFixedInstanceConfig {
+pub struct InstanceDriverConfig {
+    /// Which driver is using
+    #[serde(default)]
+    pub driver:        Option<InstanceDriverId>,
     /// Configuration of how a fixed instance is connected to the domain
     #[serde(default)]
     pub engine:        Option<DomainFixedInstanceEngine>,
@@ -192,6 +198,9 @@ pub struct DomainFixedInstanceConfig {
     /// Maintenance windows on this instance
     #[serde(default)]
     pub maintenance:   Vec<Maintenance>,
+    /// Additional information specific to the driver implementation
+    #[serde(default)]
+    pub additional:    HashMap<String, serde_json::Value>,
 }
 
 /// Configuration of how a fixed instance is connected to the domain
@@ -266,7 +275,7 @@ pub struct GetDomainResponse {
     /// FIxed instances available on the domain
     pub fixed_instances: HashMap<FixedInstanceId, AppFixedInstance>,
     /// Engines available on the domain
-    pub engines:         HashMap<EngineId, DomainEngineConfig>,
+    pub engines:         HashMap<EngineId, EngineConfig>,
     /// Minimum task duration
     pub min_task_len:    f64,
     /// Base public URL for domain API
@@ -299,13 +308,13 @@ pub struct AppFixedInstance {
     pub maintenance: Vec<Maintenance>,
 }
 
-impl From<DomainFixedInstanceConfig> for AppFixedInstance {
-    fn from(instance: DomainFixedInstanceConfig) -> Self {
-        let DomainFixedInstanceConfig { sidecars,
-                                        power,
-                                        media,
-                                        maintenance,
-                                        .. } = instance;
+impl From<InstanceDriverConfig> for AppFixedInstance {
+    fn from(instance: InstanceDriverConfig) -> Self {
+        let InstanceDriverConfig { sidecars,
+                                   power,
+                                   media,
+                                   maintenance,
+                                   .. } = instance;
         Self { power: power.is_some(),
                media: media.is_some(),
                maintenance,

@@ -8,7 +8,7 @@ use futures::executor::block_on;
 use tracing::*;
 
 use audiocloud_api::cloud::domains::{
-    DomainConfig, DomainFixedInstanceConfig, DomainFixedInstanceEngine, FixedInstanceRouting, FixedInstanceRoutingMap,
+    DomainConfig, InstanceDriverConfig, DomainFixedInstanceEngine, FixedInstanceRouting, FixedInstanceRoutingMap,
 };
 use audiocloud_api::domain::DomainError;
 use audiocloud_api::{hashmap_changes, FixedInstanceId, HashMapChanges};
@@ -29,7 +29,7 @@ pub struct FixedInstancesSupervisor {
 
 struct SupervisedInstance {
     address: Addr<InstanceActor>,
-    config:  DomainFixedInstanceConfig,
+    config: InstanceDriverConfig,
     state:   Option<NotifyInstanceState>,
     // TODO: current parameters and last known reports should go here
 }

@@ -7,7 +7,7 @@ use opentelemetry::global;
 use opentelemetry::metrics::ObservableGauge;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{DomainConfig, DomainEngineConfig, FixedInstanceRoutingMap};
+use audiocloud_api::cloud::domains::{DomainConfig, EngineConfig, FixedInstanceRoutingMap};
 use audiocloud_api::common::change::TaskState;
 use audiocloud_api::newtypes::{AppTaskId, EngineId};
 use audiocloud_api::{DomainId, FixedInstanceId, PlayId, StreamingPacket, Task, TaskReservation, TaskSecurity, TaskSpec, Timestamped};
@@ -59,7 +59,7 @@ struct SupervisedTask {
 }
 
 struct ReferencedEngine {
-    config: DomainEngineConfig,
+    config: EngineConfig,
 }
 
 impl TasksSupervisor {
