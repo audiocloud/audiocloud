@@ -1,8 +1,8 @@
-use std::collections::HashMap;
 use std::future::Future;
 use std::process::Output;
 
 use anyhow::anyhow;
+use dashmap::DashMap;
 use serde_json::Map;
 use tracing::*;
 
@@ -19,7 +19,7 @@ use crate::{distopik, netio};
 type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 
 pub struct Instances {
-    instances: HashMap<FixedInstanceId, InstanceController>,
+    instances: DashMap<FixedInstanceId, InstanceController>,
 }
 
 struct InstanceController {
@@ -32,7 +32,7 @@ struct InstanceController {
 
 impl Instances {
     pub fn new(config: InstanceDriverConfig) -> Result<Self> {
-        let mut drivers = HashMap::new();
+        let mut drivers = DashMap::new();
 
         for (id, config) in config.instances {
             drivers.insert(id,
@@ -79,14 +79,14 @@ impl Instances {
     }
 
     pub fn update_drivers(&mut self) {
-        for (id, controller) in self.instances.iter_mut() {
-            if controller.handle.is_none() && !controller.config.maintenance.iter().any(|m| m.time.contains_now()) {
-                match create_driver(id, &controller.config) {
+        for mut entry in self.instances.iter_mut() {
+            if entry.handle.is_none() && !entry.config.maintenance.iter().any(|m| m.time.contains_now()) {
+                match create_driver(entry.key(), &entry.config) {
                     Ok(handle) => {
-                        controller.handle = Some(handle);
+                        entry.handle = Some(handle);
                     }
                     Err(error) => {
-                        error!(%error, %id, "Failed to create driver");
+                        error!(%error, id = %entry.key(), "Failed to create driver");
                     }
                 }
             }
@@ -96,8 +96,8 @@ impl Instances {
     pub fn get_instances(&self) -> InstanceWithStatusList {
         let mut rv = InstanceWithStatusList::new();
 
-        for (id, _instance) in &self.instances {
-            rv.push(InstanceWithStatus { id:         { id.clone() },
+        for instance in &self.instances {
+            rv.push(InstanceWithStatus { id:         { instance.key().clone() },
                                          play_state: { None }, });
         }
 
