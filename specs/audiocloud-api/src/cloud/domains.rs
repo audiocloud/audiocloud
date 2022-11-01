@@ -19,7 +19,7 @@ pub struct DomainConfig {
     pub domain_id:            DomainId,
     /// Fixed instances configured on the domain
     #[serde(default)]
-    pub fixed_instances:      HashMap<FixedInstanceId, InstanceDriverConfig>,
+    pub fixed_instances:      HashMap<FixedInstanceId, FixedInstanceConfig>,
     /// Dynamic instances configured on the domain, with associated limits
     #[serde(default)]
     pub dynamic_instances:    HashMap<ModelId, DynamicInstanceLimits>,
@@ -161,7 +161,7 @@ pub struct EngineConfig {
     pub sample_rate:          usize,
     /// Additional configuration, specific to the engine configuration
     #[serde(default)]
-    pub additional:           HashMap<String, serde_json::Value>,
+    pub additional:           serde_json::Value,
 }
 
 /// Limits on dynamic instances
@@ -176,7 +176,7 @@ pub struct DynamicInstanceLimits {
 
 /// Configuration of a fixed instance
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstanceDriverConfig {
+pub struct FixedInstanceConfig {
     /// Which driver is using
     #[serde(default)]
     pub driver:        Option<InstanceDriverId>,
@@ -200,7 +200,20 @@ pub struct InstanceDriverConfig {
     pub maintenance:   Vec<Maintenance>,
     /// Additional information specific to the driver implementation
     #[serde(default)]
-    pub additional:    HashMap<String, serde_json::Value>,
+    pub additional:    serde_json::Value,
+}
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct InstanceDriverConfig {
+    pub instances: HashMap<FixedInstanceId, FixedInstanceConfig>,
+}
+
+impl InstanceDriverConfig {
+    pub fn merge(&mut self, other: Self) {
+        for (id, config) in other.instances {
+            self.instances.insert(id, config);
+        }
+    }
 }
 
 /// Configuration of how a fixed instance is connected to the domain
@@ -308,13 +321,13 @@ pub struct AppFixedInstance {
     pub maintenance: Vec<Maintenance>,
 }
 
-impl From<InstanceDriverConfig> for AppFixedInstance {
-    fn from(instance: InstanceDriverConfig) -> Self {
-        let InstanceDriverConfig { sidecars,
-                                   power,
-                                   media,
-                                   maintenance,
-                                   .. } = instance;
+impl From<FixedInstanceConfig> for AppFixedInstance {
+    fn from(instance: FixedInstanceConfig) -> Self {
+        let FixedInstanceConfig { sidecars,
+                                  power,
+                                  media,
+                                  maintenance,
+                                  .. } = instance;
         Self { power: power.is_some(),
                media: media.is_some(),
                maintenance,

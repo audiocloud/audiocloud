@@ -14,7 +14,7 @@ pub enum InstancePlayState {
     Rendering { length: f64, render_id: RenderId },
     Rewinding { to: f64 },
     Stopping,
-    Stopped,
+    Stopped { position: Option<f64> },
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Copy, Clone, Debug, JsonSchema)]
@@ -22,17 +22,7 @@ pub enum InstancePlayState {
 pub enum DesiredInstancePlayState {
     Playing { play_id: PlayId },
     Rendering { length: f64, render_id: RenderId },
-    Stopped,
-}
-
-impl Into<InstanceDriverCommand> for DesiredInstancePlayState {
-    fn into(self) -> InstanceDriverCommand {
-        match self {
-            DesiredInstancePlayState::Playing { play_id } => InstanceDriverCommand::Play { play_id },
-            DesiredInstancePlayState::Rendering { length, render_id } => InstanceDriverCommand::Render { render_id, length },
-            DesiredInstancePlayState::Stopped => InstanceDriverCommand::Stop,
-        }
-    }
+    Stopped { position: Option<f64> },
 }
 
 impl InstancePlayState {
@@ -42,7 +32,9 @@ impl InstancePlayState {
             (Self::Rendering { render_id, .. },
              DesiredInstancePlayState::Rendering { render_id: desired_render_id,
                                                    .. }) => render_id == desired_render_id,
-            (Self::Stopped, DesiredInstancePlayState::Stopped) => true,
+            (Self::Stopped { position }, DesiredInstancePlayState::Stopped { position: desired_position, }) => {
+                desired_position.map(|desired| Some(desired) == position.clone()).unwrap_or(true)
+            }
             _ => false,
         }
     }

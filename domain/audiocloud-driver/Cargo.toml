@@ -56,5 +56,8 @@ path = "../../specs/audiocloud-api"
 [dependencies.audiocloud-models]
 path = "../../specs/audiocloud-models"
 
+[dependencies.audiocloud-rust-clients]
+path = "../../clients/audiocloud-rust-clients"
+
 [dev-dependencies]
 trim-margin = "0.1.0"

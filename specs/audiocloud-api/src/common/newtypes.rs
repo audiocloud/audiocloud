@@ -26,10 +26,6 @@ pub struct FixedInstanceId {
 }
 
 impl FixedInstanceId {
-    pub fn driver_command_subject(&self) -> String {
-        format!("ac.inst.{}.{}.{}.cmds", &self.manufacturer, &self.name, &self.instance)
-    }
-
     pub fn driver_event_subject(&self) -> String {
         format!("ac.inst.{}.{}.{}.evts", &self.manufacturer, &self.name, &self.instance)
     }

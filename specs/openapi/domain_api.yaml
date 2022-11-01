@@ -56,7 +56,7 @@ paths:
           description: Not found
       tags:
         - registration
-  /v1/instances/{manufacturer}/{name}/{instance}/register:
+  /v1/drivers/{driver_id}/register:
     post:
       deprecated: false
       description: |
@@ -69,24 +69,10 @@ paths:
         - deprecated: false
           description: The manufacturer of the driver
           in: path
-          name: manufacturer
+          name: driver_id
           required: true
           schema:
-            type: String
-        - deprecated: false
-          description: The name of the driver
-          in: path
-          name: name
-          required: true
-          schema:
-            type: String
-        - deprecated: false
-          description: The instance of the driver
-          in: path
-          name: instance
-          required: true
-          schema:
-            type: String
+            $ref: '#/components/schemas/InstanceDriverId'
       requestBody:
         content:
           application/json:

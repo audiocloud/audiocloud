@@ -80,14 +80,13 @@ paths:
       summary: Set parameters
       tags:
         - instance
-  /v1/instances/{manufacturer}/{name}/{instance}/command:
-    post:
+  /v1/instances/{manufacturer}/{name}/{instance}/play_state:
+    put:
       deprecated: false
       description: |
-        Set desired play state
+        Set the desired play state.
 
-        If the instance has media capabilities, set an instance's desired play state.
-      operationId: accept_command
+        Update desired play state of the instance.
       parameters:
         - deprecated: false
           description: Model manufacturer
@@ -114,14 +113,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InstanceDriverCommand'
+              $ref: '#/components/schemas/DesiredInstancePlayState'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InstanceCommandAccepted'
+                $ref: '#/components/schemas/InstanceParametersUpdated'
           description: Success
         '404':
           content:
@@ -129,7 +128,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceDriverError'
           description: Not found
-      summary: Set desired play state
+      summary: Set parameters
       tags:
         - instance
 servers:

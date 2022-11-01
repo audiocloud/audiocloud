@@ -3,10 +3,10 @@ use serde::de::DeserializeOwned;
 
 use audiocloud_api::audio_engine::EngineError;
 use audiocloud_api::instance_driver::{
-    InstanceCommandAccepted, InstanceDriverCommand, InstanceDriverError, InstanceParametersUpdated, InstanceWithStatusList,
+    DesiredInstancePlayStateUpdated, InstanceDriverCommand, InstanceDriverError, InstanceParametersUpdated, InstanceWithStatusList,
     SetInstanceParameters,
 };
-use audiocloud_api::FixedInstanceId;
+use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId};
 
 use crate::create_client;
 
@@ -39,18 +39,21 @@ impl InstanceDriverClient {
                                    name = &instance_id.name,
                                    instance = &instance_id.instance))?;
 
-        let response = self.client.put(url).json(params).send().await.map_err(Self::rpc_err)?;
+        let response = self.client.patch(url).json(params).send().await.map_err(Self::rpc_err)?;
 
         Self::respond(response).await
     }
 
-    pub async fn send_command(&self, instance_id: &FixedInstanceId, cmd: &InstanceDriverCommand) -> Result<InstanceCommandAccepted> {
-        let url = self.url(format!("/v1/instances/{manufacturer}/{name}/{instance}/command",
+    pub async fn set_desired_play_state(&self,
+                                        instance_id: &FixedInstanceId,
+                                        state: &DesiredInstancePlayState)
+                                        -> Result<DesiredInstancePlayStateUpdated> {
+        let url = self.url(format!("/v1/instances/{manufacturer}/{name}/{instance}/play_state",
                                    manufacturer = &instance_id.manufacturer,
                                    name = &instance_id.name,
                                    instance = &instance_id.instance))?;
 
-        let response = self.client.post(url).json(cmd).send().await.map_err(Self::rpc_err)?;
+        let response = self.client.put(url).json(state).send().await.map_err(Self::rpc_err)?;
 
         Self::respond(response).await
     }

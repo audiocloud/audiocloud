@@ -1,9 +1,8 @@
+use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::os::unix::prelude::*;
 use std::time::Duration;
-
-use actix::{Actor, Context, Handler, Recipient};
 
 use nix::{ioctl_none, ioctl_write_ptr};
 use serde::{Deserialize, Serialize};
@@ -13,14 +12,12 @@ use audiocloud_api::common::time::{now, Timestamp};
 use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverError};
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_api::{toggle_off, toggle_value, Stereo, ToggleOr};
-use audiocloud_models::distopik::{
-    Dual1084Parameters, Dual1084Preset, HIGH_FREQ_VALUES, HIGH_GAIN_VALUES, HIGH_MID_FREQ_VALUES, HIGH_MID_GAIN_VALUES,
-    HIGH_PASS_FILTER_VALUES, INPUT_GAIN_VALUES, LOW_FREQ_VALUES, LOW_GAIN_VALUES, LOW_MID_FREQ_VALUES, LOW_MID_GAIN_VALUES,
-    OUTPUT_PAD_VALUES,
-};
+use audiocloud_models::distopik::dual1084::*;
+use audiocloud_models::distopik::{Dual1084Parameters, Dual1084Preset, Dual1084Reports};
 
+use crate::driver::Driver;
+use crate::driver::Result;
 use crate::utils::*;
-use crate::{Command, InstanceConfig};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Config {
@@ -32,17 +29,23 @@ impl Config {
     fn default_device() -> String {
         "/dev/PIVO".to_string()
     }
+
+    pub fn from_json(json: serde_json::Value) -> Result<Self> {
+        if json.is_object() {
+            serde_json::from_value(json).map_err(|error| InstanceDriverError::ConfigMalformed { error: error.to_string() })
+        } else {
+            Ok(Self { device: Self::default_device(), })
+        }
+    }
+
+    pub fn driver(self, id: &FixedInstanceId) -> Result<impl Driver> {
+        Dual1084::new(id.clone(), self)
+    }
 }
 
 const RECV_TIMEOUT: Duration = Duration::from_millis(10);
 
-impl InstanceConfig for Config {
-    fn create(self, id: FixedInstanceId) -> anyhow::Result<Recipient<Command>> {
-        Ok(Dual1084::new(id, self)?.start().recipient())
-    }
-}
-
-struct Dual1084 {
+pub struct Dual1084 {
     id:               FixedInstanceId,
     config:           Config,
     last_update:      Timestamp,
@@ -138,9 +141,14 @@ impl UnirelRegion {
 }
 
 impl Dual1084 {
-    pub fn new(id: FixedInstanceId, config: Config) -> anyhow::Result<Self> {
-        info!("👋 Summatra Nuclear instance_driver");
-        let raw_fd = File::options().read(true).write(true).open("/dev/PIVO")?.into_raw_fd();
+    pub fn new(id: FixedInstanceId, config: Config) -> Result<Self> {
+        info!(device = &config.device, "👋 Summatra Nuclear instance_driver");
+        let raw_fd = File::options().read(true)
+                                    .write(true)
+                                    .open(&config.device)
+                                    .map_err(|error| InstanceDriverError::IOError { error: error.to_string() })?
+                                    .into_raw_fd();
+
         let values = Dual1084Preset { low_gain:         Stereo::both(0.0),
                                       eql_toggle:       Stereo::both(false),
                                       high_freq:        Stereo::both(toggle_off()),
@@ -328,103 +336,83 @@ impl Dual1084 {
     }
 }
 
-impl Actor for Dual1084 {
-    type Context = Context<Self>;
-}
+impl Driver for Dual1084 {
+    type Params = Dual1084Parameters;
+    type Reports = Dual1084Reports;
 
-impl Handler<Command> for Dual1084 {
-    type Result = Result<(), InstanceDriverError>;
-
-    fn handle(&mut self, msg: Command, _ctx: &mut Self::Context) -> Self::Result {
-        info!("in da loop");
-        match msg.command {
-            InstanceDriverCommand::CheckConnection => Ok(()),
-            InstanceDriverCommand::Stop
-            | InstanceDriverCommand::Play { .. }
-            | InstanceDriverCommand::Render { .. }
-            | InstanceDriverCommand::Rewind { .. } => Err(InstanceDriverError::MediaNotPresent),
-            InstanceDriverCommand::SetParameters(params) => {
-                let mut params = serde_json::from_value::<Dual1084Parameters>(params).map_err(|err| {
-                                                                                         InstanceDriverError::ParameterDoesNotExist {
-                            error: err.to_string(),
-                        }
-                                                                                     })?;
-
-                if let Some(Stereo { left, right }) = params.input_gain.take() {
-                    self.set_input_gain(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.high_pass_filter.take() {
-                    self.set_high_pass_filter(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.low_gain.take() {
-                    self.set_low_gain(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.low_freq.take() {
-                    self.set_low_freq(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.low_mid_gain.take() {
-                    self.set_low_mid_gain(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.low_mid_freq.take() {
-                    self.set_low_mid_freq(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.low_mid_width.take() {
-                    self.set_low_mid_width(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.high_mid_gain.take() {
-                    self.set_high_mid_gain(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.high_mid_freq.take() {
-                    self.set_high_mid_freq(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.high_mid_width.take() {
-                    self.set_high_mid_width(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.high_gain.take() {
-                    self.set_high_gain(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.high_freq.take() {
-                    self.set_high_freq(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.output_pad.take() {
-                    self.set_output_pad(left, right);
-                }
-                if let Some(Stereo { left, right }) = params.eql_toggle {
-                    self.set_eql_toggle(left, right);
-                }
-
-                // TODO: implement
-                // self.write_io_expanders();
-                Dual1084::set_io_expanders(&self);
-
-                // self.issue_system_async(self.values.clone());
-
-                Ok(())
-            }
-            InstanceDriverCommand::SetPowerChannel { .. } => Ok(()),
+    fn on_parameters_changed(&mut self, mut params: Self::Params) -> Result {
+        if let Some(Stereo { left, right }) = params.input_gain.take() {
+            self.set_input_gain(left, right);
         }
+        if let Some(Stereo { left, right }) = params.high_pass_filter.take() {
+            self.set_high_pass_filter(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.low_gain.take() {
+            self.set_low_gain(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.low_freq.take() {
+            self.set_low_freq(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.low_mid_gain.take() {
+            self.set_low_mid_gain(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.low_mid_freq.take() {
+            self.set_low_mid_freq(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.low_mid_width.take() {
+            self.set_low_mid_width(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.high_mid_gain.take() {
+            self.set_high_mid_gain(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.high_mid_freq.take() {
+            self.set_high_mid_freq(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.high_mid_width.take() {
+            self.set_high_mid_width(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.high_gain.take() {
+            self.set_high_gain(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.high_freq.take() {
+            self.set_high_freq(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.output_pad.take() {
+            self.set_output_pad(left, right);
+        }
+        if let Some(Stereo { left, right }) = params.eql_toggle {
+            self.set_eql_toggle(left, right);
+        }
+
+        // TODO: implement
+        // self.write_io_expanders();
+        Dual1084::set_io_expanders(&self);
+
+        // self.issue_system_async(self.values.clone());
+
+        Ok(())
     }
 }
 
 impl Dual1084 {
     pub fn set_io_expanders(&self) {
         let mut spi_data: [u32; 9] = [0; 9];
-        const io_boards: [u16; 4] = [3, 1, 5, 7];
-        const io_output_address: [u16; 5] = [0x4000, 0x4200, 0x4400, 0x4600, 0x4800];
+        const IO_BOARDS: [u16; 4] = [3, 1, 5, 7];
+        const IO_OUTPUT_ADDRESS: [u16; 5] = [0x4000, 0x4200, 0x4400, 0x4600, 0x4800];
 
         for j in 0..5 {
             //spi_data = [0; 9];
             for i in 0..4 {
-                if self.io_exp_data[io_boards[i] as usize][0] == 1 {
-                    if j < 5 && (io_boards[i] != 7) {
-                        spi_data[io_boards[i] as usize] =
-                            ((io_output_address[j] as u32 | 0x12) << 16) | swap_u16(self.io_exp_data[io_boards[i] as usize][j + 1]) as u32;
-                        spi_data[8] |= 1 << io_boards[i];
+                if self.io_exp_data[IO_BOARDS[i] as usize][0] == 1 {
+                    if j < 5 && (IO_BOARDS[i] != 7) {
+                        spi_data[IO_BOARDS[i] as usize] =
+                            ((IO_OUTPUT_ADDRESS[j] as u32 | 0x12) << 16) | swap_u16(self.io_exp_data[IO_BOARDS[i] as usize][j + 1]) as u32;
+                        spi_data[8] |= 1 << IO_BOARDS[i];
                     }
-                    if j == 0 && (io_boards[i] == 7) {
-                        spi_data[io_boards[i] as usize] =
-                            ((io_output_address[j] as u32 | 0x9) << 16) | self.io_exp_data[io_boards[i] as usize][j + 1] as u32;
-                        spi_data[8] |= 1 << io_boards[i];
+                    if j == 0 && (IO_BOARDS[i] == 7) {
+                        spi_data[IO_BOARDS[i] as usize] =
+                            ((IO_OUTPUT_ADDRESS[j] as u32 | 0x9) << 16) | self.io_exp_data[IO_BOARDS[i] as usize][j + 1] as u32;
+                        spi_data[8] |= 1 << IO_BOARDS[i];
                         //info!("uint8_t: {:#?}", );
                     }
                 }

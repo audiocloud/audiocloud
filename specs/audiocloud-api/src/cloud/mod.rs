@@ -176,7 +176,7 @@ pub fn schemas() -> RootSchema {
                    schema_for!(domains::ClearMaintenance),
                    schema_for!(domains::Maintenance),
                    schema_for!(domains::AppFixedInstance),
-                   schema_for!(domains::InstanceDriverConfig),
+                   schema_for!(domains::FixedInstanceConfig),
                    schema_for!(domains::DynamicInstanceLimits),
                    schema_for!(domains::EngineConfig),
                    schema_for!(media::DownloadCreated),

@@ -568,6 +568,7 @@ dependencies = [
  "anyhow",
  "audiocloud-api",
  "audiocloud-models",
+ "audiocloud-rust-clients",
  "byteorder",
  "chrono",
  "clap 3.2.23",
