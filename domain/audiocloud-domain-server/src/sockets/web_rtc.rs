@@ -4,8 +4,8 @@ use std::time::Duration;
 use actix::{Actor, ActorContext, Addr, AsyncContext, Context, ContextFutureSpawner, Handler, Message, WrapFuture};
 use clap::Args;
 use datachannel::{
-    ConnectionState, DataChannelHandler, DataChannelInit, GatheringState, IceCandidate, PeerConnectionHandler, Reliability, RtcConfig,
-    RtcDataChannel, RtcPeerConnection, SessionDescription,
+    ConnectionState, DataChannelHandler, DataChannelInfo, DataChannelInit, GatheringState, IceCandidate, PeerConnectionHandler,
+    Reliability, RtcConfig, RtcDataChannel, RtcPeerConnection, SessionDescription,
 };
 use futures::FutureExt;
 use tracing::*;
@@ -51,7 +51,7 @@ struct ActorConnectionHandler {
 impl PeerConnectionHandler for ActorConnectionHandler {
     type DCH = ActorDataChannelHandler;
 
-    fn data_channel_handler(&mut self) -> Self::DCH {
+    fn data_channel_handler(&mut self, info: DataChannelInfo) -> Self::DCH {
         ActorDataChannelHandler { actor: self.actor.clone() }
     }
 

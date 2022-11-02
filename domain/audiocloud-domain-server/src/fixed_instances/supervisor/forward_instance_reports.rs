@@ -3,6 +3,7 @@
  */
 
 use actix::{ContextFutureSpawner, Handler, WrapFuture};
+use futures::FutureExt;
 
 use crate::fixed_instances::{FixedInstancesSupervisor, NotifyFixedInstanceReports};
 
@@ -12,7 +13,7 @@ impl Handler<NotifyFixedInstanceReports> for FixedInstancesSupervisor {
     fn handle(&mut self, msg: NotifyFixedInstanceReports, ctx: &mut Self::Context) -> Self::Result {
         for instance in self.instances.values() {
             if let Some(power_config) = instance.config.power.as_ref() {
-                if &power_config.power_instance_id == &msg.instance_id {
+                if &power_config.instance == &msg.instance_id {
                     instance.address.send(msg.clone()).map(drop).into_actor(self).spawn(ctx);
                 }
             }

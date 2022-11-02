@@ -16,10 +16,6 @@ impl Handler<NotifyInstanceDriverUrl> for FixedInstanceActor {
 
         if &self.id == &instance_id {
             self.instance_client.set_url(new_base_url);
-        } else if let Some(power) = self.power.as_ref() {
-            if power.power_instance_id() == &instance_id {
-                self.power_client.set_url(new_base_url);
-            }
         }
     }
 }

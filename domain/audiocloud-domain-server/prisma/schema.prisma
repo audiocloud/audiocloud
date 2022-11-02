@@ -1,0 +1,63 @@
+datasource db {
+    provider = "sqlite"
+    url      = "file://domain.sqlite"
+}
+
+generator client {
+    provider = "cargo run --bin prisma"
+    output   = "../src/db/prisma.rs"
+}
+
+model Model {
+    id            String          @id
+    spec          String
+    FixedInstance FixedInstance[]
+}
+
+model FixedInstance {
+    id        String  @id
+    model_id  String
+    driver_id String?
+    engine_id String?
+    config    String
+
+    model  Model                @relation(fields: [model_id], references: [id], onDelete: Cascade)
+    driver FixedInstanceDriver? @relation(fields: [driver_id], references: [id], onDelete: SetNull)
+    engine Engine?              @relation(fields: [engine_id], references: [id], onDelete: SetNull)
+}
+
+model FixedInstanceDriver {
+    id            String          @id
+    url           String
+    last_seen     DateTime?
+    config        String
+    FixedInstance FixedInstance[]
+}
+
+model Engine {
+    id            String          @id
+    url           String
+    last_seen     DateTime?
+    config        String
+    FixedInstance FixedInstance[]
+    Task          Task[]
+}
+
+model MediaFile {
+    id                   String    @id
+    path                 String?
+    metadata             String?
+    last_used            DateTime?
+    upload_in_progress   Boolean   @default(false)
+    download_in_progress Boolean   @default(false)
+    upload_state         String?
+    download_state       String?
+}
+
+model Task {
+    id        String  @id
+    engine_id String?
+    spec      String
+
+    engine Engine? @relation(fields: [engine_id], references: [id], onDelete: SetNull)
+}

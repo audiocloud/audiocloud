@@ -13,7 +13,7 @@ impl Handler<NotifyFixedInstanceReports> for FixedInstanceActor {
     fn handle(&mut self, msg: NotifyFixedInstanceReports, ctx: &mut Self::Context) -> Self::Result {
         if let Some(power) = &mut self.power {
             if power.power_instance_id() == &msg.instance_id {
-                power.on_instance_power_channels_changed()
+                power.on_instance_power_channels_changed(msg);
             }
         }
     }

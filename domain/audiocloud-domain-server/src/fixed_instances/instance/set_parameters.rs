@@ -6,9 +6,10 @@ use actix::Handler;
 
 use crate::fixed_instances::instance::FixedInstanceActor;
 use crate::fixed_instances::MergeInstanceParameters;
+use crate::DomainResult;
 
 impl Handler<MergeInstanceParameters> for FixedInstanceActor {
-    type Result = ();
+    type Result = DomainResult;
 
     fn handle(&mut self, msg: MergeInstanceParameters, ctx: &mut Self::Context) -> Self::Result {
         let params = self.parameters.get_mut();
@@ -27,5 +28,7 @@ impl Handler<MergeInstanceParameters> for FixedInstanceActor {
         if modified {
             self.parameters.mark_modified();
         }
+
+        Ok(())
     }
 }

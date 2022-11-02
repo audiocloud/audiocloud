@@ -37,9 +37,18 @@ sentry-tracing = "0.27"
 opentelemetry-prometheus = "0.11"
 prometheus = "0.13"
 tracing-loki = "0.2"
-rbs = "0.1"
-rbatis = "4"
-rbdc-sqlite = "0.1"
+
+[dependencies.prisma-client-rust-cli]
+git = "https://github.com/Brendonovich/prisma-client-rust"
+tag = "0.6.3"
+default-features = false
+features = ["sqlite"]
+
+[dependencies.prisma-client-rust]
+git = "https://github.com/Brendonovich/prisma-client-rust"
+tag = "0.6.3"
+default-features = false
+features = ["sqlite"]
 
 [dependencies.sentry]
 version = "0.27"
