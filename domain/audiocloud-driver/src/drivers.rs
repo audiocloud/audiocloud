@@ -28,7 +28,7 @@ struct InstanceController {
 
 impl Instances {
     pub fn new(config: InstanceDriverConfig) -> Result<Self> {
-        let mut drivers = DashMap::new();
+        let drivers = DashMap::new();
 
         for (id, config) in config.instances {
             drivers.insert(id,

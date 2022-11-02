@@ -1,10 +1,10 @@
 use reqwest::{Client, Response, Url};
 use serde::de::DeserializeOwned;
 
-use audiocloud_api::cloud::domains::{EngineConfig, FixedInstanceConfig, InstanceDriverConfig};
+use audiocloud_api::cloud::domains::{EngineConfig, InstanceDriverConfig};
 use audiocloud_api::domain::DomainError;
-use audiocloud_api::instance_driver::InstanceDriverError;
-use audiocloud_api::{EngineId, FixedInstanceId, InstanceDriverId};
+
+use audiocloud_api::{EngineId, InstanceDriverId};
 
 use crate::create_client;
 

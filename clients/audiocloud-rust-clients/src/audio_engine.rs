@@ -1,4 +1,4 @@
-use reqwest::{Client, ClientBuilder, Response, Url};
+use reqwest::{Client, Response, Url};
 use serde::de::DeserializeOwned;
 
 use audiocloud_api::audio_engine::{

@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use actix::{spawn, AsyncContext, Recipient};
+use actix::{spawn, AsyncContext};
 use futures::TryFutureExt;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};

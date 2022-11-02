@@ -1,6 +1,6 @@
 //! The API to the audio engine (from the domain side)
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 
 use schemars::schema::RootSchema;
 use schemars::{schema_for, JsonSchema};

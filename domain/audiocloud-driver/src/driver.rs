@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use futures::future::Shared;
 use futures::FutureExt;
-use nix::libc::send;
+
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::spawn;
@@ -14,16 +14,16 @@ use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use tokio::sync::oneshot::{Receiver as OneShotReceiver, Sender as OneShotSender};
 use tokio::time::error::Elapsed;
-use tokio::time::{timeout, Timeout};
+use tokio::time::{timeout};
 use tracing::*;
 
 use audiocloud_api::instance_driver::{
-    DesiredInstancePlayStateUpdated, InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent, InstanceParametersUpdated,
+    DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceParametersUpdated,
 };
 use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstancePlayState, PlayId, RenderId};
 
 use crate::nats;
-use crate::nats::get_nats;
+
 
 pub type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 
@@ -143,7 +143,7 @@ impl<T> DriverRunner<T> where T: Driver + Send
                     DesiredInstancePlayState::Rendering{render_id, length} => {
                         self.driver.render(render_id, length)
                     },
-                    DesiredInstancePlayState::Stopped {position} => {
+                    DesiredInstancePlayState::Stopped {position: _} => {
                         self.driver.stop()
                     },
                 };

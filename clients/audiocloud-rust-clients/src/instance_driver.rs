@@ -1,9 +1,9 @@
 use reqwest::{Client, Response, Url};
 use serde::de::DeserializeOwned;
 
-use audiocloud_api::audio_engine::EngineError;
+
 use audiocloud_api::instance_driver::{
-    DesiredInstancePlayStateUpdated, InstanceDriverCommand, InstanceDriverError, InstanceParametersUpdated, InstanceWithStatusList,
+    DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceParametersUpdated, InstanceWithStatusList,
     SetInstanceParameters,
 };
 use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId};
