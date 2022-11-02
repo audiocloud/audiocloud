@@ -1,13 +1,22 @@
 use std::collections::{HashMap, HashSet};
 
 use actix::Message;
+use reqwest::Url;
 
 use audiocloud_api::common::instance::{DesiredInstancePlayState, ReportInstancePlayState, ReportInstancePowerState};
 use audiocloud_api::common::newtypes::FixedInstanceId;
 use audiocloud_api::common::task::{InstanceParameters, InstanceReports};
 use audiocloud_api::common::time::Timestamped;
+use audiocloud_api::{ModelValue, ParameterId};
 
 use crate::DomainResult;
+
+#[derive(Message, Clone, Debug)]
+#[rtype(result = "()")]
+pub struct NotifyInstanceDriverUrl {
+    pub instance_id: FixedInstanceId,
+    pub base_url:    Option<Url>,
+}
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "DomainResult<()>")]
@@ -18,10 +27,11 @@ pub struct SetInstanceParameters {
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "DomainResult<()>")]
-pub struct SetDesiredPowerChannel {
+pub struct MergeInstanceParameters {
     pub instance_id: FixedInstanceId,
+    pub parameter:   ParameterId,
+    pub value:       ModelValue,
     pub channel:     usize,
-    pub power:       bool,
 }
 
 #[derive(Message, Clone, Debug)]
@@ -42,13 +52,6 @@ pub struct GetMultipleFixedInstanceState {
 pub struct NotifyFixedInstanceReports {
     pub instance_id: FixedInstanceId,
     pub reports:     InstanceReports,
-}
-
-#[derive(Message, Clone, Debug)]
-#[rtype(result = "()")]
-pub struct NotifyInstancePowerChannelsChanged {
-    pub instance_id: FixedInstanceId,
-    pub power:       Vec<bool>,
 }
 
 #[derive(Message, Clone, Debug)]

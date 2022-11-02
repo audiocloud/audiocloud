@@ -1,7 +1,5 @@
 use std::future::Future;
-use std::process::Output;
 
-use anyhow::anyhow;
 use dashmap::DashMap;
 use serde_json::Map;
 use tracing::*;
@@ -10,11 +8,9 @@ use audiocloud_api::cloud::domains::{FixedInstanceConfig, InstanceDriverConfig};
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceParametersUpdated, InstanceWithStatus, InstanceWithStatusList,
 };
-use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstancePlayState, PlayId, Timestamped};
+use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstancePlayState, Timestamped};
 
-use crate::distopik::dual_1084;
 use crate::driver::{DriverHandle, DriverRunner};
-use crate::{distopik, netio};
 
 type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 
@@ -118,12 +114,10 @@ pub fn create_driver(id: &FixedInstanceId, config: &FixedInstanceConfig) -> Resu
     let json = config.additional.clone();
     match (id.manufacturer.as_str(), id.name.as_str()) {
         (m::distopik::NAME, m::distopik::dual1084::NAME) => {
-            let driver = dual_1084::Config::from_json(json)?.driver(id)?;
-            Ok(DriverRunner::run(id.clone(), driver))
+            Ok(DriverRunner::run(id.clone(), crate::distopik::dual_1084::Config::from_json(json)?.driver(id)?))
         }
         (m::netio::NAME, m::netio::power_pdu_4c::NAME) => {
-            let driver = netio::power_pdu_4c::Config::from_json(json)?.driver(id)?;
-            Ok(DriverRunner::run(id.clone(), driver))
+            Ok(DriverRunner::run(id.clone(), crate::netio::power_pdu_4c::Config::from_json(json)?.driver(id)?))
         }
         (manufacturer, name) => Err(InstanceDriverError::DriverNotSupported { manufacturer: manufacturer.to_owned(),
                                                                               name:         name.to_owned(), }),

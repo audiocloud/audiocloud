@@ -33,11 +33,11 @@ impl TaskEngine {
     }
 
     pub fn get_actual_play_state(&self) -> &TaskPlayState {
-        self.actual_play_state.value()
+        self.actual_play_state.get_ref()
     }
 
     pub fn set_desired_state(&mut self, desired: DesiredTaskPlayState) -> u64 {
-        if self.desired_play_state.value() != &desired {
+        if self.desired_play_state.get_ref() != &desired {
             self.desired_play_state = Timestamped::new(desired);
             self.tracker.reset();
             self.version + 1
@@ -55,9 +55,9 @@ impl TaskEngine {
     }
 
     pub fn update(&mut self) -> Option<EngineCommand> {
-        if self.actual_play_state.value().satisfies(self.desired_play_state.value()) {
+        if self.actual_play_state.get_ref().satisfies(self.desired_play_state.get_ref()) {
             if self.tracker.should_retry() {
-                let engine_cmd = match (self.desired_play_state.value(), self.actual_play_state.value()) {
+                let engine_cmd = match (self.desired_play_state.get_ref(), self.actual_play_state.get_ref()) {
                     (_, TaskPlayState::Playing(play)) => Some(EngineCommand::StopPlay { task_id: self.id.clone(),
                                                                                         play_id: play.play_id, }),
                     (_, TaskPlayState::Rendering(render)) => Some(EngineCommand::CancelRender { task_id:   self.id.clone(),
@@ -94,7 +94,7 @@ impl TaskEngine {
     }
 
     pub fn set_actual_playing(&mut self, play_id: PlayId) {
-        if let DesiredTaskPlayState::Play(play) = self.desired_play_state.value() {
+        if let DesiredTaskPlayState::Play(play) = self.desired_play_state.get_ref() {
             if &play.play_id == &play_id {
                 self.set_actual_state(TaskPlayState::Playing(play.clone()));
             }
@@ -102,7 +102,7 @@ impl TaskEngine {
     }
 
     pub fn set_actual_rendering(&mut self, render_id: RenderId) {
-        if let DesiredTaskPlayState::Render(render) = self.desired_play_state.value() {
+        if let DesiredTaskPlayState::Render(render) = self.desired_play_state.get_ref() {
             if &render.render_id == &render_id {
                 self.set_actual_state(TaskPlayState::Rendering(render.clone()));
             }
@@ -110,6 +110,6 @@ impl TaskEngine {
     }
 
     pub fn should_be_playing(&self, play_id: &PlayId) -> bool {
-        matches!(self.desired_play_state.value(), DesiredTaskPlayState::Play(play) if &play.play_id == play_id)
+        matches!(self.desired_play_state.get_ref(), DesiredTaskPlayState::Play(play) if &play.play_id == play_id)
     }
 }

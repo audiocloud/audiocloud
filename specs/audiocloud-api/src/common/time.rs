@@ -63,7 +63,7 @@ impl<T> From<T> for Timestamped<T> {
 
 impl<T> Timestamped<Option<T>> {
     pub fn exists(&self) -> bool {
-        self.value().is_some()
+        self.get_ref().is_some()
     }
 }
 
@@ -76,8 +76,12 @@ impl<T> Timestamped<T> {
         Utc::now() - self.0
     }
 
-    pub fn value(&self) -> &T {
+    pub fn get_ref(&self) -> &T {
         &self.1
+    }
+
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.1
     }
 
     pub fn reset_to_now(&mut self) {

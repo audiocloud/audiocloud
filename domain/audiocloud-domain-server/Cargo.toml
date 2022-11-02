@@ -61,9 +61,9 @@ version = "0.11"
 features = ["metrics", "http-proto", "reqwest-client"]
 
 [dependencies.datachannel]
-version = "0.7"
+version = "0.8"
 default_features = false
-features = ["tracing", "static"]
+features = ["tracing", "vendored"]
 
 [dependencies.uuid]
 version = "1"
@@ -91,8 +91,8 @@ features = ["stream", "brotli", "gzip", "multipart", "json"]
 
 [dependencies.rdkafka]
 optional = true
-version = "0.28.0"
-features = ["ssl-vendored", "cmake-build", "sasl"]
+version = "0.29.0"
+features = ["ssl-vendored", "cmake-build", "sasl", "tracing"]
 
 [dependencies.sasl2-sys]
 optional = true
@@ -112,6 +112,9 @@ path = "../../specs/audiocloud-api"
 
 [dependencies.audiocloud-models]
 path = "../../specs/audiocloud-models"
+
+[dependencies.audiocloud-rust-clients]
+path = "../../clients/audiocloud-rust-clients"
 
 [dev-dependencies]
 tempfile = "3.3.0"

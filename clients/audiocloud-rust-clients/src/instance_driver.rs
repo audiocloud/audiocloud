@@ -15,14 +15,23 @@ type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 #[derive(Clone)]
 pub struct InstanceDriverClient {
     client:   Client,
-    base_url: Url,
+    base_url: Option<Url>,
 }
 
 impl InstanceDriverClient {
-    pub fn new(base_url: Url) -> Result<Self> {
+    pub fn new(base_url: impl Into<Option<Url>>) -> Result<Self> {
         let client = create_client().map_err(Self::rpc_err)?;
 
-        Ok(Self { base_url, client })
+        Ok(Self { base_url: { base_url.into() },
+                  client:   { client }, })
+    }
+
+    pub fn set_url(&mut self, base_url: impl Into<Option<Url>>) {
+        self.base_url = base_url.into();
+    }
+
+    pub fn is_url_set(&self) -> bool {
+        self.base_url.is_some()
     }
 
     pub async fn get_instances(&self) -> Result<InstanceWithStatusList> {
@@ -69,9 +78,10 @@ impl InstanceDriverClient {
     }
 
     fn url(&self, path: impl AsRef<str>) -> Result<Url> {
-        let url = self.base_url.join(path.as_ref()).map_err(Self::rpc_err)?;
-
-        Ok(url)
+        match self.base_url.as_ref() {
+            Some(base_url) => base_url.join(path.as_ref()).map_err(Self::rpc_err),
+            None => Err(InstanceDriverError::RPC { error: format!("No base URL has been set on this client"), }),
+        }
     }
 
     async fn respond<T: DeserializeOwned>(response: Response) -> Result<T> {

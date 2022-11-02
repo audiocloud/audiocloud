@@ -40,7 +40,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.clap]
-version = "3"
+version = "4"
 features = ["derive", "env"]
 
 [dependencies.openssl]

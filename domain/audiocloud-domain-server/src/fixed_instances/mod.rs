@@ -10,9 +10,7 @@ pub use supervisor::FixedInstancesSupervisor;
 use crate::db::Db;
 
 mod instance;
-mod media;
 mod messages;
-mod power;
 mod supervisor;
 mod values;
 
@@ -29,4 +27,9 @@ pub async fn init(cfg: &DomainConfig, db: Db) -> anyhow::Result<FixedInstanceRou
                        .map_err(|_| anyhow!("INSTANCE_SUPERVISOR already initialized"))?;
 
     Ok(routing)
+}
+
+#[derive(Clone)]
+pub struct Instances {
+    supervisor: Addr<FixedInstancesSupervisor>,
 }
