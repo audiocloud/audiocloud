@@ -1,6 +1,6 @@
 {
   "name": "@audiocloud/domain-client",
-  "version": "2.0.28",
+  "version": "2.0.29",
   "description": "AudioCloud Domain Client",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
