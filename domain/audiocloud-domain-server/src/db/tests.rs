@@ -1,6 +1,6 @@
-use std::env;
 
-use maplit::{hashmap, hashset};
+
+use maplit::{hashset};
 use nanoid::nanoid;
 use serde_json::json;
 

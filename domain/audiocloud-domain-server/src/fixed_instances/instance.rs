@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use actix::{Actor, ActorFutureExt, AsyncContext, Context, ContextFutureSpawner, Handler, StreamHandler, WrapFuture, WrapStream};
+use actix::{Actor, ActorFutureExt, AsyncContext, Context, ContextFutureSpawner, StreamHandler, WrapFuture, WrapStream};
 use actix_broker::BrokerIssue;
 use futures::task::SpawnExt;
 use futures::FutureExt;
@@ -15,22 +15,20 @@ use tracing::*;
 
 use audiocloud_api::cloud::domains::FixedInstanceConfig;
 use audiocloud_api::domain::DomainError;
-use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent};
+use audiocloud_api::instance_driver::{InstanceDriverEvent};
 use audiocloud_api::{
-    DesiredInstancePlayState, FixedInstanceId, InstancePlayState, InstanceReports, Model, ModelCapability, ModelParameters, ModelValue,
-    ModelValueOption, PowerDistributorReports, Request, SerializableResult, Timestamped,
+    FixedInstanceId, InstancePlayState, InstanceReports, Model, Timestamped,
 };
 use audiocloud_rust_clients::InstanceDriverClient;
 use media::Media;
 use power::Power;
 
-use crate::fixed_instances::values::merge_values;
+
 use crate::fixed_instances::{
-    get_instance_supervisor, MergeInstanceParameters, NotifyFixedInstanceReports, NotifyInstanceState, SetInstanceDesiredPlayState,
-    SetInstanceParameters,
+    get_instance_supervisor, NotifyFixedInstanceReports, NotifyInstanceState,
 };
 use crate::remote_value::RemoteValue;
-use crate::tasks::{NotifyTaskDeleted, NotifyTaskSpec};
+use crate::tasks::{NotifyTaskSpec};
 use crate::{nats, DomainResult};
 
 mod media;

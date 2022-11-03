@@ -2,15 +2,15 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-use actix::{Actor, Context, Handler};
-use futures::executor::block_on;
+use actix::{Context, Handler};
+
 use tracing::*;
 
-use audiocloud_api::{hashmap_changes, HashMapChanges};
+
 
 use crate::config::NotifyDomainConfiguration;
-use crate::fixed_instances::instance::FixedInstanceActor;
-use crate::fixed_instances::supervisor::SupervisedInstance;
+
+
 use crate::fixed_instances::FixedInstancesSupervisor;
 
 impl Handler<NotifyDomainConfiguration> for FixedInstancesSupervisor {
@@ -23,7 +23,7 @@ impl Handler<NotifyDomainConfiguration> for FixedInstancesSupervisor {
 }
 
 impl FixedInstancesSupervisor {
-    fn apply_config(&mut self, ctx: &mut Context<Self>) {
+    fn apply_config(&mut self, _ctx: &mut Context<Self>) {
         // let existing = self.instances
         //                    .iter()
         //                    .map(|(id, instance)| (id.clone(), instance.config.clone()))

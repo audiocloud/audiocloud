@@ -51,7 +51,7 @@ struct ActorConnectionHandler {
 impl PeerConnectionHandler for ActorConnectionHandler {
     type DCH = ActorDataChannelHandler;
 
-    fn data_channel_handler(&mut self, info: DataChannelInfo) -> Self::DCH {
+    fn data_channel_handler(&mut self, _info: DataChannelInfo) -> Self::DCH {
         ActorDataChannelHandler { actor: self.actor.clone() }
     }
 

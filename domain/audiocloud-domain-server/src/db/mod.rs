@@ -4,7 +4,7 @@ use std::{
 };
 
 use clap::Args;
-use futures::lock::Mutex;
+
 use serde::{Deserialize, Serialize};
 use tempfile::NamedTempFile;
 use tracing::*;
@@ -61,7 +61,7 @@ pub async fn init(cfg: DataOpts) -> anyhow::Result<Db> {
     let database_url = &cfg.database_url;
     debug!(?database_url, "Initializing database");
 
-    let mut db = prisma::PrismaClient::_builder().with_url(database_url.to_owned()).build().await?;
+    let db = prisma::PrismaClient::_builder().with_url(database_url.to_owned()).build().await?;
 
     if cfg!(debug_assertions) {
         debug!("pushing database");

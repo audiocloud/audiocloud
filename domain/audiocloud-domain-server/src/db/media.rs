@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use anyhow::anyhow;
-use chrono::{DateTime, FixedOffset, TimeZone, Utc};
-use futures::TryFutureExt;
-use maplit::btreemap;
+use chrono::{Utc};
+
+
 use prisma_client_rust::Direction;
 use serde::{Deserialize, Serialize};
 
-use audiocloud_api::{now, AppMediaObjectId, MediaDownload, MediaMetadata, MediaObject, MediaUpload, Timestamp};
+use audiocloud_api::{AppMediaObjectId, MediaDownload, MediaMetadata, MediaObject, MediaUpload};
 
 use crate::db::{prisma, Db};
 use crate::media::{DownloadJobId, UploadJobId};
@@ -115,7 +115,7 @@ impl Db {
                .ok_or_else(|| anyhow!("Failed to create media object"))?)
     }
 
-    pub async fn update_media(&self, media: MediaObject) -> anyhow::Result<()> {
+    pub async fn update_media(&self, _media: MediaObject) -> anyhow::Result<()> {
         todo!()
     }
 

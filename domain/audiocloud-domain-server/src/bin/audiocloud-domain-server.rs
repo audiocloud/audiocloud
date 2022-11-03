@@ -2,7 +2,7 @@ use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use tracing::*;
-use tracing_log::LogTracer;
+
 
 use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, o11y, rest_api, sockets, tasks};
 
