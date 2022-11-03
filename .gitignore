@@ -458,7 +458,7 @@ $RECYCLE.BIN/
 # Added by cargo
 
 /target
-/domain.sqlite
+/domain.sqlite*
 fleet.toml
 .idea/dataSources.xml
 /domain/surreal-tests
