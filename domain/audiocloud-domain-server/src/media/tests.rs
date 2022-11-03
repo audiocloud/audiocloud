@@ -22,7 +22,7 @@ use crate::media::download::Downloader;
 use crate::media::upload::Uploader;
 use crate::media::{DownloadJobId, UploadJobId};
 
-#[actix::test]
+/*#[actix::test]
 async fn test_download_success() -> anyhow::Result<()> {
     let db = db::init(DataOpts::temporary()).await?;
 
@@ -63,7 +63,7 @@ async fn test_download_success() -> anyhow::Result<()> {
     // TODO: validate file
 
     Ok(())
-}
+}*/
 
 #[actix::test]
 async fn test_upload_success() -> anyhow::Result<()> {
