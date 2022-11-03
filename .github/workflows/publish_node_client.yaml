@@ -1,11 +1,11 @@
-name: Instance Driver Client NPM Workflow
+name: Audio Engine Client NPM Workflow
 on:
   push:
     branches: [ main ]
-    paths: [ "specs/openapi/instance_driver_api.yaml" ]
+    paths: [ "**/*.yaml" ]
   pull_request:
     branches: [ main ]
-    paths: [ "specs/openapi/instance_driver_api.yaml" ]
+    paths: [ "**/*.yaml" ]
 env:
   CARGO_TERM_COLOR: always
 jobs:
@@ -24,7 +24,7 @@ jobs:
           npm install
           npm run generate
           npm run build
-        working-directory: 'clients/instance-driver-client'
+        working-directory: 'clients/js-client'
       - name: Bump version, if this is an actual push
         if: github.event_name == 'push'
         uses: 'phips28/gh-action-bump-version@master'
@@ -32,10 +32,9 @@ jobs:
           skip-tag: 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGEJSON_DIR: clients/domain-client
+          PACKAGEJSON_DIR: clients/audio-engine-client
       - name: Publish, if this is an actual push
         if: github.event_name == 'push'
         run: npm publish --access public
-        working-directory: 'clients/instance-driver-client'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

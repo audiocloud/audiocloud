@@ -15,14 +15,15 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::audio_engine::EngineError;
+use crate::cloud::domains;
 use crate::common::change::{DesiredTaskPlayState, ModifyTaskSpec};
 use crate::common::task::TaskPermissions;
 use crate::common::task::TaskSpec;
 use crate::instance_driver::InstanceDriverError;
 use crate::newtypes::{AppTaskId, SecureKey};
 use crate::{
-    merge_schemas, AppId, AppMediaObjectId, ClientSocketId, EngineId, FixedInstanceId, InstanceEvent, ModifyTaskError, PlayId, RequestId,
-    SocketId, Task, TaskEvent, TaskId, TaskPlayStateSummary,
+    merge_schemas, AppId, AppMediaObjectId, ClientSocketId, EngineId, FixedInstanceId, InstanceDriverId, InstanceEvent, ModifyTaskError,
+    PlayId, RequestId, SocketId, Task, TaskEvent, TaskId, TaskPlayStateSummary,
 };
 
 pub mod streaming;
@@ -205,6 +206,9 @@ pub fn schemas() -> RootSchema {
                    schema_for!(TaskId),
                    schema_for!(SocketId),
                    schema_for!(RequestId),
+                   schema_for!(InstanceDriverId),
+                   schema_for!(domains::EngineConfig),
+                   schema_for!(domains::InstanceDriverConfig),
                    schema_for!(streaming::StreamStats),
                    schema_for!(streaming::DomainServerMessage),
                    schema_for!(streaming::DomainClientMessage),
