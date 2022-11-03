@@ -2,8 +2,6 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-
-
 use audiocloud_api::Timestamped;
 
 /// Value that will be pushed to a remote service.

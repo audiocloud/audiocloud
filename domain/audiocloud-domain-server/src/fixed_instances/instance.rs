@@ -15,20 +15,15 @@ use tracing::*;
 
 use audiocloud_api::cloud::domains::FixedInstanceConfig;
 use audiocloud_api::domain::DomainError;
-use audiocloud_api::instance_driver::{InstanceDriverEvent};
-use audiocloud_api::{
-    FixedInstanceId, InstancePlayState, InstanceReports, Model, Timestamped,
-};
+use audiocloud_api::instance_driver::InstanceDriverEvent;
+use audiocloud_api::{FixedInstanceId, InstancePlayState, InstanceReports, Model, Timestamped};
 use audiocloud_rust_clients::InstanceDriverClient;
 use media::Media;
 use power::Power;
 
-
-use crate::fixed_instances::{
-    get_instance_supervisor, NotifyFixedInstanceReports, NotifyInstanceState,
-};
+use crate::fixed_instances::{get_instance_supervisor, NotifyFixedInstanceReports, NotifyInstanceState};
 use crate::remote_value::RemoteValue;
-use crate::tasks::{NotifyTaskSpec};
+use crate::tasks::NotifyTaskSpec;
 use crate::{nats, DomainResult};
 
 mod media;

@@ -410,7 +410,8 @@ impl EngineProject {
 
     pub fn get_status(&self) -> anyhow::Result<EngineStatus> {
         Ok(EngineStatus { plugin_ready:         PluginRegistry::has(&self.id)?,
-                          is_transport_playing: self.reaper_play_state.get_ref().is_playing || self.reaper_play_state.get_ref().is_recording,
+                          is_transport_playing: self.reaper_play_state.get_ref().is_playing
+                                                || self.reaper_play_state.get_ref().is_recording,
                           is_playing:           if let ProjectPlayState::Playing(play) = self.play_state.get_ref() {
                               Some(play.play_id.clone())
                           } else {

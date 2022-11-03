@@ -5,8 +5,7 @@
 use actix_web::error::ErrorNotFound;
 use actix_web::{get, post, put, web, Error, Responder};
 
-
-use audiocloud_api::instance_driver::{InstanceDriverError};
+use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_api::DesiredInstancePlayState;
 

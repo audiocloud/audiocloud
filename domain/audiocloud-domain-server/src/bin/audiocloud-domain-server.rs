@@ -7,7 +7,6 @@ use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use tracing::*;
 
-
 use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, o11y, rest_api, sockets, tasks};
 
 #[derive(Parser)]

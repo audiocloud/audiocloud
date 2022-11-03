@@ -2,10 +2,6 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-
-
-
-
 use anyhow::anyhow;
 use clap::Args;
 use nats_aflowt::Connection;
@@ -14,12 +10,8 @@ use once_cell::sync::OnceCell;
 use tokio::spawn;
 use tracing::*;
 
-
-
-use audiocloud_api::instance_driver::{InstanceDriverEvent};
+use audiocloud_api::instance_driver::InstanceDriverEvent;
 use audiocloud_api::newtypes::FixedInstanceId;
-
-
 
 #[derive(Args, Clone, Debug)]
 pub struct NatsOpts {

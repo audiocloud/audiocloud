@@ -6,10 +6,7 @@ use actix::{Context, Handler};
 
 use tracing::*;
 
-
-
 use crate::config::NotifyDomainConfiguration;
-
 
 use crate::fixed_instances::FixedInstancesSupervisor;
 

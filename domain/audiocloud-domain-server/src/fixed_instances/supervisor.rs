@@ -4,26 +4,19 @@
 
 use std::collections::HashMap;
 
-
 use actix::{Actor, Addr, Context, Handler, MessageResult};
 use actix_broker::BrokerSubscribe;
 
-
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{
-    DomainConfig, FixedInstanceConfig,
-};
+use audiocloud_api::cloud::domains::{DomainConfig, FixedInstanceConfig};
 
-use audiocloud_api::{FixedInstanceId};
+use audiocloud_api::FixedInstanceId;
 
 use crate::config::NotifyDomainConfiguration;
 use crate::db::Db;
 use crate::fixed_instances::instance::FixedInstanceActor;
-use crate::fixed_instances::{
-    GetMultipleFixedInstanceState, NotifyFixedInstanceReports, NotifyInstanceState,
-};
-
+use crate::fixed_instances::{GetMultipleFixedInstanceState, NotifyFixedInstanceReports, NotifyInstanceState};
 
 mod forward_instance_reports;
 mod forward_merge_parameters;

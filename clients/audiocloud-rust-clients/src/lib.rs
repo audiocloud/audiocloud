@@ -4,7 +4,6 @@
 
 use reqwest::{Client, ClientBuilder, Error};
 
-
 pub use audio_engine::AudioEngineClient;
 pub use domain_server::DomainServerClient;
 pub use instance_driver::InstanceDriverClient;
@@ -28,7 +27,7 @@ mod instance_driver;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde::{Deserialize};
+    use serde::Deserialize;
 
     #[tokio::test]
     async fn test_http_2() {

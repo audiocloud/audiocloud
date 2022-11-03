@@ -6,9 +6,7 @@
 
 use std::time::Duration;
 
-
 use serde::{Deserialize, Serialize};
-
 
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_models::netio::PowerPdu4CReports;

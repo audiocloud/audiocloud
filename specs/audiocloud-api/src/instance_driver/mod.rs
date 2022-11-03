@@ -12,8 +12,8 @@ use thiserror::Error;
 use crate::common::instance::{DesiredInstancePlayState, InstancePlayState};
 use crate::common::media::{PlayId, RenderId};
 use crate::common::task::InstanceReports;
+use crate::merge_schemas;
 use crate::newtypes::FixedInstanceId;
-use crate::{merge_schemas};
 
 /// A command that can be sent to the instance driver
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, JsonSchema)]

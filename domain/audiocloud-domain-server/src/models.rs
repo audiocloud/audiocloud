@@ -19,16 +19,16 @@ pub async fn init(cfg: &DomainConfig, db: Db) -> anyhow::Result<()> {
         DomainModelSource::Local { path } => {
             let mut rv = HashMap::new();
             for model_path in globwalk::GlobWalkerBuilder::from_patterns(path, &["*.yaml", "*.yml"]).max_depth(4)
-                .follow_links(true)
-                .build()?
-                .into_iter()
-                .filter_map(Result::ok)
+                                                                                                    .follow_links(true)
+                                                                                                    .build()?
+                                                                                                    .into_iter()
+                                                                                                    .filter_map(Result::ok)
             {
                 let model_path = model_path.path();
                 let model_file_stem = model_path.file_stem()
-                    .ok_or_else(|| anyhow!("missing stem"))?
-                    .to_string_lossy()
-                    .to_string();
+                                                .ok_or_else(|| anyhow!("missing stem"))?
+                                                .to_string_lossy()
+                                                .to_string();
 
                 let (manufacturer, name) =
                     model_file_stem.split_at(model_file_stem.find('_').ok_or_else(|| anyhow!("missing '_' character"))?);

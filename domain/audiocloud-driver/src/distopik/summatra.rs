@@ -4,8 +4,6 @@
 
 use std::time::Duration;
 
-
-
 use byteorder::{ByteOrder, LittleEndian};
 use hidapi::{HidApi, HidDevice};
 use serde::{Deserialize, Serialize};

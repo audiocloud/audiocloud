@@ -18,7 +18,7 @@ use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use tokio::sync::oneshot::{Receiver as OneShotReceiver, Sender as OneShotSender};
 use tokio::time::error::Elapsed;
-use tokio::time::{timeout};
+use tokio::time::timeout;
 use tracing::*;
 
 use audiocloud_api::instance_driver::{
@@ -27,7 +27,6 @@ use audiocloud_api::instance_driver::{
 use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstancePlayState, PlayId, RenderId};
 
 use crate::nats;
-
 
 pub type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 
