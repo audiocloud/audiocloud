@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use maplit::hashset;
 use nanoid::nanoid;
 use serde_json::json;

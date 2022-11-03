@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use actix_web::error::ErrorNotFound;
 use actix_web::{get, post, put, web, Error, Responder};
 

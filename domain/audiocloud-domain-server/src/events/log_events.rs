@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use actix::{Actor, Context, Handler};
 use actix_broker::BrokerSubscribe;
 use tracing::debug;

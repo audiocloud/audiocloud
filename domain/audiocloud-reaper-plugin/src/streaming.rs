@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::collections::VecDeque;
 use std::ffi::c_void;
 use std::ptr::slice_from_raw_parts;

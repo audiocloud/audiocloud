@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::future::Future;
 use std::result::Result as R;
 use std::sync::Arc;

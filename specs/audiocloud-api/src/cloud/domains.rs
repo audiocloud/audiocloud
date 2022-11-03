@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! Cloud APIs for Domains
 
 use std::collections::{HashMap, HashSet};

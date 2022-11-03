@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use anyhow::anyhow;
 use once_cell::sync::OnceCell;
 use reqwest::Client;

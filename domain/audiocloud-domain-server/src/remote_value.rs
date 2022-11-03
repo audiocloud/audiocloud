@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Audiocloud, 2022. This code is licensed under MIT license (see LICENSE.txt for details)
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
 

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 -- CreateTable
 CREATE TABLE "Model" (
     "id" TEXT NOT NULL PRIMARY KEY,

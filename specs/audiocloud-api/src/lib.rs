@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! A crate of audiocloud API definitions and API calls
 #![allow(dead_code)]
 

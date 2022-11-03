@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! The API to the audio engine (from the domain side)
 
 use std::collections::{HashMap};
