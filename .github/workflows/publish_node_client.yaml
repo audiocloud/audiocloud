@@ -20,7 +20,7 @@ jobs:
           node-version: '18.x'
           registry-url: 'https://registry.npmjs.org'
       - name: Generate and build
-        run:
+        run: |
           npm install
           npm run generate
           npm run build
@@ -32,9 +32,11 @@ jobs:
           skip-tag: 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PACKAGEJSON_DIR: clients/audio-engine-client
+          PACKAGEJSON_DIR: clients/js-client
       - name: Publish, if this is an actual push
         if: github.event_name == 'push'
-        run: npm publish --access public
+        run: |
+          npm publish --access public
+        working-directory: 'clients/js-client'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
