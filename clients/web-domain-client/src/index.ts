@@ -4,7 +4,7 @@
 
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import {pack, unpack} from 'msgpackr';
-import {DomainClientMessage, DomainError, DomainServerMessage} from "@audiocloud/domain-client";
+import {DomainClientMessage, DomainError, DomainServerMessage} from "@audiocloud/js-client/src/domain_api";
 import {nanoid} from "nanoid";
 
 const iceServers = [{urls: 'stun:stun.l.google.com:19302'}];
@@ -134,10 +134,10 @@ export class WebDomainClient {
         console.warn('on_peer_connection_error', error)
     }
 
-    private on_peer_connection_candidate(candidate: string) {
+    private on_peer_connection_candidate(candidate?: string | null) {
         console.log('on_peer_connection_candidate', candidate)
         if (this.peer_connection) {
-            this.peer_connection.addIceCandidate(candidate.length == 0 ? null : JSON.parse(candidate))
+            this.peer_connection.addIceCandidate(candidate && candidate.length ? JSON.parse(candidate) : null)
         }
     }
 

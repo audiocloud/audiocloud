@@ -20,13 +20,10 @@
   "license": "ISC",
   "browserslist": "> 0.5%, last 2 versions, not dead",
   "dependencies": {
-    "@audiocloud/domain-client": "2.0.20",
-    "build": "^0.1.4",
+    "@audiocloud/js-client": "2.0.29",
     "msgpackr": "^1",
     "nanoid": "^4",
-    "npm": "^8.19.2",
-    "reconnecting-websocket": "^4",
-    "run": "^1.4.0"
+    "reconnecting-websocket": "^4"
   },
   "devDependencies": {
     "@types/node": "^18.7.11",
