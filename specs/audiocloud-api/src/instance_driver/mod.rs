@@ -125,5 +125,6 @@ pub fn schemas() -> RootSchema {
                    schema_for!(InstanceDriverCommand),
                    schema_for!(InstanceParametersUpdated),
                    schema_for!(SetInstanceParameters),
-                   schema_for!(InstanceWithStatusList)].into_iter())
+                   schema_for!(InstanceWithStatusList),
+                   schema_for!(crate::DesiredInstancePlayState)].into_iter())
 }

@@ -1522,7 +1522,7 @@ components:
         additionalProperties: false
     DomainConfig:
       title: DomainConfig
-      description: Used by domain for booting
+      description: Used by domain for booting up.
       type: object
       required:
       - domain_id
@@ -1555,7 +1555,7 @@ components:
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/DomainEngineConfig'
+            $ref: '#/components/schemas/EngineConfig'
         event_sink:
           description: Sink for events from the domain to the cloud
           default: log
@@ -1566,7 +1566,7 @@ components:
           default: {}
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/DomainFixedInstanceConfig'
+            $ref: '#/components/schemas/FixedInstanceConfig'
         maintenance:
           description: Configured maintenance time windows during which the domain should not serve requests
           default: []
@@ -1596,37 +1596,6 @@ components:
           type: object
           additionalProperties:
             $ref: '#/components/schemas/Task'
-    DomainEngineConfig:
-      title: DomainEngineConfig
-      description: Information about a media engine within a domain
-      type: object
-      required:
-      - max_concurrent_tasks
-      - sample_rate
-      properties:
-        dynamic_instances:
-          description: Dynamic instances configured on the audio engine, with associated limits
-          default: {}
-          type: object
-          additionalProperties:
-            $ref: '#/components/schemas/DynamicInstanceLimits'
-        max_concurrent_tasks:
-          description: Maximum number of concurrent tasks
-          type: integer
-          format: uint
-          minimum: 0.0
-        resources:
-          description: Resources available on the domain
-          default: {}
-          type: object
-          additionalProperties:
-            type: number
-            format: double
-        sample_rate:
-          description: Native audio sample rate
-          type: integer
-          format: uint
-          minimum: 0.0
     DomainEventSink:
       description: Source of commands for domains
       oneOf:
@@ -1682,51 +1651,6 @@ components:
                 description: Username used to produce events
                 type: string
         additionalProperties: false
-    DomainFixedInstanceConfig:
-      title: DomainFixedInstanceConfig
-      description: Configuration of a fixed instance
-      type: object
-      properties:
-        apps_override:
-          description: Apps allowed to access the instance or null if the domain defaults are used
-          default: null
-          type:
-          - array
-          - 'null'
-          items:
-            $ref: '#/components/schemas/AppId'
-          uniqueItems: true
-        engine:
-          description: Configuration of how a fixed instance is connected to the domain
-          default: null
-          anyOf:
-          - $ref: '#/components/schemas/DomainFixedInstanceEngine'
-          - type: 'null'
-        maintenance:
-          description: Maintenance windows on this instance
-          default: []
-          type: array
-          items:
-            $ref: '#/components/schemas/Maintenance'
-        media:
-          description: Optional configuration if instance handles media (such as tape machines)
-          default: null
-          anyOf:
-          - $ref: '#/components/schemas/DomainMediaInstanceConfig'
-          - type: 'null'
-        power:
-          description: Optional configuration to powers on/off instance to conserve energy
-          default: null
-          anyOf:
-          - $ref: '#/components/schemas/DomainPowerInstanceConfig'
-          - type: 'null'
-        sidecars:
-          description: Additional models with parameters or reports that are merged with the instance model
-          default: []
-          type: array
-          items:
-            $ref: '#/components/schemas/ModelId'
-          uniqueItems: true
     DomainFixedInstanceEngine:
       description: Configuration of how a fixed instance is connected to the domain
       type: object
@@ -1965,6 +1889,40 @@ components:
       enum:
       - gain_reduction
       - gain_reduction_limit_hit
+    EngineConfig:
+      title: EngineConfig
+      description: Information about a media engine within a domain
+      type: object
+      required:
+      - max_concurrent_tasks
+      - sample_rate
+      properties:
+        additional:
+          description: Additional configuration, specific to the engine configuration
+          default: null
+        dynamic_instances:
+          description: Dynamic instances configured on the audio engine, with associated limits
+          default: {}
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/DynamicInstanceLimits'
+        max_concurrent_tasks:
+          description: Maximum number of concurrent tasks
+          type: integer
+          format: uint
+          minimum: 0.0
+        resources:
+          description: Resources available on the domain
+          default: {}
+          type: object
+          additionalProperties:
+            type: number
+            format: double
+        sample_rate:
+          description: Native audio sample rate
+          type: integer
+          format: uint
+          minimum: 0.0
     EngineId:
       type: string
     FilterId:
@@ -1989,6 +1947,60 @@ components:
       - frequency
       - bandwidth
       - type
+    FixedInstanceConfig:
+      title: FixedInstanceConfig
+      description: Configuration of a fixed instance
+      type: object
+      properties:
+        additional:
+          description: Additional information specific to the driver implementation
+          default: null
+        apps_override:
+          description: Apps allowed to access the instance or null if the domain defaults are used
+          default: null
+          type:
+          - array
+          - 'null'
+          items:
+            $ref: '#/components/schemas/AppId'
+          uniqueItems: true
+        driver:
+          description: Which driver is using
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/InstanceDriverId'
+          - type: 'null'
+        engine:
+          description: Configuration of how a fixed instance is connected to the domain
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/DomainFixedInstanceEngine'
+          - type: 'null'
+        maintenance:
+          description: Maintenance windows on this instance
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/Maintenance'
+        media:
+          description: Optional configuration if instance handles media (such as tape machines)
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/DomainMediaInstanceConfig'
+          - type: 'null'
+        power:
+          description: Optional configuration to powers on/off instance to conserve energy
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/DomainPowerInstanceConfig'
+          - type: 'null'
+        sidecars:
+          description: Additional models with parameters or reports that are merged with the instance model
+          default: []
+          type: array
+          items:
+            $ref: '#/components/schemas/ModelId'
+          uniqueItems: true
     FixedInstanceId:
       type: string
     FixedInstanceNode:
@@ -2056,7 +2068,7 @@ components:
           description: Engines available on the domain
           type: object
           additionalProperties:
-            $ref: '#/components/schemas/DomainEngineConfig'
+            $ref: '#/components/schemas/EngineConfig'
         fixed_instances:
           description: FIxed instances available on the domain
           type: object
@@ -2106,6 +2118,8 @@ components:
           dynamic:
             $ref: '#/components/schemas/DynamicInstanceNodeId'
         additionalProperties: false
+    InstanceDriverId:
+      type: string
     Maintenance:
       description: Maintenance window
       type: object
@@ -2289,6 +2303,11 @@ components:
       - scope
       - values
       properties:
+        default:
+          default: null
+          anyOf:
+          - $ref: '#/components/schemas/ModelValue'
+          - type: 'null'
         role:
           $ref: '#/components/schemas/ModelParameterRole'
         scope:

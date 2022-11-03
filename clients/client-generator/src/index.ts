@@ -1,8 +1,7 @@
+#!/usr/bin/env node
 /*
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
-
-#!/usr/bin/env node
 
 import {compile} from 'json-schema-to-typescript'
 import * as fs from "fs/promises";
@@ -10,16 +9,28 @@ import {format as prettier} from "prettier"
 import minimist from "minimist"
 import {snakeCase} from "change-case"
 import yaml from 'yaml'
+import path from 'path';
 
 async function main(): Promise<void> {
     let args = minimist(process.argv.slice(2))
     const {output = './src'} = args
-    const fileName = args['_'][0]
+    const inputFileNames = args['_']
 
-    if (!fileName) {
-        throw new Error('No input file specified')
+    if (!inputFileNames.length) {
+        throw new Error('No input files specified')
     }
 
+    await fs.mkdir(output, {recursive: true}).catch(() => {
+    })
+
+    await fs.writeFile(`${output}/base.ts`, Buffer.from('ZXhwb3J0IHR5cGUgUmVxdWVzdDxCPiA9CiAgICB8IHsgbWV0aG9kOiAnZ2V0JywgaGVhZGVycz86IFJlY29yZDxzdHJpbmcsIGFueT4sIHBhdGg6IHN0cmluZyB9CiAgICB8IHsgbWV0aG9kOiAncG9zdCcgfCAnZGVsZXRlJyB8ICdwYXRjaCcgfCAncHV0JywgYm9keT86IEIsIGhlYWRlcnM/OiBSZWNvcmQ8c3RyaW5nLCBhbnk+LCBwYXRoOiBzdHJpbmcgfQoKZXhwb3J0IGludGVyZmFjZSBSZXF1ZXN0ZXIgewogICAgcmVxdWVzdDxCLCBULCBFPihyZXF1ZXN0OiBSZXF1ZXN0PEI+KTogUHJvbWlzZTxSZXN1bHQ8VCwgRT4+Owp9CgpleHBvcnQgdHlwZSBSZXN1bHQ8VCwgRT4gPQogICAgfCB7IG9rOiBULCBlcnJvcjogbnVsbCwgaXNfb2s6IHRydWUsIGlzX2Vycm9yOiBmYWxzZSB9CiAgICB8IHsgb2s6IG51bGwsIGVycm9yOiBFLCBpc19vazogZmFsc2UsIGlzX2Vycm9yOiB0cnVlIH0K', 'base64'))
+
+    for (const inputFileName of inputFileNames) {
+        await generate(inputFileName, `${output}/${path.parse(inputFileName).name}.ts`)
+    }
+}
+
+async function generate(fileName: string, outputFileName: string) {
     let contents = (await fs.readFile(fileName)).toString('utf-8')
     let json
 
@@ -122,15 +133,11 @@ async function main(): Promise<void> {
 
     buf += '}\n'
 
-    await fs.mkdir(output, {recursive: true}).catch(() => {
-    })
-
-    await fs.writeFile(`${output}/index.ts`, Buffer.from(prettier(buf, {
+    await fs.writeFile(outputFileName, Buffer.from(prettier(buf, {
         semi: false,
         parser: 'babel-ts',
         printWidth: 120
     }), 'utf-8'))
-    await fs.writeFile(`${output}/base.ts`, Buffer.from('ZXhwb3J0IHR5cGUgUmVxdWVzdDxCPiA9CiAgICB8IHsgbWV0aG9kOiAnZ2V0JywgaGVhZGVycz86IFJlY29yZDxzdHJpbmcsIGFueT4sIHBhdGg6IHN0cmluZyB9CiAgICB8IHsgbWV0aG9kOiAncG9zdCcgfCAnZGVsZXRlJyB8ICdwYXRjaCcgfCAncHV0JywgYm9keT86IEIsIGhlYWRlcnM/OiBSZWNvcmQ8c3RyaW5nLCBhbnk+LCBwYXRoOiBzdHJpbmcgfQoKZXhwb3J0IGludGVyZmFjZSBSZXF1ZXN0ZXIgewogICAgcmVxdWVzdDxCLCBULCBFPihyZXF1ZXN0OiBSZXF1ZXN0PEI+KTogUHJvbWlzZTxSZXN1bHQ8VCwgRT4+Owp9CgpleHBvcnQgdHlwZSBSZXN1bHQ8VCwgRT4gPQogICAgfCB7IG9rOiBULCBlcnJvcjogbnVsbCwgaXNfb2s6IHRydWUsIGlzX2Vycm9yOiBmYWxzZSB9CiAgICB8IHsgb2s6IG51bGwsIGVycm9yOiBFLCBpc19vazogZmFsc2UsIGlzX2Vycm9yOiB0cnVlIH0K', 'base64'))
 }
 
 function getTypeName(p: any) {
