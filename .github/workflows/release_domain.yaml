@@ -79,7 +79,7 @@ jobs:
           rustup target add ${{ matrix.build }}
       - name: Generate prisma
         run: |
-          cargo run
+          cargo run generate
         working-directory: ./domain/prisma
       - name: Build domain binary
         run: |
@@ -153,7 +153,7 @@ jobs:
           rustup target add ${{ matrix.build }}
       - name: Generate prisma
         run: |
-          cargo run
+          cargo run generate
         working-directory: ./domain/prisma
       - name: Build REAPER plugin
         run: |
@@ -223,7 +223,7 @@ jobs:
           rustup target add ${{ matrix.build }}
       - name: Generate prisma
         run: |
-          cargo run
+          cargo run generate
         working-directory: ./domain/prisma
       - name: Build Driver
         run: |

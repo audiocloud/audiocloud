@@ -32,7 +32,7 @@ jobs:
           sudo apt-get install -y libusb-1.0-0-dev libsasl2-dev protobuf-compiler
       - name: Generate prisma
         run: |
-          cargo run
+          cargo run generate
         working-directory: ./domain/prisma
       - name: Run tests
         run: |
