@@ -89,7 +89,7 @@ impl Db {
                                       path: media_file.path,
                                       id: id.clone(),
                                       revision: media_file.revision as u64,
-                                      last_used: None }))
+                                      last_used: media_file.last_used.map(|last_used| last_used.with_timezone(&Utc)) }))
             }
         }
     }

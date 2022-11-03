@@ -24,6 +24,7 @@ mod instance_driver;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::{Deserialize, Serialize};
 
     #[tokio::test]
     async fn test_http_2() {
