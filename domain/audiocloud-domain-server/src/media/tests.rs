@@ -69,7 +69,7 @@ async fn test_download_success() -> anyhow::Result<()> {
 async fn test_upload_success() -> anyhow::Result<()> {
     let db = db::init(DataOpts::temporary()).await?;
 
-    let source_url = "http://speedtest.ftp.otenet.gr/files/test100k.db".to_owned();
+    let source_url = "https://fastest.fish/lib/downloads/1KiB.bin".to_owned();
 
     let client = reqwest::Client::new();
 
