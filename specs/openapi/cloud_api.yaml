@@ -1470,6 +1470,24 @@ components:
         type: string
         enum:
         - disabled
+      - description: Pulls events from NATS JetStream
+        type: object
+        required:
+        - jet_stream
+        properties:
+          jet_stream:
+            type: object
+            required:
+            - topic
+            - url
+            properties:
+              topic:
+                description: Topic to load for commands
+                type: string
+              url:
+                description: where to connect to
+                type: string
+        additionalProperties: false
       - description: Consume a kafka topic
         type: object
         required:
@@ -1509,7 +1527,6 @@ components:
       required:
       - domain_id
       - models
-      - public_host
       properties:
         apps:
           description: Apps allowed to access the domain
@@ -1573,9 +1590,6 @@ components:
           description: Source of model information for the domain (can include unused models)
           allOf:
           - $ref: '#/components/schemas/DomainModelSource'
-        public_host:
-          description: The public host or IP where domain API is visible to the outside world
-          type: string
         tasks:
           description: Currently configured tasks
           default: {}
@@ -1624,6 +1638,24 @@ components:
         type: string
         enum:
         - log
+      - description: Emit events to NATS JetStream
+        type: object
+        required:
+        - jet_stream
+        properties:
+          jet_stream:
+            type: object
+            required:
+            - topic
+            - url
+            properties:
+              topic:
+                description: Topic to write events to
+                type: string
+              url:
+                description: Valid NATS URL to connect to
+                type: string
+        additionalProperties: false
       - description: Produce to a kafka topic
         type: object
         required:
@@ -1654,8 +1686,6 @@ components:
       title: DomainFixedInstanceConfig
       description: Configuration of a fixed instance
       type: object
-      required:
-      - engine_id
       properties:
         apps_override:
           description: Apps allowed to access the instance or null if the domain defaults are used
@@ -1666,18 +1696,12 @@ components:
           items:
             $ref: '#/components/schemas/AppId'
           uniqueItems: true
-        engine_id:
-          description: Engine hosting the instance
-          allOf:
-          - $ref: '#/components/schemas/EngineId'
-        input_start:
-          description: Instance inputs start at index on engine
+        engine:
+          description: Configuration of how a fixed instance is connected to the domain
           default: null
-          type:
-          - integer
-          - 'null'
-          format: uint32
-          minimum: 0.0
+          anyOf:
+          - $ref: '#/components/schemas/DomainFixedInstanceEngine'
+          - type: 'null'
         maintenance:
           description: Maintenance windows on this instance
           default: []
@@ -1690,14 +1714,6 @@ components:
           anyOf:
           - $ref: '#/components/schemas/DomainMediaInstanceConfig'
           - type: 'null'
-        output_start:
-          description: Instance outputs start at index on engine
-          default: null
-          type:
-          - integer
-          - 'null'
-          format: uint32
-          minimum: 0.0
         power:
           description: Optional configuration to powers on/off instance to conserve energy
           default: null
@@ -1711,6 +1727,28 @@ components:
           items:
             $ref: '#/components/schemas/ModelId'
           uniqueItems: true
+    DomainFixedInstanceEngine:
+      description: Configuration of how a fixed instance is connected to the domain
+      type: object
+      required:
+      - engine_id
+      - input_start
+      - output_start
+      properties:
+        engine_id:
+          description: Engine hosting the instance, if any
+          allOf:
+          - $ref: '#/components/schemas/EngineId'
+        input_start:
+          description: Instance inputs start at index on engine
+          type: integer
+          format: uint32
+          minimum: 0.0
+        output_start:
+          description: Instance outputs start at index on engine
+          type: integer
+          format: uint32
+          minimum: 0.0
     DomainId:
       type: string
     DomainMediaInstanceConfig:
@@ -1796,10 +1834,7 @@ components:
       type: object
       required:
       - channel
-      - cool_down_ms
-      - idle_off_delay_ms
       - instance
-      - warm_up_ms
       properties:
         channel:
           description: Which channel on the power instance is distributing power to this instance
@@ -1808,11 +1843,13 @@ components:
           minimum: 0.0
         cool_down_ms:
           description: Number of milliseconds to wait to cool down after powering down
+          default: 2500
           type: integer
           format: uint
           minimum: 0.0
         idle_off_delay_ms:
           description: Number of milliseconds to wait before automatically powering down after idle
+          default: 60000
           type: integer
           format: uint
           minimum: 0.0
@@ -1822,6 +1859,7 @@ components:
           - $ref: '#/components/schemas/FixedInstanceId'
         warm_up_ms:
           description: Number of milliseconds to wait to warm up after powering on
+          default: 2500
           type: integer
           format: uint
           minimum: 0.0

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 import { Socket, SocketsSupervisor, SocketState } from './supervisor'
 import { DomainClientMessage } from '@audiocloud/domain-client'
 import { pack, unpack } from 'msgpackr'

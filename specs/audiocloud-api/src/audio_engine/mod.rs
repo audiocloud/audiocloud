@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! The API to the audio engine (from the domain side)
 
 use std::collections::HashMap;
@@ -30,22 +34,22 @@ pub struct CompressedAudio {
 }
 
 #[derive(Debug, Clone, Error, Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "snake_case", tag = "type")]
 pub enum EngineError {
-    #[error("Track {0} not found")]
-    TrackNotFound(usize),
+    #[error("Track {track} not found")]
+    TrackNotFound { track: usize },
 
-    #[error("Item {0} on track {1} not found")]
-    ItemNotFound(usize, usize),
+    #[error("Item {item} on track {track} not found")]
+    ItemNotFound { item: usize, track: usize },
 
-    #[error("Task {0} failed to modify: {1}")]
-    ModifyTask(AppTaskId, ModifyTaskError),
+    #[error("Task {task} failed to modify: {error}")]
+    ModifyTask { task: AppTaskId, error: ModifyTaskError },
 
-    #[error("Internal sound engine error: {0}")]
-    InternalError(String),
+    #[error("Internal sound engine error: {error}")]
+    InternalError { error: String },
 
-    #[error("Remote call failed: {0}")]
-    RPC(String),
+    #[error("Remote call failed: {error}")]
+    RPC { error: String },
 }
 
 #[derive(Debug, Serialize, Deserialize, JsonSchema)]

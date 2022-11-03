@@ -1,30 +1,20 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 #![allow(unused_variables)]
 
 use std::time::Duration;
 
-use actix::Recipient;
-
 use serde::{Deserialize, Serialize};
-use tracing::*;
 
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_models::netio::PowerPdu4CReports;
 
-use crate::driver::{Driver, DriverActor, Result};
-use crate::{Command, InstanceConfig};
+use crate::driver::{Driver, Result};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Config;
-
-impl InstanceConfig for Config {
-    fn create(self, id: FixedInstanceId) -> anyhow::Result<Recipient<Command>> {
-        info!(%id, config = ?self, "Creating instance");
-
-        let driver = Netio4cMocked { id, state: vec![false; 4] };
-
-        Ok(DriverActor::start_recipient(driver))
-    }
-}
 
 struct Netio4cMocked {
     id:    FixedInstanceId,

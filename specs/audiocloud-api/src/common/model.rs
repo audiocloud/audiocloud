@@ -1,4 +1,9 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::collections::{HashMap, HashSet};
+use std::iter;
 
 use anyhow::anyhow;
 use derive_more::{Display, IsVariant, Unwrap};
@@ -167,6 +172,14 @@ impl ModelValue {
             ModelValue::Bool(_) => SimpleModelValueType::Bool,
         }
     }
+
+    pub fn to_json(&self) -> serde_json::Value {
+        match self {
+            ModelValue::String(s) => s.clone().into(),
+            ModelValue::Number(n) => (*n).into(),
+            ModelValue::Bool(b) => (*b).into(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, IsVariant, JsonSchema)]
@@ -223,6 +236,25 @@ impl Model {
                 _ => 0,
             })
             .sum()
+    }
+
+    pub fn default_parameter_values(&self) -> serde_json::Value {
+        let mut rv = serde_json::Map::new();
+        for (k, v) in self.parameters.iter() {
+            let value = match (v.default.as_ref(), v.values.first()) {
+                (Some(value), _) => value.to_json(),
+                (_, Some(ModelValueOption::Single(value))) => value.to_json(),
+                (_, Some(ModelValueOption::Range(low, _))) => low.to_json(),
+                (_, _) => serde_json::Value::default(),
+            };
+
+            let count = v.scope.len(self);
+            let values = serde_json::Value::Array(iter::repeat(value).take(count).collect::<Vec<_>>());
+
+            rv.insert(k.as_str().to_owned(), values);
+        }
+
+        serde_json::Value::Object(rv)
     }
 }
 
@@ -342,11 +374,13 @@ pub enum DynamicsReportRole {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, PartialOrd, JsonSchema)]
 pub struct ModelParameter {
-    pub scope:  ModelElementScope,
+    pub scope:   ModelElementScope,
     #[serde(default)]
-    pub unit:   ModelValueUnit,
-    pub role:   ModelParameterRole,
-    pub values: Vec<ModelValueOption>,
+    pub unit:    ModelValueUnit,
+    pub role:    ModelParameterRole,
+    pub values:  Vec<ModelValueOption>,
+    #[serde(default)]
+    pub default: Option<ModelValue>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, PartialOrd, JsonSchema)]

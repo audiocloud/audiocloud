@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 #![allow(unused_variables)]
 
 use std::path::PathBuf;
@@ -5,7 +9,7 @@ use std::str::FromStr;
 
 use actix::{Actor, Addr};
 use clap::Args;
-use derive_more::{Deref, Display, FromStr, Constructor};
+use derive_more::{Constructor, Deref, Display, FromStr};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use tracing::*;

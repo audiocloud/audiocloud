@@ -1,7 +1,10 @@
 [workspace]
+resolver = "2"
 members = [
     "specs/audiocloud-api",
     "specs/audiocloud-models",
+    "clients/audiocloud-rust-clients",
     "domain/*",
-    "cloud/*"
+    "cloud/*",
+    "lib/*"
 ]

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use actix::{Actor, ActorContext, Addr, Context, Handler};
 use actix_broker::BrokerSubscribe;
 use anyhow::anyhow;
@@ -13,21 +17,19 @@ use crate::events::messages::NotifyDomainEvent;
 static KAFKA_DOMAIN_EVENTS_SINK: OnceCell<Addr<KafkaDomainEventsSink>> = OnceCell::new();
 
 pub async fn init(topic: String, brokers: String, username: String, password: String) -> anyhow::Result<()> {
-    KAFKA_DOMAIN_EVENTS_SINK.set(KafkaDomainEventsSink {
-        topic,
-        brokers,
-        username,
-        password,
-        producer: None,
-    }.start())
-        .map_err(|_| anyhow!("KAFKA_DOMAIN_EVENTS_SINK already initialized"))?;
+    KAFKA_DOMAIN_EVENTS_SINK.set(KafkaDomainEventsSink { topic,
+                                                         brokers,
+                                                         username,
+                                                         password,
+                                                         producer: None }.start())
+                            .map_err(|_| anyhow!("KAFKA_DOMAIN_EVENTS_SINK already initialized"))?;
 
     Ok(())
 }
 
 pub struct KafkaDomainEventsSink {
-    topic: String,
-    brokers: String,
+    topic:    String,
+    brokers:  String,
     username: String,
     password: String,
     producer: Option<BaseProducer>,

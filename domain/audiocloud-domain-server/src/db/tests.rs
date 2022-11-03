@@ -1,6 +1,8 @@
-use std::env;
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
 
-use maplit::{hashmap, hashset};
+use maplit::hashset;
 use nanoid::nanoid;
 use serde_json::json;
 
@@ -14,7 +16,7 @@ use crate::media::{DownloadJobId, UploadJobId};
 
 #[actix::test]
 async fn test_media_create() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
+    let db = super::init(DataOpts::temporary()).await?;
 
     let media_id = new_random_test_media_id();
 
@@ -33,7 +35,7 @@ async fn test_media_create() -> anyhow::Result<()> {
 
 #[actix::test]
 async fn test_create_download_job() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
+    let db = super::init(DataOpts::temporary()).await?;
 
     let media_id = new_random_test_media_id();
 
@@ -54,14 +56,49 @@ async fn test_create_download_job() -> anyhow::Result<()> {
 
     let download_jobs = db.fetch_pending_download_jobs(1).await?;
 
-    assert_eq!(download_jobs, hashmap! { job_id.clone() => download.clone()});
+    assert_eq!(download_jobs.len(), 1);
+    assert_eq!(download_jobs.keys().next(), Some(&job_id));
+    assert_eq!(download_jobs.values().next().map(|download| &download.state), Some(&download.state));
+    assert_eq!(download_jobs.values().next().map(|download| &download.download),
+               Some(&download.download));
+
+    Ok(())
+}
+
+#[actix::test]
+async fn test_clear_job_in_progress() -> anyhow::Result<()> {
+    let db = super::init(DataOpts::temporary()).await?;
+
+    let media_id = new_random_test_media_id();
+
+    let job_id = new_random_download_job_id();
+
+    let upload_settings = test_media_download_settings();
+
+    let mut initial_state = not_completed_job_state();
+    initial_state.in_progress = true;
+
+    let download = MediaDownload { media_id:   { media_id.clone() },
+                                   download:   { upload_settings },
+                                   state:      { initial_state },
+                                   created_at: { now() }, };
+
+    db.create_initial_media(&media_id, None, None).await?;
+
+    db.save_download_job(&job_id, &download).await?;
+
+    assert_eq!(db.fetch_pending_download_jobs(1).await?.len(), 0);
+
+    db.clear_in_progress_for_all_jobs().await?;
+
+    assert_eq!(db.fetch_pending_download_jobs(1).await?.len(), 1);
 
     Ok(())
 }
 
 #[actix::test]
 async fn test_create_upload_job() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
+    let db = super::init(DataOpts::temporary()).await?;
 
     let media_id = new_random_test_media_id();
 
@@ -84,14 +121,17 @@ async fn test_create_upload_job() -> anyhow::Result<()> {
 
     let upload_jobs = db.fetch_pending_upload_jobs(1).await?;
 
-    assert_eq!(upload_jobs, hashmap! { job_id.clone() => upload.clone()});
+    assert_eq!(upload_jobs.len(), 1);
+    assert_eq!(upload_jobs.keys().next(), Some(&job_id));
+    assert_eq!(upload_jobs.values().next().map(|upload| &upload.state), Some(&upload.state));
+    assert_eq!(upload_jobs.values().next().map(|upload| &upload.upload), Some(&upload.upload));
 
     Ok(())
 }
 
 #[actix::test]
 async fn test_sys_props() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
+    let db = super::init(DataOpts::temporary()).await?;
 
     db.set_sys_prop("test", &"value".to_owned()).await?;
     let value: Option<String> = db.get_sys_prop("test").await?;
@@ -103,7 +143,7 @@ async fn test_sys_props() -> anyhow::Result<()> {
 
 #[actix::test]
 async fn test_models_get_set() -> anyhow::Result<()> {
-    let db = super::init(DataOpts::memory()).await?;
+    let db = super::init(DataOpts::temporary()).await?;
 
     let a_id = ModelId { manufacturer: "distopik".to_owned(),
                          name:         "a".to_owned(), };
@@ -146,7 +186,7 @@ fn test_media_object(media_id: &AppMediaObjectId, media_metadata: &MediaMetadata
     MediaObject { id:        media_id.clone(),
                   metadata:  Some(media_metadata.clone()),
                   path:      Some(format!("random-path/{media_id}")),
-                  last_used: now(),
+                  last_used: None,
                   revision:  2, }
 }
 

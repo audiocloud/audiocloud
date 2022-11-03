@@ -27,7 +27,7 @@ paths:
           description: Success
       summary: List running instances
       tags:
-      - driver
+        - driver
   /v1/instances/{manufacturer}/{name}/{instance}/parameters:
     patch:
       deprecated: false
@@ -37,27 +37,27 @@ paths:
         Update instance parameter values.
       operationId: set_parameters
       parameters:
-      - deprecated: false
-        description: Model manufacturer
-        in: path
-        name: manufacturer
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Model product name
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Unique instance identifier
-        in: path
-        name: instance
-        required: true
-        schema:
-          type: string
+        - deprecated: false
+          description: Model manufacturer
+          in: path
+          name: manufacturer
+          required: true
+          schema:
+            type: string
+        - deprecated: false
+          description: Model product name
+          in: path
+          name: name
+          required: true
+          schema:
+            type: string
+        - deprecated: false
+          description: Unique instance identifier
+          in: path
+          name: instance
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
@@ -79,49 +79,48 @@ paths:
           description: Not found
       summary: Set parameters
       tags:
-      - instance
-  /v1/instances/{manufacturer}/{name}/{instance}/play-state:
+        - instance
+  /v1/instances/{manufacturer}/{name}/{instance}/play_state:
     put:
       deprecated: false
       description: |
-        Set desired play state
+        Set the desired play state.
 
-        If the instance has media capabilities, set an instance's desired play state.
-      operationId: accept_command
+        Update desired play state of the instance.
       parameters:
-      - deprecated: false
-        description: Model manufacturer
-        in: path
-        name: manufacturer
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Model product name
-        in: path
-        name: name
-        required: true
-        schema:
-          type: string
-      - deprecated: false
-        description: Unique instance identifier
-        in: path
-        name: instance
-        required: true
-        schema:
-          type: string
+        - deprecated: false
+          description: Model manufacturer
+          in: path
+          name: manufacturer
+          required: true
+          schema:
+            type: string
+        - deprecated: false
+          description: Model product name
+          in: path
+          name: name
+          required: true
+          schema:
+            type: string
+        - deprecated: false
+          description: Unique instance identifier
+          in: path
+          name: instance
+          required: true
+          schema:
+            type: string
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/InstanceDriverCommand'
+              $ref: '#/components/schemas/DesiredInstancePlayState'
         required: true
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/InstanceCommandAccepted'
+                $ref: '#/components/schemas/InstanceParametersUpdated'
           description: Success
         '404':
           content:
@@ -129,12 +128,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/InstanceDriverError'
           description: Not found
-      summary: Set desired play state
+      summary: Set parameters
       tags:
-      - instance
+        - instance
 servers:
-- description: Local development
-  url: http://localhost:7400
+  - description: Local development
+    url: http://localhost:7400
 components:
   schemas:
     FixedInstanceId:
@@ -142,254 +141,254 @@ components:
     InstanceCommandAccepted:
       title: InstanceCommandAccepted
       oneOf:
-      - type: object
-        required:
-        - updated
-        properties:
-          updated:
-            type: object
-            required:
-            - id
-            properties:
-              id:
-                $ref: '#/components/schemas/FixedInstanceId'
-        additionalProperties: false
+        - type: object
+          required:
+            - updated
+          properties:
+            updated:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  $ref: '#/components/schemas/FixedInstanceId'
+          additionalProperties: false
     InstanceDriverCommand:
       title: InstanceDriverCommand
       description: A command that can be sent to the instance driver
       oneOf:
-      - type: string
-        enum:
-        - check_connection
-        - stop
-      - type: object
-        required:
-        - play
-        properties:
-          play:
-            type: object
-            required:
-            - play_id
-            properties:
-              play_id:
-                $ref: '#/components/schemas/PlayId'
-        additionalProperties: false
-      - type: object
-        required:
-        - render
-        properties:
-          render:
-            type: object
-            required:
-            - length
-            - render_id
-            properties:
-              length:
-                type: number
-                format: double
-              render_id:
-                $ref: '#/components/schemas/RenderId'
-        additionalProperties: false
-      - type: object
-        required:
-        - rewind
-        properties:
-          rewind:
-            type: object
-            required:
-            - to
-            properties:
-              to:
-                type: number
-                format: double
-        additionalProperties: false
-      - type: object
-        required:
-        - set_parameters
-        properties:
-          set_parameters: true
-        additionalProperties: false
-      - type: object
-        required:
-        - set_power_channel
-        properties:
-          set_power_channel:
-            type: object
-            required:
-            - channel
-            - power
-            properties:
-              channel:
-                type: integer
-                format: uint
-                minimum: 0.0
-              power:
-                type: boolean
-        additionalProperties: false
+        - type: string
+          enum:
+            - check_connection
+            - stop
+        - type: object
+          required:
+            - play
+          properties:
+            play:
+              type: object
+              required:
+                - play_id
+              properties:
+                play_id:
+                  $ref: '#/components/schemas/PlayId'
+          additionalProperties: false
+        - type: object
+          required:
+            - render
+          properties:
+            render:
+              type: object
+              required:
+                - length
+                - render_id
+              properties:
+                length:
+                  type: number
+                  format: double
+                render_id:
+                  $ref: '#/components/schemas/RenderId'
+          additionalProperties: false
+        - type: object
+          required:
+            - rewind
+          properties:
+            rewind:
+              type: object
+              required:
+                - to
+              properties:
+                to:
+                  type: number
+                  format: double
+          additionalProperties: false
+        - type: object
+          required:
+            - set_parameters
+          properties:
+            set_parameters: true
+          additionalProperties: false
+        - type: object
+          required:
+            - set_power_channel
+          properties:
+            set_power_channel:
+              type: object
+              required:
+                - channel
+                - power
+              properties:
+                channel:
+                  type: integer
+                  format: uint
+                  minimum: 0.0
+                power:
+                  type: boolean
+          additionalProperties: false
     InstanceDriverError:
       title: InstanceDriverError
       oneOf:
-      - type: string
-        enum:
-        - media_not_present
-        - not_power_controller
-        - not_interruptable
-      - type: object
-        required:
-        - instance_not_found
-        properties:
-          instance_not_found:
-            $ref: '#/components/schemas/FixedInstanceId'
-        additionalProperties: false
-      - type: object
-        required:
-        - parameter_does_not_exist
-        properties:
-          parameter_does_not_exist:
-            type: object
-            required:
-            - error
-            properties:
-              error:
-                type: string
-        additionalProperties: false
-      - type: object
-        required:
-        - parameters_malformed
-        properties:
-          parameters_malformed:
-            type: object
-            required:
-            - error
-            properties:
-              error:
-                type: string
-        additionalProperties: false
-      - type: object
-        required:
-        - reports_malformed
-        properties:
-          reports_malformed:
-            type: object
-            required:
-            - error
-            properties:
-              error:
-                type: string
-        additionalProperties: false
-      - type: object
-        required:
-        - r_p_c
-        properties:
-          r_p_c:
-            type: object
-            required:
-            - error
-            properties:
-              error:
-                type: string
-        additionalProperties: false
+        - type: string
+          enum:
+            - media_not_present
+            - not_power_controller
+            - not_interruptable
+        - type: object
+          required:
+            - instance_not_found
+          properties:
+            instance_not_found:
+              $ref: '#/components/schemas/FixedInstanceId'
+          additionalProperties: false
+        - type: object
+          required:
+            - parameter_does_not_exist
+          properties:
+            parameter_does_not_exist:
+              type: object
+              required:
+                - error
+              properties:
+                error:
+                  type: string
+          additionalProperties: false
+        - type: object
+          required:
+            - parameters_malformed
+          properties:
+            parameters_malformed:
+              type: object
+              required:
+                - error
+              properties:
+                error:
+                  type: string
+          additionalProperties: false
+        - type: object
+          required:
+            - reports_malformed
+          properties:
+            reports_malformed:
+              type: object
+              required:
+                - error
+              properties:
+                error:
+                  type: string
+          additionalProperties: false
+        - type: object
+          required:
+            - r_p_c
+          properties:
+            r_p_c:
+              type: object
+              required:
+                - error
+              properties:
+                error:
+                  type: string
+          additionalProperties: false
     InstanceParametersUpdated:
       title: InstanceParametersUpdated
       oneOf:
-      - type: object
-        required:
-        - updated
-        properties:
-          updated:
-            type: object
-            required:
-            - id
-            properties:
-              id:
-                $ref: '#/components/schemas/FixedInstanceId'
-        additionalProperties: false
+        - type: object
+          required:
+            - updated
+          properties:
+            updated:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  $ref: '#/components/schemas/FixedInstanceId'
+          additionalProperties: false
     InstancePlayState:
       oneOf:
-      - type: string
-        enum:
-        - stopping
-        - stopped
-      - type: object
-        required:
-        - preparing_to_play
-        properties:
-          preparing_to_play:
-            type: object
-            required:
-            - play_id
-            properties:
-              play_id:
-                $ref: '#/components/schemas/PlayId'
-        additionalProperties: false
-      - type: object
-        required:
-        - playing
-        properties:
-          playing:
-            type: object
-            required:
-            - play_id
-            properties:
-              play_id:
-                $ref: '#/components/schemas/PlayId'
-        additionalProperties: false
-      - type: object
-        required:
-        - preparing_to_render
-        properties:
-          preparing_to_render:
-            type: object
-            required:
-            - length
-            - render_id
-            properties:
-              length:
-                type: number
-                format: double
-              render_id:
-                $ref: '#/components/schemas/RenderId'
-        additionalProperties: false
-      - type: object
-        required:
-        - rendering
-        properties:
-          rendering:
-            type: object
-            required:
-            - length
-            - render_id
-            properties:
-              length:
-                type: number
-                format: double
-              render_id:
-                $ref: '#/components/schemas/RenderId'
-        additionalProperties: false
-      - type: object
-        required:
-        - rewinding
-        properties:
-          rewinding:
-            type: object
-            required:
-            - to
-            properties:
-              to:
-                type: number
-                format: double
-        additionalProperties: false
+        - type: string
+          enum:
+            - stopping
+            - stopped
+        - type: object
+          required:
+            - preparing_to_play
+          properties:
+            preparing_to_play:
+              type: object
+              required:
+                - play_id
+              properties:
+                play_id:
+                  $ref: '#/components/schemas/PlayId'
+          additionalProperties: false
+        - type: object
+          required:
+            - playing
+          properties:
+            playing:
+              type: object
+              required:
+                - play_id
+              properties:
+                play_id:
+                  $ref: '#/components/schemas/PlayId'
+          additionalProperties: false
+        - type: object
+          required:
+            - preparing_to_render
+          properties:
+            preparing_to_render:
+              type: object
+              required:
+                - length
+                - render_id
+              properties:
+                length:
+                  type: number
+                  format: double
+                render_id:
+                  $ref: '#/components/schemas/RenderId'
+          additionalProperties: false
+        - type: object
+          required:
+            - rendering
+          properties:
+            rendering:
+              type: object
+              required:
+                - length
+                - render_id
+              properties:
+                length:
+                  type: number
+                  format: double
+                render_id:
+                  $ref: '#/components/schemas/RenderId'
+          additionalProperties: false
+        - type: object
+          required:
+            - rewinding
+          properties:
+            rewinding:
+              type: object
+              required:
+                - to
+              properties:
+                to:
+                  type: number
+                  format: double
+          additionalProperties: false
     InstanceWithStatus:
       type: object
       required:
-      - id
+        - id
       properties:
         id:
           $ref: '#/components/schemas/FixedInstanceId'
         play_state:
           anyOf:
-          - $ref: '#/components/schemas/InstancePlayState'
-          - type: 'null'
+            - $ref: '#/components/schemas/InstancePlayState'
+            - type: 'null'
     InstanceWithStatusList:
       title: Array_of_InstanceWithStatus
       type: array
@@ -403,6 +402,6 @@ components:
       title: SetInstanceParameters
       type: object
       required:
-      - parameters
+        - parameters
       properties:
         parameters: true

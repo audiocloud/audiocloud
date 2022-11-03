@@ -1,8 +1,12 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 #![allow(unused_variables)]
 
 use std::time::Duration;
 
-use actix::{spawn, AsyncContext, Recipient};
+use actix::{spawn, AsyncContext};
 use futures::TryFutureExt;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
@@ -10,14 +14,13 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use tracing::*;
 
 use audiocloud_api::common::time::Timestamp;
-use audiocloud_api::instance_driver::InstanceDriverEvent;
+use audiocloud_api::instance_driver::{InstanceDriverError, InstanceDriverEvent};
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_models::netio::PowerPdu4CReports;
 
+use crate::driver::Driver;
 use crate::driver::Result;
-use crate::driver::{Driver, DriverActor};
-
-use crate::{emit_event, Command, InstanceConfig};
+use crate::nats;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Config {
@@ -26,11 +29,13 @@ pub struct Config {
     pub auth:    Option<(String, String)>,
 }
 
-impl InstanceConfig for Config {
-    fn create(self, id: FixedInstanceId) -> anyhow::Result<Recipient<Command>> {
-        info!(%id, config = ?self, "Creating instance");
+impl Config {
+    pub fn from_json(config: serde_json::Value) -> Result<Self> {
+        serde_json::from_value(config).map_err(|error| InstanceDriverError::ConfigMalformed { error: error.to_string() })
+    }
 
-        Ok(DriverActor::start_recipient(PowerPdu4c::new(id, self)?))
+    pub fn driver(self, id: &FixedInstanceId) -> Result<impl Driver> {
+        PowerPdu4c::new(id.clone(), self)
     }
 }
 
@@ -88,8 +93,8 @@ impl Driver for PowerPdu4c {
 }
 
 impl PowerPdu4c {
-    pub fn new(id: FixedInstanceId, config: Config) -> anyhow::Result<Self> {
-        let base_url = Url::parse(&config.address)?;
+    pub fn new(id: FixedInstanceId, config: Config) -> Result<Self> {
+        let base_url = Url::parse(&config.address).map_err(|error| InstanceDriverError::ConfigMalformed { error: error.to_string() })?;
         Ok(Self { id, config, base_url })
     }
 
@@ -115,7 +120,7 @@ impl PowerPdu4c {
 
         match serde_json::to_value(&reports) {
             Ok(reports) => {
-                emit_event(id, InstanceDriverEvent::Reports { reports });
+                nats::publish(&id, InstanceDriverEvent::Reports { reports });
             }
             Err(error) => {
                 error!(%error, "Failed to encode NETIO reports");

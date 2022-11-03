@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::time::Duration;
 
 use actix::{AsyncContext, Context, Handler};
@@ -60,7 +64,7 @@ impl Handler<GenerateStreamStats> for TasksSupervisor {
 
                     Ok(StreamStats { id:      { task_id },
                                      play_id: { play_id },
-                                     state:   { task.state.play_state.value().clone() },
+                                     state:   { task.state.play_state.get_ref().clone() },
                                      low:     { low.cloned() },
                                      high:    { high.cloned() }, })
                 }
@@ -83,7 +87,7 @@ impl Handler<GetStreamPacket> for TasksSupervisor {
                 None => Err(DomainError::TaskStreamNotFound { task_id, play_id }),
                 Some(packet_cache) => match packet_cache.get(&serial) {
                     None => Err(DomainError::TaskPacketNotFound { task_id, play_id, serial }),
-                    Some(packet) => Ok(packet.value().clone()),
+                    Some(packet) => Ok(packet.get_ref().clone()),
                 },
             },
         }

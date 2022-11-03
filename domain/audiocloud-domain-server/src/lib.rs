@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 extern crate core;
 
 use derive_more::IsVariant;
@@ -14,6 +18,7 @@ pub mod media;
 pub mod models;
 pub mod nats;
 pub mod o11y;
+pub mod remote_value;
 pub mod rest_api;
 pub mod sockets;
 pub mod tasks;

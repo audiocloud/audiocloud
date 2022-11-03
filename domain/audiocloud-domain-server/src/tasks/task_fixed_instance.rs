@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::collections::{HashMap, HashSet};
 
 use audiocloud_api::common::instance::DesiredInstancePlayState;
@@ -33,16 +37,16 @@ impl TaskFixedInstance {
     }
 
     pub fn check_power(&self) -> bool {
-        if let Some(power) = &self.state.value().power {
-            power.actual.value().is_powered_on()
+        if let Some(power) = &self.state.get_ref().power {
+            power.actual.get_ref().is_powered_on()
         } else {
             true
         }
     }
 
     pub fn check_play(&mut self, instance_id: &FixedInstanceId, play: &DesiredInstancePlayState) -> bool {
-        if let Some(media) = &self.state.value().play {
-            if media.desired.value() != play {
+        if let Some(media) = &self.state.get_ref().play {
+            if media.desired.get_ref() != play {
                 if self.tracker.should_retry() {
                     get_instance_supervisor().do_send(SetInstanceDesiredPlayState { instance_id: instance_id.clone(),
                                                                                     desired:     play.clone(), });
@@ -52,7 +56,7 @@ impl TaskFixedInstance {
 
                 false
             } else {
-                media.actual.value().satisfies(play)
+                media.actual.get_ref().satisfies(play)
             }
         } else {
             true
@@ -67,8 +71,8 @@ pub struct TaskFixedInstances {
 
 impl Default for TaskFixedInstances {
     fn default() -> Self {
-        Self { instances: Default::default(),
-               play:      DesiredInstancePlayState::Stopped, }
+        Self { instances: { Default::default() },
+               play:      { DesiredInstancePlayState::Stopped { position: None } }, }
     }
 }
 
@@ -128,17 +132,17 @@ impl TaskFixedInstances {
 
 fn is_satisfied(i: &TaskFixedInstance) -> (bool, bool) {
     let power_satisfied = i.state
-                           .value()
+                           .get_ref()
                            .power
                            .as_ref()
-                           .map(|power| power.actual.value().satisfies(power.desired.value().clone()))
+                           .map(|power| power.actual.get_ref().satisfies(power.desired.get_ref().clone()))
                            .unwrap_or(true);
 
     let play_satisfied = i.state
-                          .value()
+                          .get_ref()
                           .play
                           .as_ref()
-                          .map(|play| play.actual.value().satisfies(play.desired.value()))
+                          .map(|play| play.actual.get_ref().satisfies(play.desired.get_ref()))
                           .unwrap_or(true);
 
     (power_satisfied, play_satisfied)

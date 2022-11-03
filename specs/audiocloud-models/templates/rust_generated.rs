@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
+#![allow(unused_imports)]
+
 use audiocloud_api::model::*;
 use audiocloud_api::api::*;
 use serde::{Serialize, Deserialize};
@@ -6,13 +12,19 @@ use schemars::schema::RootSchema;
 
 {% for (manufacturer, this_models) in models.iter().sorted_by_key(self::get_key) %}
 pub mod {{ manufacturer|lowercase }} {
-
 use super::*;
+
+pub const NAME: &str = "{{ manufacturer }}";
+
 {% for (name, model) in this_models.iter().sorted_by_key(self::get_key) %}
 {{ RustPresetModelTemplate::new(name, model) }}
 {{ RustParamsModelTemplate::new(name, model) }}
 {{ RustReportsModelTemplate::new(name, model) }}
+pub mod {{name|lowercase}} {
+use super::*;
+pub const NAME: &str = "{{name}}";
 {{ RustConstantsTemplate::new(model) }}
+}
 {% endfor %}
 }
 {% endfor %}

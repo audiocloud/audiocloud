@@ -21,6 +21,7 @@ byteorder = "1"
 hidapi = "1"
 rand = "0.8"
 actix-web = "4"
+dashmap = "5"
 
 [dependencies.nix]
 version = "0.25"
@@ -39,7 +40,7 @@ version = "1"
 features = ["derive"]
 
 [dependencies.clap]
-version = "3"
+version = "4"
 features = ["derive", "env"]
 
 [dependencies.openssl]
@@ -55,6 +56,9 @@ path = "../../specs/audiocloud-api"
 
 [dependencies.audiocloud-models]
 path = "../../specs/audiocloud-models"
+
+[dependencies.audiocloud-rust-clients]
+path = "../../clients/audiocloud-rust-clients"
 
 [dev-dependencies]
 trim-margin = "0.1.0"

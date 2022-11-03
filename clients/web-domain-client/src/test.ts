@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 import { SocketsSupervisor } from './supervisor'
 
 const socketSupervisor = new SocketsSupervisor('http://localhost:7200', {

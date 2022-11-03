@@ -1,16 +1,34 @@
-use std::time::Duration;
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
 
-use actix::{Actor, AsyncContext, Context, Handler, Recipient, Supervised};
+use std::future::Future;
+use std::result::Result as R;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+use futures::future::Shared;
+use futures::FutureExt;
+
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio::spawn;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver as Receiver, UnboundedSender as Sender};
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
+use tokio::sync::oneshot::{Receiver as OneShotReceiver, Sender as OneShotSender};
+use tokio::time::error::Elapsed;
+use tokio::time::timeout;
 use tracing::*;
 
-use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverError, InstanceDriverEvent};
-use audiocloud_api::{FixedInstanceId, PlayId, RenderId};
+use audiocloud_api::instance_driver::{
+    DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceParametersUpdated,
+};
+use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstancePlayState, PlayId, RenderId};
 
-use crate::{emit_event, Command};
+use crate::nats;
 
-pub type Result = std::result::Result<(), InstanceDriverError>;
+pub type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 
 pub trait Driver: Unpin + Sized + 'static {
     type Params: DeserializeOwned;
@@ -40,6 +58,10 @@ pub trait Driver: Unpin + Sized + 'static {
         Err(InstanceDriverError::MediaNotPresent)
     }
 
+    fn get_actual_play_state(&self) -> InstancePlayState {
+        InstancePlayState::Stopped { position: None }
+    }
+
     fn check_connection(&mut self) -> Result {
         Ok(())
     }
@@ -59,79 +81,121 @@ pub trait Driver: Unpin + Sized + 'static {
     fn emit_reports(instance_id: FixedInstanceId, reports: Self::Reports) -> Result {
         let reports = serde_json::to_value(&reports).map_err(|e| InstanceDriverError::ReportsMalformed { error: e.to_string() })?;
 
-        emit_event(instance_id, InstanceDriverEvent::Reports { reports });
+        nats::publish(&instance_id, InstanceDriverEvent::Reports { reports });
 
         Ok(())
     }
 }
 
-pub struct DriverActor<D>
-    where D: Driver
-{
-    driver: D,
+pub struct DriverRunner<T: Driver> {
+    driver:                    T,
+    instance_id:               FixedInstanceId,
+    set_desired_play_state_rx: HandleReceiver<DesiredInstancePlayState, DesiredInstancePlayStateUpdated>,
+    set_parameters_rx:         HandleReceiver<serde_json::Value, InstanceParametersUpdated>,
+    shut_down:                 Shared<OneShotReceiver<()>>,
+    next_poll_at:              Instant,
 }
 
-impl<D> DriverActor<D> where D: Driver
+impl<T> DriverRunner<T> where T: Driver + Send
 {
-    pub fn start_recipient(driver: D) -> Recipient<Command> {
-        Self { driver }.start().recipient()
+    pub fn run(instance_id: FixedInstanceId, driver: T) -> DriverHandle {
+        let (set_parameters_tx, set_parameters_rx) = unbounded_channel();
+        let (set_desired_play_state_tx, set_desired_play_state_rx) = unbounded_channel();
+        let (shut_down_tx, shut_down_rx) = oneshot::channel();
+        let next_poll_at = Instant::now();
+
+        let mut host = DriverRunner { driver:                    { driver },
+                                      instance_id:               { instance_id },
+                                      set_desired_play_state_rx: { set_desired_play_state_rx },
+                                      set_parameters_rx:         { set_parameters_rx },
+                                      shut_down:                 { shut_down_rx.shared() },
+                                      next_poll_at:              { next_poll_at }, };
+
+        spawn(async move {
+            loop {
+                if !host.run_one().await {
+                    break;
+                }
+            }
+        });
+
+        DriverHandle { set_desired_play_state_tx: { set_desired_play_state_tx },
+                       set_parameters_tx:         { set_parameters_tx },
+                       shut_down_tx:              { Arc::new(shut_down_tx) }, }
     }
 
-    fn update(&mut self, ctx: &mut Context<Self>) {
-        if let Some(when) = self.driver.poll() {
-            ctx.run_later(when, Self::update);
+    async fn run_one(&mut self) -> bool {
+        tokio::select! {
+            Some((params, sender)) = self.set_parameters_rx.recv() => {
+                let result = match serde_json::from_value(params) {
+                    Ok(params) => {
+                        self.driver.on_parameters_changed(params)
+                    },
+                    Err(err) => {
+                        Err(InstanceDriverError::ParametersMalformed { error: err.to_string() })
+                    }
+                };
+
+                let _ = sender.send(result.map(|_| InstanceParametersUpdated::Updated {id: self.instance_id.clone()}));
+            },
+            Some((play_state, sender)) = self.set_desired_play_state_rx.recv() => {
+                let result = match play_state {
+                    DesiredInstancePlayState::Playing {play_id} => {
+                        self.driver.play(play_id)
+                    },
+                    DesiredInstancePlayState::Rendering{render_id, length} => {
+                        self.driver.render(render_id, length)
+                    },
+                    DesiredInstancePlayState::Stopped {position: _} => {
+                        self.driver.stop()
+                    },
+                };
+
+                let _ = sender.send(result.map(|_| DesiredInstancePlayStateUpdated::Updated {
+                    id: self.instance_id.clone(),
+                    desired: play_state.clone(),
+                    actual: self.driver.get_actual_play_state()
+                }));
+            },
+            _ = self.shut_down.clone() => {
+                return false;
+            },
+            _ = tokio::time::sleep(self.next_poll_at.duration_since(Instant::now())) => {
+                self.next_poll_at += self.driver.poll().unwrap_or(Duration::from_secs(1));
+            }
         }
+
+        true
     }
 }
 
-impl<D> Actor for DriverActor<D> where D: Driver
-{
-    type Context = Context<Self>;
+type HandleSender<T, R> = Sender<(T, OneShotSender<Result<R>>)>;
+type HandleReceiver<T, R> = Receiver<(T, OneShotSender<Result<R>>)>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {
-        self.restarting(ctx);
-    }
+#[derive(Clone)]
+pub struct DriverHandle {
+    set_parameters_tx:         HandleSender<serde_json::Value, InstanceParametersUpdated>,
+    set_desired_play_state_tx: HandleSender<DesiredInstancePlayState, DesiredInstancePlayStateUpdated>,
+    shut_down_tx:              Arc<OneShotSender<()>>,
 }
 
-impl<D> Supervised for DriverActor<D> where D: Driver
-{
-    fn restarting(&mut self, ctx: &mut <Self as Actor>::Context) {
-        self.driver.restarted();
-        ctx.run_later(Duration::default(), Self::update);
+impl DriverHandle {
+    pub async fn set_parameters(&self, parameters: serde_json::Value) -> Result<InstanceParametersUpdated> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.set_parameters_tx.send((parameters, tx));
+
+        Self::respond(timeout(Duration::from_secs(1), rx).await)
     }
-}
 
-impl<D> Handler<Command> for DriverActor<D> where D: Driver
-{
-    type Result = Result;
+    pub async fn set_desired_play_state(&self, state: DesiredInstancePlayState) -> Result<DesiredInstancePlayStateUpdated> {
+        let (tx, rx) = oneshot::channel();
+        let _ = self.set_desired_play_state_tx.send((state, tx));
 
-    fn handle(&mut self, msg: Command, _ctx: &mut Self::Context) -> Self::Result {
-        match msg.command {
-            InstanceDriverCommand::CheckConnection => {
-                self.driver.check_connection()?;
-            }
-            InstanceDriverCommand::Stop => {
-                self.driver.stop()?;
-            }
-            InstanceDriverCommand::Play { play_id } => {
-                self.driver.play(play_id)?;
-            }
-            InstanceDriverCommand::Render { length, render_id } => {
-                self.driver.render(render_id, length)?;
-            }
-            InstanceDriverCommand::Rewind { to } => {
-                self.driver.rewind(to)?;
-            }
-            InstanceDriverCommand::SetParameters(parameters) => {
-                let parameters =
-                    serde_json::from_value(parameters).map_err(|e| InstanceDriverError::ParametersMalformed { error: e.to_string() })?;
-                self.driver.on_parameters_changed(parameters)?;
-            }
-            InstanceDriverCommand::SetPowerChannel { channel, power } => {
-                self.driver.set_power_channel(channel, power)?;
-            }
-        }
+        Self::respond(timeout(Duration::from_secs(1), rx).await)
+    }
 
-        Ok(())
+    fn respond<T>(result: R<R<R<T, InstanceDriverError>, RecvError>, Elapsed>) -> Result<T> {
+        result.map_err(|_| InstanceDriverError::RPC { error: format!("Timed out"), })?
+              .map_err(|_| InstanceDriverError::RPC { error: format!("Channel closed"), })?
     }
 }

@@ -1,4 +1,7 @@
-use std::env;
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -19,9 +22,9 @@ use crate::media::download::Downloader;
 use crate::media::upload::Uploader;
 use crate::media::{DownloadJobId, UploadJobId};
 
-#[actix::test]
+/*#[actix::test]
 async fn test_download_success() -> anyhow::Result<()> {
-    let db = db::init(DataOpts::memory()).await?;
+    let db = db::init(DataOpts::temporary()).await?;
 
     let job_id = DownloadJobId::new(nanoid!());
 
@@ -60,13 +63,13 @@ async fn test_download_success() -> anyhow::Result<()> {
     // TODO: validate file
 
     Ok(())
-}
+}*/
 
 #[actix::test]
 async fn test_upload_success() -> anyhow::Result<()> {
-    let db = db::init(DataOpts::memory()).await?;
+    let db = db::init(DataOpts::temporary()).await?;
 
-    let source_url = "http://speedtest.ftp.otenet.gr/files/test100k.db".to_owned();
+    let source_url = "https://fastest.fish/lib/downloads/1KiB.bin".to_owned();
 
     let client = reqwest::Client::new();
 

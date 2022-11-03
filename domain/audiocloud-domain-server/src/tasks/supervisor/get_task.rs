@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use actix::Handler;
 
 use audiocloud_api::domain::tasks::TaskWithStatusAndSpec;
@@ -14,7 +18,7 @@ impl Handler<GetTaskWithStatusAndSpec> for TasksSupervisor {
         use DomainError::*;
 
         if let Some(task) = self.tasks.get(&msg.task_id) {
-            Ok(TaskWithStatusAndSpec { play_state: { task.state.play_state.value().clone() },
+            Ok(TaskWithStatusAndSpec { play_state: { task.state.play_state.get_ref().clone() },
                                        task_id:    { msg.task_id.clone() },
                                        instances:  { Default::default() },
                                        media:      { Default::default() },

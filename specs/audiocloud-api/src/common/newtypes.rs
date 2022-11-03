@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! Various IDs and wrappers
 
 use std::fmt::Formatter;
@@ -26,10 +30,6 @@ pub struct FixedInstanceId {
 }
 
 impl FixedInstanceId {
-    pub fn driver_command_subject(&self) -> String {
-        format!("ac.inst.{}.{}.{}.cmds", &self.manufacturer, &self.name, &self.instance)
-    }
-
     pub fn driver_event_subject(&self) -> String {
         format!("ac.inst.{}.{}.{}.evts", &self.manufacturer, &self.name, &self.instance)
     }
@@ -253,6 +253,11 @@ pub struct RequestId(String);
 #[repr(transparent)]
 pub struct EngineId(String);
 
+/// Id of an fixed instance driver (there may be more than one in a domain)
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Display, Deref, Constructor, Hash, From, FromStr)]
+#[repr(transparent)]
+pub struct InstanceDriverId(String);
+
 impl EngineId {
     pub fn engine_command_subject(&self) -> String {
         format!("ac.engn.{}.cmds", self)
@@ -462,4 +467,5 @@ json_schema_new_type!(AppId,
                       ClientId,
                       SocketId,
                       RequestId,
-                      EngineId);
+                      EngineId,
+                      InstanceDriverId);

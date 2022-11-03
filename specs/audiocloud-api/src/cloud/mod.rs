@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! API definitions for the Cloud
 
 use std::collections::HashSet;
@@ -176,9 +180,9 @@ pub fn schemas() -> RootSchema {
                    schema_for!(domains::ClearMaintenance),
                    schema_for!(domains::Maintenance),
                    schema_for!(domains::AppFixedInstance),
-                   schema_for!(domains::DomainFixedInstanceConfig),
+                   schema_for!(domains::FixedInstanceConfig),
                    schema_for!(domains::DynamicInstanceLimits),
-                   schema_for!(domains::DomainEngineConfig),
+                   schema_for!(domains::EngineConfig),
                    schema_for!(media::DownloadCreated),
                    schema_for!(media::UploadCreated),
                    schema_for!(media::MediaObjectDeleted),

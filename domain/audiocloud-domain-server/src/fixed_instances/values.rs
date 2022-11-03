@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use serde_json::Value;
 
 pub fn merge_values(maybe_object: &mut Value, other: Value) {

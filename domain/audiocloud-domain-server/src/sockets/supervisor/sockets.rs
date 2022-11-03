@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::time::{Duration, Instant};
 
 use actix::{Actor, Addr, Context, ContextFutureSpawner, Handler, WrapFuture};
@@ -72,7 +76,7 @@ impl SupervisedSocket {
 
     #[instrument(skip(self))]
     pub fn is_init_timed_out(&self, max_init_wait_time: u64) -> bool {
-        if *self.init_complete.value() {
+        if *self.init_complete.get_ref() {
             false
         } else {
             let since_init_started = self.init_complete.elapsed();
@@ -151,7 +155,7 @@ impl SocketsSupervisor {
         if let Some(client) = self.clients.get(client_id) {
             let best_socket = client.sockets
                                     .values()
-                                    .filter(|socket| *socket.init_complete.value())
+                                    .filter(|socket| *socket.init_complete.get_ref())
                                     .filter(|socket| socket.is_valid(self.opts.socket_drop_timeout))
                                     .sorted_by_key(|socket| socket.score())
                                     .next();

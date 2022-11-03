@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use anyhow::anyhow;
 use tracing::*;
 
@@ -17,11 +21,11 @@ pub async fn init(commands: DomainCommandSource, events: DomainEventSink) -> any
         DomainCommandSource::Disabled => {
             // nothing to do
         }
-        DomainCommandSource::Kafka { topic,
-                                     brokers,
-                                     username,
-                                     password,
-                                     offset, } => {
+        DomainCommandSource::Kafka { topic: _,
+                                     brokers: _,
+                                     username: _,
+                                     password: _,
+                                     offset: _, } => {
             #[cfg(kafka)]
             {
                 kafka::commands::init(topic, brokers, username, password, offset).await?;
@@ -31,7 +35,7 @@ pub async fn init(commands: DomainCommandSource, events: DomainEventSink) -> any
                 return Err(anyhow!("Kafka command source support is not enabled"));
             }
         }
-        DomainCommandSource::JetStream { url, topic } => {
+        DomainCommandSource::JetStream { url: _, topic: _ } => {
             return Err(anyhow!("JetStream command source is not yet supported"));
         }
     }
@@ -43,10 +47,10 @@ pub async fn init(commands: DomainCommandSource, events: DomainEventSink) -> any
         DomainEventSink::Log => {
             log_events::init().await?;
         }
-        DomainEventSink::Kafka { topic,
-                                 brokers,
-                                 username,
-                                 password, } => {
+        DomainEventSink::Kafka { topic: _,
+                                 brokers: _,
+                                 username: _,
+                                 password: _, } => {
             #[cfg(kafka)]
             {
                 kafka::events::init(topic, brokers, username, password).await?;
@@ -56,7 +60,7 @@ pub async fn init(commands: DomainCommandSource, events: DomainEventSink) -> any
                 return Err(anyhow!("Kafka event sink support is not enabled"));
             }
         }
-        DomainEventSink::JetStream { url, topic } => {
+        DomainEventSink::JetStream { url: _, topic: _ } => {
             return Err(anyhow!("JetStream event sink is not yet supported"));
         }
     }

@@ -1,47 +1,44 @@
-use std::collections::HashSet;
-use std::iter::repeat;
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
 
-use anyhow::anyhow;
-use futures::stream::iter;
-use maplit::btreemap;
-use rbs::Value;
+use std::collections::HashSet;
 
 use audiocloud_api::{Model, ModelId};
 
-use crate::db::Db;
-use crate::Deserialize;
+use crate::db::{prisma, Db};
 
 impl Db {
     pub async fn delete_all_models_except(&self, ids: &HashSet<ModelId>) -> anyhow::Result<()> {
-        let id_keys = repeat("?").take(ids.len()).collect::<Vec<_>>().join(", ");
-        let sql = format!("delete from models where id not in ({id_keys})");
-
         self.db
-            .exec(&sql,
-                  ids.iter().cloned().map(|model_id| Value::from(model_id.to_string())).collect())
+            .model()
+            .delete_many(vec![prisma::model::id::not_in_vec(ids.iter().map(|id| id.to_string()).collect())])
+            .exec()
             .await?;
 
         Ok(())
     }
 
     pub async fn set_model(&self, model_id: &ModelId, model: &Model) -> anyhow::Result<()> {
-        let model = serde_json::to_string(model)?;
         self.db
-            .exec("insert or replace into models (id, spec) values (?1, ?2)",
-                  vec![Value::from(model_id.to_string()), Value::from(model)])
+            .model()
+            .upsert(prisma::model::id::equals(model_id.to_string()),
+                    prisma::model::create(model_id.to_string(), serde_json::to_string_pretty(model)?, vec![]),
+                    vec![prisma::model::spec::set(serde_json::to_string_pretty(model)?)])
+            .exec()
             .await?;
 
         Ok(())
     }
 
     pub async fn get_model(&self, model_id: &ModelId) -> anyhow::Result<Option<Model>> {
-        let model: Option<String> = self.db
-                                        .fetch_decode("select spec from models where id = ?1", vec![Value::from(model_id.to_string())])
-                                        .await?;
+        let model = self.db
+                        .model()
+                        .find_unique(prisma::model::id::equals(model_id.to_string()))
+                        .exec()
+                        .await?;
 
-        Ok(match model {
-            None => None,
-            Some(spec) => serde_json::from_str(&spec)?,
-        })
+        Ok(model.map(|model| serde_json::from_str(&model.spec))
+                .map_or(Ok(None), |result| result.map(Some))?)
     }
 }

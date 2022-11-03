@@ -1,9 +1,6 @@
-use std::collections::BTreeMap;
-
-use anyhow::anyhow;
-use maplit::btreemap;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
 
 use crate::db::Db;
 

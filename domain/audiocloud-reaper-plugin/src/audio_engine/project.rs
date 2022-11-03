@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::ffi::{CStr, CString};
 use std::fs;
@@ -213,7 +217,7 @@ impl EngineProject {
     }
 
     pub fn play_ready(&mut self, play_id: PlayId) {
-        if let ProjectPlayState::PreparingToPlay(play) = self.play_state.value() {
+        if let ProjectPlayState::PreparingToPlay(play) = self.play_state.get_ref() {
             if play.play_id == play_id {
                 self.play_state = ProjectPlayState::Playing(play.clone()).into();
                 Reaper::get().on_play_button_ex(self.context());
@@ -229,7 +233,7 @@ impl EngineProject {
         let new_play_state = reaper.get_play_state_ex(context);
         let cur_pos = reaper.get_play_position_ex(context).get();
 
-        match self.play_state.value().clone() {
+        match self.play_state.get_ref().clone() {
             ProjectPlayState::PreparingToPlay(play) => {
                 debug!(play_id = %play.play_id, "waiting for plugin to be ready...");
                 if self.play_state.elapsed().num_seconds() > 1 {
@@ -240,7 +244,7 @@ impl EngineProject {
             }
             ProjectPlayState::Playing(play) => {
                 debug!(cur_pos, end = play.segment.end(), "playing...");
-                if !new_play_state.is_playing && self.reaper_play_state.value().is_playing {
+                if !new_play_state.is_playing && self.reaper_play_state.get_ref().is_playing {
                     debug!(play_id = %play.play_id, "reached end of play");
                     self.clean_up_end_of_play(play.play_id);
                 }
@@ -406,13 +410,14 @@ impl EngineProject {
 
     pub fn get_status(&self) -> anyhow::Result<EngineStatus> {
         Ok(EngineStatus { plugin_ready:         PluginRegistry::has(&self.id)?,
-                          is_transport_playing: self.reaper_play_state.value().is_playing || self.reaper_play_state.value().is_recording,
-                          is_playing:           if let ProjectPlayState::Playing(play) = self.play_state.value() {
+                          is_transport_playing: self.reaper_play_state.get_ref().is_playing
+                                                || self.reaper_play_state.get_ref().is_recording,
+                          is_playing:           if let ProjectPlayState::Playing(play) = self.play_state.get_ref() {
                               Some(play.play_id.clone())
                           } else {
                               None
                           },
-                          is_rendering:         if let ProjectPlayState::Rendering(render) = self.play_state.value() {
+                          is_rendering:         if let ProjectPlayState::Rendering(render) = self.play_state.get_ref() {
                               Some(render.render_id.clone())
                           } else {
                               None
@@ -498,7 +503,7 @@ impl EngineProject {
         let reaper = Reaper::get();
         let context = self.context();
 
-        match self.play_state.value() {
+        match self.play_state.get_ref() {
             ProjectPlayState::Rendering(render) => {
                 // this is an incomplete render...
                 reaper.main_on_command_ex(*CMD_TRANSPORT_STOP_AND_DELETE_MEDIA, 0, context);

@@ -1,0 +1,82 @@
+datasource db {
+    provider = "sqlite"
+    url      = "file:../../../domain.sqlite"
+}
+
+generator client {
+    provider = "cargo run --bin prisma"
+    output   = "../src/db/prisma.rs"
+}
+
+model Model {
+    id            String          @id
+    spec          String
+    FixedInstance FixedInstance[]
+}
+
+model FixedInstance {
+    id        String  @id
+    model_id  String
+    driver_id String?
+    engine_id String?
+    config    String
+
+    model  Model                @relation(fields: [model_id], references: [id], onDelete: Cascade)
+    driver FixedInstanceDriver? @relation(fields: [driver_id], references: [id], onDelete: SetNull)
+    engine Engine?              @relation(fields: [engine_id], references: [id], onDelete: SetNull)
+}
+
+model FixedInstanceDriver {
+    id        String    @id
+    url       String
+    last_seen DateTime?
+    config    String
+
+    instances FixedInstance[]
+}
+
+model Engine {
+    id        String    @id
+    url       String
+    last_seen DateTime?
+    config    String
+
+    instances FixedInstance[]
+    tasks     Task[]
+}
+
+model MediaFile {
+    id        String    @id
+    path      String?
+    metadata  String?
+    last_used DateTime?
+    revision  BigInt    @default(0)
+
+    jobs MediaJob[]
+}
+
+model MediaJob {
+    id          String   @id
+    media_id    String
+    status      String
+    config      String
+    kind        String
+    in_progress Boolean  @default(false)
+    created_at  DateTime @default(now())
+    updated_at  DateTime @updatedAt
+
+    MediaFile MediaFile @relation(fields: [media_id], references: [id], onDelete: Cascade)
+}
+
+model Task {
+    id        String  @id
+    engine_id String?
+    spec      String
+
+    engine Engine? @relation(fields: [engine_id], references: [id], onDelete: SetNull)
+}
+
+model SysProp {
+    id    String @id
+    value String
+}

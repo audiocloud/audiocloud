@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 #![allow(unused_variables)]
 
 use std::collections::HashMap;
@@ -7,7 +11,7 @@ use opentelemetry::global;
 use opentelemetry::metrics::ObservableGauge;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{DomainConfig, DomainEngineConfig, FixedInstanceRoutingMap};
+use audiocloud_api::cloud::domains::{DomainConfig, EngineConfig, FixedInstanceRoutingMap};
 use audiocloud_api::common::change::TaskState;
 use audiocloud_api::newtypes::{AppTaskId, EngineId};
 use audiocloud_api::{DomainId, FixedInstanceId, PlayId, StreamingPacket, Task, TaskReservation, TaskSecurity, TaskSpec, Timestamped};
@@ -59,7 +63,7 @@ struct SupervisedTask {
 }
 
 struct ReferencedEngine {
-    config: DomainEngineConfig,
+    config: EngineConfig,
 }
 
 impl TasksSupervisor {

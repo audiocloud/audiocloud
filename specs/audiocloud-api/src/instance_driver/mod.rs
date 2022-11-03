@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 //! Types used to communicate with the instance_driver
 
 use schemars::schema::RootSchema;
@@ -8,8 +12,8 @@ use thiserror::Error;
 use crate::common::instance::{DesiredInstancePlayState, InstancePlayState};
 use crate::common::media::{PlayId, RenderId};
 use crate::common::task::InstanceReports;
+use crate::merge_schemas;
 use crate::newtypes::FixedInstanceId;
-use crate::{merge_schemas, Request, SerializableResult};
 
 /// A command that can be sent to the instance driver
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -24,10 +28,6 @@ pub enum InstanceDriverCommand {
     SetPowerChannel { channel: usize, power: bool },
 }
 
-impl Request for InstanceDriverCommand {
-    type Response = SerializableResult<(), InstanceDriverError>;
-}
-
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct SetInstanceParameters {
     pub parameters: serde_json::Value,
@@ -36,8 +36,8 @@ pub struct SetInstanceParameters {
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, Error, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum InstanceDriverError {
-    #[error("Instance {0} does not exist")]
-    InstanceNotFound(FixedInstanceId),
+    #[error("Instance {instance} does not exist")]
+    InstanceNotFound { instance: FixedInstanceId },
 
     #[error("Parameter {error} does not exist")]
     ParameterDoesNotExist { error: String },
@@ -48,6 +48,12 @@ pub enum InstanceDriverError {
     #[error("Reports are malformed: {error}")]
     ReportsMalformed { error: String },
 
+    #[error("Config is malformed: {error}")]
+    ConfigMalformed { error: String },
+
+    #[error("I/O error: {error}")]
+    IOError { error: String },
+
     #[error("Media is not present, can't play, record or rewind")]
     MediaNotPresent,
 
@@ -56,6 +62,9 @@ pub enum InstanceDriverError {
 
     #[error("Driver can't guarantee that playback won't be interrupted")]
     NotInterruptable,
+
+    #[error(r#"Driver not found for manufacturer=”{manufacturer}", name="{name}""#)]
+    DriverNotSupported { manufacturer: String, name: String },
 
     #[error("Remote call failed: {error}")]
     RPC { error: String },
@@ -103,14 +112,17 @@ pub enum InstanceParametersUpdated {
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum InstanceCommandAccepted {
-    Updated { id: FixedInstanceId },
+pub enum DesiredInstancePlayStateUpdated {
+    Updated {
+        id:      FixedInstanceId,
+        desired: DesiredInstancePlayState,
+        actual:  InstancePlayState,
+    },
 }
 
 pub fn schemas() -> RootSchema {
     merge_schemas([schema_for!(InstanceDriverError),
                    schema_for!(InstanceDriverCommand),
-                   schema_for!(InstanceCommandAccepted),
                    schema_for!(InstanceParametersUpdated),
                    schema_for!(SetInstanceParameters),
                    schema_for!(InstanceWithStatusList)].into_iter())

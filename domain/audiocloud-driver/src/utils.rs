@@ -1,6 +1,10 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use std::ops::Range;
 
-use audiocloud_api::{ModelParameter, ModelValue, ModelValueOption, ToggleOr};
+use audiocloud_api::{ModelValue, ModelValueOption, ToggleOr};
 
 pub fn rescale(value: f64, options: &[ModelValueOption], scale: f64) -> f64 {
     for (i, value_opt) in options.iter().enumerate() {

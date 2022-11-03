@@ -1,81 +1,89 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 #![allow(unused_variables)]
 
 use std::time::Duration;
 
-use actix::{Actor, ActorFutureExt, AsyncContext, Context, ContextFutureSpawner, Handler, StreamHandler, WrapFuture};
+use actix::{Actor, ActorFutureExt, AsyncContext, Context, ContextFutureSpawner, StreamHandler, WrapFuture, WrapStream};
 use actix_broker::BrokerIssue;
+use futures::task::SpawnExt;
 use futures::FutureExt;
+use reqwest::Url;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::DomainFixedInstanceConfig;
+use audiocloud_api::cloud::domains::FixedInstanceConfig;
 use audiocloud_api::domain::DomainError;
-use audiocloud_api::instance_driver::{InstanceDriverCommand, InstanceDriverEvent};
-use audiocloud_api::{
-    FixedInstanceId, InstancePlayState, InstanceReports, Model, ModelCapability, PowerDistributorReports, Request, SerializableResult,
-    Timestamped,
-};
+use audiocloud_api::instance_driver::InstanceDriverEvent;
+use audiocloud_api::{FixedInstanceId, InstancePlayState, InstanceReports, Model, Timestamped};
+use audiocloud_rust_clients::InstanceDriverClient;
+use media::Media;
+use power::Power;
 
-use crate::fixed_instances::values::merge_values;
-use crate::fixed_instances::{
-    get_instance_supervisor, NotifyFixedInstanceReports, NotifyInstancePowerChannelsChanged, NotifyInstanceState, SetDesiredPowerChannel,
-    SetInstanceDesiredPlayState, SetInstanceParameters,
-};
-use crate::tasks::{NotifyTaskDeleted, NotifyTaskSpec};
+use crate::fixed_instances::{get_instance_supervisor, NotifyFixedInstanceReports, NotifyInstanceState};
+use crate::remote_value::RemoteValue;
+use crate::tasks::NotifyTaskSpec;
 use crate::{nats, DomainResult};
 
-use super::media::Media;
-use super::power::Power;
+mod media;
+mod merge_parameters;
+mod on_instance_driver_event;
+mod on_instance_driver_url;
+mod on_instance_reports;
+mod on_task_deleted;
+mod on_task_spec_changed;
+mod power;
+mod set_desired_play_state;
+mod set_parameters;
 
-pub struct InstanceActor {
-    id:                  FixedInstanceId,
-    connected:           Timestamped<bool>,
-    config:              DomainFixedInstanceConfig,
-    power:               Option<Power>,
-    media:               Option<Media>,
-    spec:                Timestamped<Option<NotifyTaskSpec>>,
-    parameters:          serde_json::Value,
-    instance_driver_cmd: String,
-    model:               Model,
+pub struct FixedInstanceActor {
+    id:              FixedInstanceId,
+    connected:       Timestamped<bool>,
+    config:          FixedInstanceConfig,
+    power:           Option<Power>,
+    media:           Option<Media>,
+    spec:            Timestamped<Option<NotifyTaskSpec>>,
+    parameters:      RemoteValue<serde_json::Value>,
+    instance_client: InstanceDriverClient,
+    model:           Model,
 }
 
-impl InstanceActor {
-    pub fn new(id: FixedInstanceId, config: DomainFixedInstanceConfig, model: Model) -> anyhow::Result<Self> {
+pub struct ActorHandle {
+    id: FixedInstanceId,
+}
+
+impl FixedInstanceActor {
+    pub fn new(id: FixedInstanceId, client_url: Option<Url>, config: FixedInstanceConfig, model: Model) -> DomainResult<Self> {
         let power = config.power.clone().map(Power::new);
         let media = config.media.clone().map(Media::new);
-        let instance_driver_cmd = id.driver_command_subject();
+        let parameters = model.default_parameter_values();
 
-        Ok(Self { id:                  { id },
-                  connected:           { Timestamped::new(false) },
-                  config:              { config },
-                  power:               { power },
-                  media:               { media },
-                  model:               { model },
-                  spec:                { Default::default() },
-                  parameters:          { Default::default() },
-                  instance_driver_cmd: { instance_driver_cmd }, })
+        let instance_driver_err = |error| DomainError::InstanceDriver { error,
+                                                                        instance_id: id.clone() };
+
+        Ok(Self { id:              { id.clone() },
+                  connected:       { Timestamped::new(false) },
+                  config:          { config },
+                  power:           { power },
+                  media:           { media },
+                  model:           { model },
+                  spec:            { Default::default() },
+                  instance_client: { InstanceDriverClient::new(client_url).map_err(instance_driver_err)? },
+                  parameters:      { RemoteValue::new(parameters) }, })
+    }
+
+    fn force_update_parameters(&mut self) {
+        self.parameters.flush();
     }
 
     fn on_instance_driver_reports(&mut self, reports: InstanceReports) {
-        if self.model.capabilities.contains(&ModelCapability::PowerDistributor) {
-            match serde_json::from_value::<PowerDistributorReports>(reports.clone()) {
-                Ok(reports) => {
-                    if let Some(power_channels) = reports.power {
-                        let change_msg = NotifyInstancePowerChannelsChanged { instance_id: self.id.clone(),
-                                                                              power:       power_channels, };
-                        self.issue_system_async(change_msg);
-                    }
-                }
-                Err(_) => {}
-            }
-        }
-
         self.issue_system_async(NotifyFixedInstanceReports { instance_id: self.id.clone(),
                                                              reports });
     }
 
-    fn on_instance_driver_connected(&mut self, ctx: &mut Context<InstanceActor>) {
-        // set current parameters
-        self.request_instance_driver(InstanceDriverCommand::SetParameters(self.parameters.clone()), ctx);
+    fn on_instance_driver_connected(&mut self, ctx: &mut Context<FixedInstanceActor>) {
+        self.force_update_parameters();
     }
 
     fn on_instance_driver_play_state_changed(&mut self, current: InstancePlayState, media_pos: Option<f64>) {
@@ -85,7 +93,7 @@ impl InstanceActor {
     }
 }
 
-impl Actor for InstanceActor {
+impl Actor for FixedInstanceActor {
     type Context = Context<Self>;
 
     #[instrument(skip_all)]
@@ -95,144 +103,42 @@ impl Actor for InstanceActor {
     }
 }
 
-impl InstanceActor {
+impl FixedInstanceActor {
     #[instrument(skip_all)]
     fn subscribe_instance_driver_events(&mut self, ctx: &mut Context<Self>) {
         ctx.add_stream(nats::subscribe_json::<InstanceDriverEvent>(self.id.driver_event_subject()));
     }
 }
 
-impl Handler<NotifyTaskSpec> for InstanceActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: NotifyTaskSpec, ctx: &mut Self::Context) -> Self::Result {
-        if msg.spec.get_fixed_instance_ids().contains(&self.id) {
-            self.spec = Some(msg).into();
-            self.update(ctx);
-        }
-    }
-}
-
-impl Handler<NotifyTaskDeleted> for InstanceActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: NotifyTaskDeleted, ctx: &mut Self::Context) -> Self::Result {
-        if self.spec.value().as_ref().map(|prev_notify| &prev_notify.task_id == &msg.task_id) == Some(true) {
-            self.spec = None.into();
-        }
-    }
-}
-
-impl Handler<SetInstanceParameters> for InstanceActor {
-    type Result = DomainResult;
-
-    fn handle(&mut self, msg: SetInstanceParameters, ctx: &mut Self::Context) -> Self::Result {
-        merge_values(&mut self.parameters, msg.parameters);
-
-        Ok(())
-    }
-}
-
-impl Handler<SetDesiredPowerChannel> for InstanceActor {
-    type Result = DomainResult;
-
-    fn handle(&mut self, msg: SetDesiredPowerChannel, ctx: &mut Self::Context) -> Self::Result {
-        // TODO: if we support it, we support it
-        Ok(())
-    }
-}
-
-impl Handler<SetInstanceDesiredPlayState> for InstanceActor {
-    type Result = DomainResult<()>;
-
-    fn handle(&mut self, msg: SetInstanceDesiredPlayState, ctx: &mut Self::Context) -> Self::Result {
-        if let Some(media) = self.media.as_mut() {
-            media.set_desired_state(msg.desired);
-            Ok(())
-        } else {
-            Err(DomainError::InstanceNotCapable { instance_id: self.id.clone(),
-                                                  operation:   format!("SetInstanceDesiredPlayState"), })
-        }
-    }
-}
-
-impl Handler<NotifyInstancePowerChannelsChanged> for InstanceActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: NotifyInstancePowerChannelsChanged, ctx: &mut Self::Context) -> Self::Result {
-        if let Some(power) = self.power.as_mut() {
-            power.on_instance_power_channels_changed(msg);
-        }
-    }
-}
-
-impl StreamHandler<InstanceDriverEvent> for InstanceActor {
-    fn handle(&mut self, item: InstanceDriverEvent, ctx: &mut Self::Context) {
-        match item {
-            InstanceDriverEvent::Started => {}
-            InstanceDriverEvent::IOError { .. } => {}
-            InstanceDriverEvent::ConnectionLost => {
-                self.connected = false.into();
-            }
-            InstanceDriverEvent::Connected => {
-                self.connected = true.into();
-                self.on_instance_driver_connected(ctx);
-            }
-            InstanceDriverEvent::Reports { reports } => {
-                self.on_instance_driver_reports(reports);
-            }
-            InstanceDriverEvent::PlayState { desired,
-                                             current,
-                                             media: media_pos, } => self.on_instance_driver_play_state_changed(current, media_pos),
-        }
-    }
-
-    fn finished(&mut self, ctx: &mut Self::Context) {
-        self.subscribe_instance_driver_events(ctx);
-    }
-}
-
-impl InstanceActor {
+impl FixedInstanceActor {
     fn update(&mut self, ctx: &mut Context<Self>) {
         if let Some(power) = self.power.as_mut() {
             if let Some(set_power) = power.update(&self.spec) {
-                get_instance_supervisor().send(set_power).map(drop).into_actor(self).spawn(ctx)
+                get_instance_supervisor().send(set_power).map(drop).into_actor(self).spawn(ctx);
             }
         }
+
         if let Some(media) = self.media.as_mut() {
-            if let Some(cmd) = media.update() {
-                self.request_instance_driver(cmd, ctx);
-            }
-        }
-    }
+            if let Some((version, set_media)) = media.update() {
+                let client = self.instance_client.clone();
+                let instance_id = self.id.clone();
+                let fut = async move { client.set_desired_play_state(&instance_id, &set_media).await };
 
-    fn request_instance_driver(&self, driver: InstanceDriverCommand, ctx: &mut <Self as Actor>::Context) {
-        nats::request_json(self.instance_driver_cmd.to_string(), driver).into_actor(self)
-                                                                        .map(Self::on_instance_driver_response)
-                                                                        .spawn(ctx);
-    }
-
-    fn on_instance_driver_response(response: anyhow::Result<<InstanceDriverCommand as Request>::Response>,
-                                   actor: &mut Self,
-                                   ctx: &mut <Self as Actor>::Context) {
-        let instance = &actor.id;
-        match response {
-            Ok(result) => match result {
-                SerializableResult::Ok(_) => {}
-                SerializableResult::Error(error) => {
-                    warn!(%instance, %error, "Instance driver responded with error");
-                }
-            },
-            Err(error) => {
-                warn!(%instance, %error, "Failed to send command to instance driver");
+                fut.into_actor(self)
+                   .map(move |result, actor, ctx| {
+                       if let Some(media) = &mut actor.media {
+                           media.finish_update(version, result.is_ok());
+                       }
+                   })
+                   .spawn(ctx);
             }
         }
     }
 
     fn emit_instance_state(&self, ctx: &mut <Self as Actor>::Context) {
-        let x = NotifyInstanceState { instance_id: self.id.clone(),
-                                      power:       self.power.as_ref().map(|power| power.get_power_state()),
-                                      play:        self.media.as_ref().map(|media| media.get_play_state()),
-                                      connected:   self.connected, };
+        self.issue_system_async(NotifyInstanceState { instance_id: self.id.clone(),
+                                                      power:       self.power.as_ref().map(|power| power.get_power_state()),
+                                                      play:        self.media.as_ref().map(|media| media.get_play_state()),
+                                                      connected:   self.connected, });
     }
 }

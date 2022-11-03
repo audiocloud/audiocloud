@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use actix::{Actor, Addr};
 use anyhow::anyhow;
 use once_cell::sync::OnceCell;
@@ -10,9 +14,7 @@ pub use supervisor::FixedInstancesSupervisor;
 use crate::db::Db;
 
 mod instance;
-mod media;
 mod messages;
-mod power;
 mod supervisor;
 mod values;
 
@@ -24,9 +26,14 @@ pub fn get_instance_supervisor() -> &'static Addr<FixedInstancesSupervisor> {
 
 #[instrument(skip_all, err)]
 pub async fn init(cfg: &DomainConfig, db: Db) -> anyhow::Result<FixedInstanceRoutingMap> {
-    let (routing, supervisor) = FixedInstancesSupervisor::new(cfg, db).await?;
+    let supervisor = FixedInstancesSupervisor::new(cfg, db).await?;
     INSTANCE_SUPERVISOR.set(supervisor.start())
                        .map_err(|_| anyhow!("INSTANCE_SUPERVISOR already initialized"))?;
 
-    Ok(routing)
+    Ok(Default::default())
+}
+
+#[derive(Clone)]
+pub struct Instances {
+    supervisor: Addr<FixedInstancesSupervisor>,
 }
