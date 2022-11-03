@@ -37,18 +37,13 @@ sentry-tracing = "0.27"
 opentelemetry-prometheus = "0.11"
 prometheus = "0.13"
 tracing-loki = "0.2"
-
-[dependencies.prisma-client-rust-cli]
-git = "https://github.com/Brendonovich/prisma-client-rust"
-tag = "0.6.3"
-default-features = false
-features = ["sqlite"]
+tempfile = "3"
 
 [dependencies.prisma-client-rust]
 git = "https://github.com/Brendonovich/prisma-client-rust"
 tag = "0.6.3"
 default-features = false
-features = ["sqlite"]
+features = ["migrations", "tracing", "sqlite"]
 
 [dependencies.sentry]
 version = "0.27"
@@ -124,9 +119,6 @@ path = "../../specs/audiocloud-models"
 
 [dependencies.audiocloud-rust-clients]
 path = "../../clients/audiocloud-rust-clients"
-
-[dev-dependencies]
-tempfile = "3.3.0"
 
 [features]
 kafka = ["rdkafka", "sasl2-sys"]

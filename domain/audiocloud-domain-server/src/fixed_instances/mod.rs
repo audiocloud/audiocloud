@@ -1,6 +1,5 @@
 use actix::{Actor, Addr};
 use anyhow::anyhow;
-use datachannel::CertificateType::Default;
 use once_cell::sync::OnceCell;
 use tracing::*;
 

@@ -21,7 +21,7 @@ use crate::media::{DownloadJobId, UploadJobId};
 
 #[actix::test]
 async fn test_download_success() -> anyhow::Result<()> {
-    let db = db::init(DataOpts::memory()).await?;
+    let db = db::init(DataOpts::temporary()).await?;
 
     let job_id = DownloadJobId::new(nanoid!());
 
@@ -64,7 +64,7 @@ async fn test_download_success() -> anyhow::Result<()> {
 
 #[actix::test]
 async fn test_upload_success() -> anyhow::Result<()> {
-    let db = db::init(DataOpts::memory()).await?;
+    let db = db::init(DataOpts::temporary()).await?;
 
     let source_url = "http://speedtest.ftp.otenet.gr/files/test100k.db".to_owned();
 

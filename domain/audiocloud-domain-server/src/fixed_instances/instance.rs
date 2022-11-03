@@ -69,7 +69,7 @@ impl FixedInstanceActor {
         let instance_driver_err = |error| DomainError::InstanceDriver { error,
                                                                         instance_id: id.clone() };
 
-        Ok(Self { id:              { id },
+        Ok(Self { id:              { id.clone() },
                   connected:       { Timestamped::new(false) },
                   config:          { config },
                   power:           { power },
@@ -132,7 +132,7 @@ impl FixedInstanceActor {
                 let fut = async move { client.set_desired_play_state(&instance_id, &set_media).await };
 
                 fut.into_actor(self)
-                   .map(|result, actor, ctx| {
+                   .map(move |result, actor, ctx| {
                        if let Some(media) = &mut actor.media {
                            media.finish_update(version, result.is_ok());
                        }

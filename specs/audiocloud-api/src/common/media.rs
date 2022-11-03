@@ -124,7 +124,7 @@ pub struct MediaObject {
     pub id:        AppMediaObjectId,
     pub metadata:  Option<MediaMetadata>,
     pub path:      Option<String>,
-    pub last_used: Timestamp,
+    pub last_used: Option<Timestamp>,
     pub revision:  u64,
 }
 
@@ -133,7 +133,7 @@ impl MediaObject {
         Self { id:        id.clone(),
                metadata:  None,
                path:      None,
-               last_used: now(),
+               last_used: None,
                revision:  0, }
     }
 }

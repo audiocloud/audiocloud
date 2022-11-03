@@ -5,14 +5,13 @@ use std::{
 
 use clap::Args;
 use futures::lock::Mutex;
-use rbatis::Rbatis;
-use rbdc_sqlite::driver::SqliteDriver;
 use serde::{Deserialize, Serialize};
+use tempfile::NamedTempFile;
 use tracing::*;
 
 mod media;
-mod migrations;
 mod models;
+mod prisma;
 mod sys_props;
 mod tasks;
 #[cfg(test)]
@@ -21,7 +20,8 @@ mod utils;
 
 #[derive(Clone)]
 pub struct Db {
-    db: Rbatis,
+    db:        Arc<prisma::PrismaClient>,
+    temp_file: Arc<Option<NamedTempFile>>,
 }
 
 impl Debug for Db {
@@ -36,18 +36,23 @@ struct TaskInfo {}
 #[derive(Args)]
 pub struct DataOpts {
     /// Sqlite database file where data for media and session cache will be stored. Use :memory: for an in-memory store
-    #[clap(long, env, default_value = "sqlite://domain.sqlite")]
+    #[clap(long, env, default_value = "file:domain.sqlite")]
     pub database_url: String,
 
     /// Use write-ahead logging as journal mode to speed up writes
     #[clap(long, env)]
     pub database_use_wal: bool,
+
+    #[clap(skip)]
+    pub temp_file: Option<NamedTempFile>,
 }
 
 impl DataOpts {
-    pub fn memory() -> Self {
-        Self { database_url:     "sqlite://:memory:".to_string(),
-               database_use_wal: false, }
+    pub fn temporary() -> Self {
+        let temp_file = NamedTempFile::new().expect("Failed to create temporary file");
+        Self { database_url:     format!("file:{}", temp_file.path().display()),
+               database_use_wal: false,
+               temp_file:        Some(temp_file), }
     }
 }
 
@@ -56,20 +61,17 @@ pub async fn init(cfg: DataOpts) -> anyhow::Result<Db> {
     let database_url = &cfg.database_url;
     debug!(?database_url, "Initializing database");
 
-    let mut db = Rbatis::new();
-    db.init(SqliteDriver {}, database_url)?;
+    let mut db = prisma::PrismaClient::_builder().with_url(database_url.to_owned()).build().await?;
 
-    if cfg.database_use_wal {
-        db.exec("PRAGMA journal_mode = WAL", vec![]).await?;
+    if cfg!(debug_assertions) {
+        debug!("pushing database");
+        db._db_push().accept_data_loss().force_reset().await?;
     } else {
-        debug!("Write ahead logging disabled");
+        debug!("executing migrations");
+        db._migrate_deploy().await?;
+        debug!("migrations done!");
     }
 
-    debug!("Running migrations");
-
-    let count = migrations::execute(&mut db).await?;
-
-    debug!(count, "Migrations executed");
-
-    Ok(Db { db })
+    Ok(Db { db:        Arc::new(db),
+            temp_file: Arc::new(cfg.temp_file), })
 }

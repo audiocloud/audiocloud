@@ -13,6 +13,7 @@
       <sourceFolder url="file://$MODULE_DIR$/domain/surreal-tests/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/clients/audiocloud-rust-clients/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/audiocloud-comms/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/domain/prisma/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

@@ -5,7 +5,7 @@ datasource db {
 
 generator client {
     provider = "cargo run --bin prisma"
-    output   = "../src/db/prisma.rs"
+    output   = "../../audiocloud-domain-server/src/db/prisma.rs"
 }
 
 model Model {
@@ -56,11 +56,12 @@ model MediaFile {
 }
 
 model MediaJob {
-    id          String   @id
-    media_id    String
-    status      String
-    config      String
-    kind        String
+    id       String @id
+    media_id String
+    status   String
+    config   String
+    kind     String
+
     in_progress Boolean  @default(false)
     created_at  DateTime @default(now())
     updated_at  DateTime @updatedAt

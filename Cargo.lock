@@ -540,7 +540,6 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry-prometheus",
  "prisma-client-rust",
- "prisma-client-rust-cli",
  "prometheus",
  "rdkafka",
  "regex",
@@ -2437,6 +2436,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "include_dir"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18762faeff7122e89e0857b02f7ce6fcc0d101d5e9ad2ad7846cc01d61b7f19e"
+dependencies = [
+ "include_dir_macros",
+]
+
+[[package]]
+name = "include_dir_macros"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b139284b5cf57ecfa712bcc66950bb635b31aff41c188e8a4cfc758eca374a3f"
+dependencies = [
+ "proc-macro2",
+ "quote",
+]
+
+[[package]]
 name = "indexmap"
 version = "1.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3685,6 +3703,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "prisma"
+version = "0.1.0"
+dependencies = [
+ "prisma-client-rust-cli",
+]
+
+[[package]]
 name = "prisma-client-rust"
 version = "0.6.3"
 source = "git+https://github.com/Brendonovich/prisma-client-rust?tag=0.6.3#e12e6932be7d224410784b52143384cc9235da3b"
@@ -3694,6 +3719,7 @@ dependencies = [
  "chrono",
  "datamodel",
  "dmmf",
+ "include_dir",
  "indexmap",
  "migration-core",
  "prisma-models",
@@ -3703,7 +3729,10 @@ dependencies = [
  "serde",
  "serde-value",
  "serde_json",
+ "tempdir",
  "thiserror",
+ "tokio",
+ "tracing",
  "user-facing-errors",
  "uuid 0.8.2",
 ]
