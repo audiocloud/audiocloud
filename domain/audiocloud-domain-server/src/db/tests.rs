@@ -1,6 +1,4 @@
-
-
-use maplit::{hashset};
+use maplit::hashset;
 use nanoid::nanoid;
 use serde_json::json;
 
@@ -59,6 +57,37 @@ async fn test_create_download_job() -> anyhow::Result<()> {
     assert_eq!(download_jobs.values().next().map(|download| &download.state), Some(&download.state));
     assert_eq!(download_jobs.values().next().map(|download| &download.download),
                Some(&download.download));
+
+    Ok(())
+}
+
+#[actix::test]
+async fn test_clear_job_in_progress() -> anyhow::Result<()> {
+    let db = super::init(DataOpts::temporary()).await?;
+
+    let media_id = new_random_test_media_id();
+
+    let job_id = new_random_download_job_id();
+
+    let upload_settings = test_media_download_settings();
+
+    let mut initial_state = not_completed_job_state();
+    initial_state.in_progress = true;
+
+    let download = MediaDownload { media_id:   { media_id.clone() },
+                                   download:   { upload_settings },
+                                   state:      { initial_state },
+                                   created_at: { now() }, };
+
+    db.create_initial_media(&media_id, None, None).await?;
+
+    db.save_download_job(&job_id, &download).await?;
+
+    assert_eq!(db.fetch_pending_download_jobs(1).await?.len(), 0);
+
+    db.clear_in_progress_for_all_jobs().await?;
+
+    assert_eq!(db.fetch_pending_download_jobs(1).await?.len(), 1);
 
     Ok(())
 }

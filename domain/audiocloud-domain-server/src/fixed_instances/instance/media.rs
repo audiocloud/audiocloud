@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
+ */
+
 use audiocloud_api::cloud::domains::DomainMediaInstanceConfig;
 
 use audiocloud_api::{DesiredInstancePlayState, InstancePlayState, ReportInstancePlayState, Timestamped};

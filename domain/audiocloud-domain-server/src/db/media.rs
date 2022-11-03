@@ -4,9 +4,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use anyhow::anyhow;
-use chrono::{Utc};
-
-
+use chrono::Utc;
 use prisma_client_rust::Direction;
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +21,13 @@ const UPLOAD_KIND: &str = "UPLOAD";
 
 impl Db {
     pub async fn clear_in_progress_for_all_jobs(&self) -> anyhow::Result<()> {
-        todo!()
+        self.db
+            .media_job()
+            .update_many(vec![], vec![prisma::media_job::in_progress::set(false)])
+            .exec()
+            .await?;
+
+        Ok(())
     }
 
     pub async fn fetch_pending_download_jobs(&self, limit: usize) -> anyhow::Result<DownloadJobs> {
@@ -89,7 +93,8 @@ impl Db {
                                       path: media_file.path,
                                       id: id.clone(),
                                       revision: media_file.revision as u64,
-                                      last_used: media_file.last_used.map(|last_used| last_used.with_timezone(&Utc)) }))
+                                      last_used:
+                                          media_file.last_used.map(|last_used| last_used.with_timezone(&Utc)) }))
             }
         }
     }
@@ -131,10 +136,12 @@ impl Db {
                                               config.clone(),
                                               DOWNLOAD_KIND.to_owned(),
                                               prisma::media_file::id::equals(download.media_id.to_string()),
-                                              vec![prisma::media_job::created_at::set(download.created_at.into())]),
+                                              vec![prisma::media_job::created_at::set(download.created_at.into()),
+                                                   prisma::media_job::in_progress::set(download.state.in_progress)]),
                     vec![prisma::media_job::status::set(state),
                          prisma::media_job::config::set(config),
-                         prisma::media_job::created_at::set(download.created_at.into())])
+                         prisma::media_job::created_at::set(download.created_at.into()),
+                         prisma::media_job::in_progress::set(download.state.in_progress)])
             .exec()
             .await?;
 
@@ -153,10 +160,12 @@ impl Db {
                                               config.clone(),
                                               UPLOAD_KIND.to_owned(),
                                               prisma::media_file::id::equals(upload.media_id.to_string()),
-                                              vec![prisma::media_job::created_at::set(upload.created_at.into())]),
+                                              vec![prisma::media_job::created_at::set(upload.created_at.into()),
+                                                   prisma::media_job::in_progress::set(upload.state.in_progress)]),
                     vec![prisma::media_job::status::set(state),
                          prisma::media_job::config::set(config),
-                         prisma::media_job::created_at::set(upload.created_at.into())])
+                         prisma::media_job::created_at::set(upload.created_at.into()),
+                         prisma::media_job::in_progress::set(upload.state.in_progress)])
             .exec()
             .await?;
 
