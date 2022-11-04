@@ -4,6 +4,8 @@
 
 //! Types used to communicate with the instance_driver
 
+use std::collections::HashMap;
+
 use schemars::schema::RootSchema;
 use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
@@ -12,8 +14,8 @@ use thiserror::Error;
 use crate::common::instance::{DesiredInstancePlayState, InstancePlayState};
 use crate::common::media::{PlayId, RenderId};
 use crate::common::task::InstanceReports;
-use crate::merge_schemas;
 use crate::newtypes::FixedInstanceId;
+use crate::{merge_schemas, InstanceParameters, Timestamp, Timestamped};
 
 /// A command that can be sent to the instance driver
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug, JsonSchema)]
@@ -70,6 +72,8 @@ pub enum InstanceDriverError {
     RPC { error: String },
 }
 
+pub type InstanceDriverResult<T = ()> = Result<T, InstanceDriverError>;
+
 #[derive(PartialEq, Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub enum InstanceDriverEvent {
@@ -98,8 +102,11 @@ pub enum InstanceDriverEvent {
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 pub struct InstanceWithStatus {
-    pub id:         FixedInstanceId,
-    pub play_state: Option<InstancePlayState>,
+    pub id:                 FixedInstanceId,
+    pub parameters:         InstanceParameters,
+    pub reports:            HashMap<Timestamp, InstanceReports>,
+    pub desired_play_state: Timestamped<Option<DesiredInstancePlayState>>,
+    pub actual_play_state:  Timestamped<Option<InstancePlayState>>,
 }
 
 pub type InstanceWithStatusList = Vec<InstanceWithStatus>;
@@ -107,7 +114,10 @@ pub type InstanceWithStatusList = Vec<InstanceWithStatus>;
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum InstanceParametersUpdated {
-    Updated { id: FixedInstanceId },
+    Updated {
+        id:         FixedInstanceId,
+        parameters: InstanceParameters,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, JsonSchema)]

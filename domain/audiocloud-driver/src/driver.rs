@@ -7,11 +7,12 @@ use std::result::Result as R;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use actix_broker::{Broker, SystemBroker};
 use futures::future::Shared;
 use futures::FutureExt;
-
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_json::json;
 use tokio::spawn;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver as Receiver, UnboundedSender as Sender};
 use tokio::sync::oneshot;
@@ -24,8 +25,9 @@ use tracing::*;
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceParametersUpdated,
 };
-use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstancePlayState, PlayId, RenderId};
+use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstanceParameters, InstancePlayState, PlayId, RenderId};
 
+use crate::messages::NotifyInstanceReportsMsg;
 use crate::nats;
 
 pub type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
@@ -34,9 +36,9 @@ pub trait Driver: Unpin + Sized + 'static {
     type Params: DeserializeOwned;
     type Reports: Serialize;
 
-    fn on_parameters_changed(&mut self, params: Self::Params) -> Result {
+    fn on_parameters_changed(&mut self, params: Self::Params) -> Result<InstanceParameters> {
         drop(params);
-        Ok(())
+        Ok(json!({}))
     }
 
     fn play(&mut self, play_id: PlayId) -> Result {
@@ -79,9 +81,11 @@ pub trait Driver: Unpin + Sized + 'static {
 
     #[instrument(skip(reports), err)]
     fn emit_reports(instance_id: FixedInstanceId, reports: Self::Reports) -> Result {
-        let reports = serde_json::to_value(&reports).map_err(|e| InstanceDriverError::ReportsMalformed { error: e.to_string() })?;
+        let reports_converted =
+            serde_json::to_value(&reports).map_err(|error| InstanceDriverError::ReportsMalformed { error: error.to_string() })?;
 
-        nats::publish(&instance_id, InstanceDriverEvent::Reports { reports });
+        Broker::<SystemBroker>::issue_async(NotifyInstanceReportsMsg { instance_id: { instance_id },
+                                                                    reports:     { reports_converted }, });
 
         Ok(())
     }
@@ -136,7 +140,12 @@ impl<T> DriverRunner<T> where T: Driver + Send
                     }
                 };
 
-                let _ = sender.send(result.map(|_| InstanceParametersUpdated::Updated {id: self.instance_id.clone()}));
+                let result = result.map(|parameters| InstanceParametersUpdated::Updated {
+                    id: {self.instance_id.clone()},
+                    parameters: {parameters}
+                });
+
+                let _ = sender.send(result);
             },
             Some((play_state, sender)) = self.set_desired_play_state_rx.recv() => {
                 let result = match play_state {
@@ -180,14 +189,14 @@ pub struct DriverHandle {
 }
 
 impl DriverHandle {
-    pub async fn set_parameters(&self, parameters: serde_json::Value) -> Result<InstanceParametersUpdated> {
+    pub async fn set_parameters(self, parameters: serde_json::Value) -> Result<InstanceParametersUpdated> {
         let (tx, rx) = oneshot::channel();
         let _ = self.set_parameters_tx.send((parameters, tx));
 
         Self::respond(timeout(Duration::from_secs(1), rx).await)
     }
 
-    pub async fn set_desired_play_state(&self, state: DesiredInstancePlayState) -> Result<DesiredInstancePlayStateUpdated> {
+    pub async fn set_desired_play_state(self, state: DesiredInstancePlayState) -> Result<DesiredInstancePlayStateUpdated> {
         let (tx, rx) = oneshot::channel();
         let _ = self.set_desired_play_state_tx.send((state, tx));
 

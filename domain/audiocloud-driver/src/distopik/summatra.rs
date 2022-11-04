@@ -7,12 +7,12 @@ use std::time::Duration;
 use byteorder::{ByteOrder, LittleEndian};
 use hidapi::{HidApi, HidDevice};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::*;
 
 use audiocloud_api::common::time::{now, Timestamp};
-
 use audiocloud_api::newtypes::FixedInstanceId;
-
+use audiocloud_api::InstanceParameters;
 use audiocloud_models::distopik::summatra::{INPUT_VALUES, PAN_VALUES};
 use audiocloud_models::distopik::{SummatraParameters, SummatraPreset, SummatraReports};
 
@@ -229,7 +229,7 @@ impl Driver for Summatra {
     type Params = SummatraParameters;
     type Reports = SummatraReports;
 
-    fn on_parameters_changed(&mut self, mut params: Self::Params) -> crate::driver::Result {
+    fn on_parameters_changed(&mut self, mut params: Self::Params) -> crate::driver::Result<InstanceParameters> {
         if let Some(channels) = params.input.take() {
             self.set_input(channels);
         }
@@ -245,7 +245,7 @@ impl Driver for Summatra {
 
         // self.issue_system_async(self.values.clone());
 
-        Ok(())
+        Ok(serde_json::to_value(&self.values).unwrap_or_else(|_| json!({})))
     }
 }
 

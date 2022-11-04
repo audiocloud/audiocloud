@@ -372,9 +372,11 @@ components:
             type: object
             required:
             - id
+            - parameters
             properties:
               id:
                 $ref: '#/components/schemas/FixedInstanceId'
+              parameters: true
         additionalProperties: false
     InstancePlayState:
       oneOf:
@@ -466,14 +468,22 @@ components:
     InstanceWithStatus:
       type: object
       required:
+      - actual_play_state
+      - desired_play_state
       - id
+      - parameters
+      - reports
       properties:
+        actual_play_state:
+          $ref: '#/components/schemas/Timestamped_for_Nullable_InstancePlayState'
+        desired_play_state:
+          $ref: '#/components/schemas/Timestamped_for_Nullable_DesiredInstancePlayState'
         id:
           $ref: '#/components/schemas/FixedInstanceId'
-        play_state:
-          anyOf:
-          - $ref: '#/components/schemas/InstancePlayState'
-          - type: 'null'
+        parameters: true
+        reports:
+          type: object
+          additionalProperties: true
     InstanceWithStatusList:
       title: Array_of_InstanceWithStatus
       type: array
@@ -490,3 +500,23 @@ components:
       - parameters
       properties:
         parameters: true
+    Timestamped_for_Nullable_DesiredInstancePlayState:
+      type: array
+      items:
+      - type: string
+        format: date-time
+      - anyOf:
+        - $ref: '#/components/schemas/DesiredInstancePlayState'
+        - type: 'null'
+      maxItems: 2
+      minItems: 2
+    Timestamped_for_Nullable_InstancePlayState:
+      type: array
+      items:
+      - type: string
+        format: date-time
+      - anyOf:
+        - $ref: '#/components/schemas/InstancePlayState'
+        - type: 'null'
+      maxItems: 2
+      minItems: 2

@@ -85,7 +85,6 @@ pub async fn init(cfg: ConfigOpts) -> anyhow::Result<DomainConfig> {
                              }
                              Ok(config) => {
                                  if &rv != &config {
-                                     // TODO: this will not reload models or fixed instance routing
                                      Broker::<SystemBroker>::issue_async(NotifyDomainConfiguration { config: config.clone() });
                                      config
                                  } else {

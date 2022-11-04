@@ -14,3 +14,11 @@ pub mod cloud;
 pub mod common;
 pub mod domain;
 pub mod instance_driver;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ServicePorts {
+    CloudServerHttps = 7000,
+    DomainServerHttps = 7100,
+    InstanceDriverHttps = 7200,
+    AudioEngineHttps = 7300,
+}

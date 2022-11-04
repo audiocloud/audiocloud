@@ -10,12 +10,14 @@ use clap::Parser;
 use reqwest::Url;
 use tracing::*;
 
+use audiocloud_actix_utils::start_http2_server;
 use audiocloud_api::cloud::domains::InstanceDriverConfig;
 use audiocloud_api::InstanceDriverId;
-use audiocloud_driver::drivers;
+use audiocloud_driver::client::DriverClient;
 use audiocloud_driver::http_client;
 use audiocloud_driver::nats::NatsOpts;
 use audiocloud_driver::rest_api;
+use audiocloud_driver::supervisor;
 use audiocloud_rust_clients::DomainServerClient;
 
 #[derive(Parser, Debug, Clone)]
@@ -59,19 +61,23 @@ async fn main() -> anyhow::Result<()> {
         config.merge(serde_yaml::from_reader(fs::File::open(file)?)?);
     }
 
-    if let Some(url) = opts.domain_server_url.as_ref() {
-        let client = DomainServerClient::new(url.clone())?;
-        config = client.register_instance_driver(&opts.driver_id, &config).await?;
-    }
+    let domain_client = match opts.domain_server_url.as_ref() {
+        Some(url) => {
+            let client = DomainServerClient::new(url.clone())?;
+            config = client.register_instance_driver(&opts.driver_id, &config).await?;
+            Some(client)
+        }
+        None => None,
+    };
 
-    let drivers = drivers::init(config)?;
-    let drivers = web::Data::new(drivers);
+    let supervisor = supervisor::init(opts.driver_id, domain_client, config);
+    let client = web::Data::new(DriverClient::new(supervisor));
 
     info!(bind = opts.bind, port = opts.port, " ==== AudioCloud Driver server ==== ");
 
-    HttpServer::new(move || App::new().app_data(drivers.clone()).configure(rest_api::configure)).bind((opts.bind.as_str(), opts.port))?
-                                                                                                .run()
-                                                                                                .await?;
+    start_http2_server(opts.bind.as_str(), opts.port, move |configure| {
+        configure.app_data(client.clone()).configure(rest_api::configure);
+    }).await?;
 
     Ok(())
 }

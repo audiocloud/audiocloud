@@ -2,11 +2,15 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
+use std::path::PathBuf;
+
 use actix_web::middleware::Logger;
+use actix_web::web::ServiceConfig;
 use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use tracing::*;
 
+use audiocloud_actix_utils::start_http2_server;
 use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, o11y, rest_api, sockets, tasks};
 
 #[derive(Parser)]
@@ -18,6 +22,9 @@ struct Opts {
     /// REST and WebSocket API host
     #[clap(short, long, env, default_value = "0.0.0.0")]
     bind: String,
+
+    #[clap(short, long, env)]
+    tls_cert: Option<PathBuf>,
 
     /// NATS URL
     #[clap(long, env, default_value = "nats://localhost:4222")]
@@ -112,15 +119,11 @@ async fn main() -> anyhow::Result<()> {
         warn!("*** development authentication strategy enabled! ***");
     }
 
-    // create actix
-    HttpServer::new(move || {
-        App::new().wrap(Logger::default())
-                  .app_data(rest_opts.clone())
-                  .configure(rest_api::configure)
-                  .configure(sockets::configure)
-    }).bind((opts.bind.as_str(), opts.port))?
-      .run()
-      .await?;
+    let configure = |service: &mut ServiceConfig| {
+        service.configure(rest_api::configure).configure(sockets::configure);
+    };
+
+    start_http2_server(opts.bind.as_str(), opts.port, configure).await?;
 
     Ok(())
 }

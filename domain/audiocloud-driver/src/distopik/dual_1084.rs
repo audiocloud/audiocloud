@@ -9,12 +9,13 @@ use std::time::Duration;
 
 use nix::{ioctl_none, ioctl_write_ptr};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tracing::*;
 
 use audiocloud_api::common::time::{now, Timestamp};
 use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
-use audiocloud_api::{toggle_off, toggle_value, Stereo, ToggleOr};
+use audiocloud_api::{toggle_off, toggle_value, InstanceParameters, Stereo, ToggleOr};
 use audiocloud_models::distopik::dual1084::*;
 use audiocloud_models::distopik::{Dual1084Parameters, Dual1084Preset, Dual1084Reports};
 
@@ -343,7 +344,7 @@ impl Driver for Dual1084 {
     type Params = Dual1084Parameters;
     type Reports = Dual1084Reports;
 
-    fn on_parameters_changed(&mut self, mut params: Self::Params) -> Result {
+    fn on_parameters_changed(&mut self, mut params: Self::Params) -> Result<InstanceParameters> {
         if let Some(Stereo { left, right }) = params.input_gain.take() {
             self.set_input_gain(left, right);
         }
@@ -393,7 +394,7 @@ impl Driver for Dual1084 {
 
         // self.issue_system_async(self.values.clone());
 
-        Ok(())
+        Ok(serde_json::to_value(&self.values).unwrap_or_else(|_| json!({})))
     }
 }
 

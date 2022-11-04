@@ -7,20 +7,14 @@ use std::collections::{HashMap, HashSet};
 use actix::Message;
 use reqwest::Url;
 
+use audiocloud_api::cloud::domains::InstanceDriverConfig;
 use audiocloud_api::common::instance::{DesiredInstancePlayState, ReportInstancePlayState, ReportInstancePowerState};
 use audiocloud_api::common::newtypes::FixedInstanceId;
 use audiocloud_api::common::task::{InstanceParameters, InstanceReports};
 use audiocloud_api::common::time::Timestamped;
-use audiocloud_api::{ModelValue, ParameterId};
+use audiocloud_api::{InstanceDriverId, ModelValue, ParameterId};
 
 use crate::DomainResult;
-
-#[derive(Message, Clone, Debug)]
-#[rtype(result = "()")]
-pub struct NotifyInstanceDriverUrl {
-    pub instance_id: FixedInstanceId,
-    pub base_url:    Option<Url>,
-}
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "DomainResult<()>")]
@@ -72,4 +66,19 @@ pub struct NotifyInstanceState {
 pub struct NotifyInstanceError {
     pub instance_id: FixedInstanceId,
     pub error:       String,
+}
+
+#[derive(Message, Clone, Debug)]
+#[rtype(result = "DomainResult<InstanceDriverConfig>")]
+pub struct RegisterInstanceDriver {
+    pub driver_id: InstanceDriverId,
+    pub provided:  InstanceDriverConfig,
+    pub base_url:  Url,
+}
+
+#[derive(Message, Clone, Debug)]
+#[rtype(result = "()")]
+pub struct NotifyInstanceDriverUrl {
+    pub instance_id: FixedInstanceId,
+    pub base_url:    Option<Url>,
 }

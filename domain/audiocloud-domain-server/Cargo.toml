@@ -9,7 +9,6 @@ description = "Audiocloud Domain Server"
 [dependencies]
 dotenv = "0.15"
 actix = "0.13"
-actix-web = "4"
 actix-web-actors = "4.1"
 actix-cors = "0.6"
 actix-broker = "0.4"
@@ -38,6 +37,7 @@ opentelemetry-prometheus = "0.11"
 prometheus = "0.13"
 tracing-loki = "0.2"
 tempfile = "3"
+actix-web = "4"
 
 [dependencies.prisma-client-rust]
 git = "https://github.com/Brendonovich/prisma-client-rust"
@@ -107,10 +107,6 @@ features = ["scram", "plain"]
 version = "4"
 features = ["derive", "env", "help", "usage", "error-context"]
 
-[dependencies.openssl]
-version = "0.10"
-features = ["vendored"]
-
 [dependencies.audiocloud-api]
 path = "../../specs/audiocloud-api"
 
@@ -119,6 +115,9 @@ path = "../../specs/audiocloud-models"
 
 [dependencies.audiocloud-rust-clients]
 path = "../../clients/audiocloud-rust-clients"
+
+[dependencies.audiocloud-actix-utils]
+path = "../../lib/audiocloud-actix-utils"
 
 [features]
 kafka = ["rdkafka", "sasl2-sys"]

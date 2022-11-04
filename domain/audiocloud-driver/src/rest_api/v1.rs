@@ -2,6 +2,7 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
+use actix::Addr;
 use actix_web::error::ErrorNotFound;
 use actix_web::{get, post, put, web, Error, Responder};
 
@@ -9,10 +10,11 @@ use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_api::DesiredInstancePlayState;
 
-use crate::drivers::Instances;
+use crate::client::DriverClient;
+use crate::supervisor::DriverSupervisor;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(get_parameters)
+    cfg.service(get_instance)
        .service(get_instances)
        .service(set_parameters)
        .service(set_parameter)
@@ -20,23 +22,23 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
 }
 
 #[get("/instances")]
-async fn get_instances(instances: web::Data<Instances>) -> impl Responder {
-    let rv = instances.get_instances();
+async fn get_instances(instances: web::Data<DriverClient>) -> impl Responder {
+    let rv = instances.get_instances().await.map_err(to_actix_error)?;
 
     Ok::<_, Error>(web::Json(rv))
 }
 
 #[get("/{manufacturer}/{name}/{instance}")]
-async fn get_parameters(instances: web::Data<Instances>, path: web::Path<(String, String, String)>) -> impl Responder {
+async fn get_instance(instances: web::Data<DriverClient>, path: web::Path<(String, String, String)>) -> impl Responder {
     let instance_id = get_instance_id(path.into_inner());
 
-    let rv = instances.get_parameters(&instance_id).map_err(to_actix_error)?;
+    let rv = instances.get_instance(&instance_id).await.map_err(to_actix_error)?;
 
     Ok::<_, Error>(web::Json(rv))
 }
 
 #[post("/{manufacturer}/{name}/{instance}/parameters")]
-async fn set_parameters(instances: web::Data<Instances>,
+async fn set_parameters(instances: web::Data<DriverClient>,
                         path: web::Path<(String, String, String)>,
                         params: web::Json<serde_json::Value>)
                         -> impl Responder {
@@ -50,7 +52,7 @@ async fn set_parameters(instances: web::Data<Instances>,
 }
 
 #[post("/{manufacturer}/{name}/{instance}/parameters/{parameter_id}")]
-async fn set_parameter(instances: web::Data<Instances>,
+async fn set_parameter(instances: web::Data<DriverClient>,
                        path: web::Path<(String, String, String, String)>,
                        value: web::Json<serde_json::Value>)
                        -> impl Responder {
@@ -68,7 +70,7 @@ async fn set_parameter(instances: web::Data<Instances>,
 }
 
 #[put("/{manufacturer}/{name}/{instance}/play_state")]
-async fn set_desired_instance_state(instances: web::Data<Instances>,
+async fn set_desired_instance_state(instances: web::Data<DriverClient>,
                                     path: web::Path<(String, String, String)>,
                                     state: web::Json<DesiredInstancePlayState>)
                                     -> impl Responder {
