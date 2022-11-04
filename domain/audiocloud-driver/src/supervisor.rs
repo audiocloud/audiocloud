@@ -9,7 +9,6 @@ use actix::fut::LocalBoxActorFuture;
 use actix::{fut, Actor, ActorFutureExt, Addr, AsyncContext, Context, ContextFutureSpawner, Handler, WrapFuture};
 use actix_broker::BrokerSubscribe;
 use futures::task::SpawnExt;
-use nix::sys::ptrace::cont;
 use serde_json::json;
 use tracing::*;
 
@@ -290,6 +289,7 @@ fn new_driver_handle(id: &FixedInstanceId, config: &FixedInstanceConfig) -> Inst
                                                                                                                        .clone())?)?;
             Ok(DriverRunner::run(id.clone(), driver))
         }
+        #[cfg(unix)]
         (models::netio::NAME, models::netio::power_pdu_4c::NAME) => {
             let driver = crate::netio::power_pdu_4c::PowerPdu4c::new(id.clone(),
                                                                      crate::netio::power_pdu_4c::Config::from_json(config.additional
