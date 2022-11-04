@@ -283,13 +283,13 @@ impl DriverSupervisor {
 fn new_driver_handle(id: &FixedInstanceId, config: &FixedInstanceConfig) -> InstanceDriverResult<DriverHandle> {
     use audiocloud_models as models;
     match (id.manufacturer.as_str(), id.name.as_str()) {
+        #[cfg(unix)]
         (models::distopik::NAME, models::distopik::dual1084::NAME) => {
             let driver = crate::distopik::dual_1084::Dual1084::new(id.clone(),
                                                                    crate::distopik::dual_1084::Config::from_json(config.additional
                                                                                                                        .clone())?)?;
             Ok(DriverRunner::run(id.clone(), driver))
         }
-        #[cfg(unix)]
         (models::netio::NAME, models::netio::power_pdu_4c::NAME) => {
             let driver = crate::netio::power_pdu_4c::PowerPdu4c::new(id.clone(),
                                                                      crate::netio::power_pdu_4c::Config::from_json(config.additional
