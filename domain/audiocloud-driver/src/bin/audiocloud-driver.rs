@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
     let mut config = InstanceDriverConfig::default();
 
     for file in &opts.config_files {
-        config.merge(serde_yaml::from_reader(fs::File::open(file)?)?);
+        config.merge(&serde_yaml::from_reader(fs::File::open(file)?)?);
     }
 
     let domain_client = match opts.domain_server_url.as_ref() {

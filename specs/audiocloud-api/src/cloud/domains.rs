@@ -261,6 +261,18 @@ pub struct InstanceDriverConfig {
     pub instances: HashMap<FixedInstanceId, FixedInstanceConfig>,
 }
 
+impl InstanceDriverConfig {
+    pub fn merge(&mut self, other: &Self) {
+        for (id, config) in &other.instances {
+            if let Some(existing) = self.instances.get_mut(id) {
+                existing.merge_from_driver(config);
+            } else {
+                self.instances.insert(id.clone(), config.clone());
+            }
+        }
+    }
+}
+
 /// Configuration of how a fixed instance is connected to the domain
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, JsonSchema)]
 #[serde(rename_all = "snake_case")]
