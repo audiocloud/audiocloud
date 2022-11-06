@@ -11,10 +11,12 @@ impl Handler<NotifyFixedInstanceReports> for FixedInstancesSupervisor {
     type Result = ();
 
     fn handle(&mut self, msg: NotifyFixedInstanceReports, ctx: &mut Self::Context) -> Self::Result {
-        for instance in self.instances.values() {
-            if let Some(power_config) = instance.config.power.as_ref() {
-                if &power_config.instance == &msg.instance_id {
-                    instance.address.send(msg.clone()).map(drop).into_actor(self).spawn(ctx);
+        for driver in self.drivers.values() {
+            for instance in driver.instances.values() {
+                if let Some(power_config) = instance.config.power.as_ref() {
+                    if &power_config.instance == &msg.instance_id {
+                        instance.address.send(msg.clone()).map(drop).into_actor(self).spawn(ctx);
+                    }
                 }
             }
         }

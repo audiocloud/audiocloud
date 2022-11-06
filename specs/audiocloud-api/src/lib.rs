@@ -18,7 +18,7 @@ pub mod instance_driver;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ServicePorts {
     CloudServerHttps = 7000,
-    DomainServerHttps = 7100,
-    InstanceDriverHttps = 7200,
+    DomainServerHttps = 7200,
     AudioEngineHttps = 7300,
+    InstanceDriverHttps = 7400,
 }

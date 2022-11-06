@@ -2,7 +2,6 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-use std::future::Future;
 use std::result::Result as R;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -22,13 +21,10 @@ use tokio::time::error::Elapsed;
 use tokio::time::timeout;
 use tracing::*;
 
-use audiocloud_api::instance_driver::{
-    DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceParametersUpdated,
-};
+use audiocloud_api::instance_driver::{DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceParametersUpdated};
 use audiocloud_api::{DesiredInstancePlayState, FixedInstanceId, InstanceParameters, InstancePlayState, PlayId, RenderId};
 
 use crate::messages::NotifyInstanceReportsMsg;
-use crate::nats;
 
 pub type Result<T = ()> = std::result::Result<T, InstanceDriverError>;
 
@@ -85,7 +81,7 @@ pub trait Driver: Unpin + Sized + 'static {
             serde_json::to_value(&reports).map_err(|error| InstanceDriverError::ReportsMalformed { error: error.to_string() })?;
 
         Broker::<SystemBroker>::issue_async(NotifyInstanceReportsMsg { instance_id: { instance_id },
-                                                                    reports:     { reports_converted }, });
+                                                                       reports:     { reports_converted }, });
 
         Ok(())
     }
