@@ -3,15 +3,15 @@
  */
 
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
-use actix::{Actor, Addr, Context, Handler, MessageResult};
+use actix::{Actor, Addr, AsyncContext, Context, Handler, MessageResult};
 use actix_broker::BrokerSubscribe;
-
+use reqwest::Url;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{DomainConfig, FixedInstanceConfig};
-
-use audiocloud_api::FixedInstanceId;
+use audiocloud_api::cloud::domains::{DomainConfig, FixedInstanceConfig, InstanceDriverConfig};
+use audiocloud_api::{FixedInstanceId, InstanceDriverId, Timestamped};
 
 use crate::config::NotifyDomainConfiguration;
 use crate::db::Db;
@@ -23,13 +23,25 @@ mod forward_merge_parameters;
 mod forward_set_parameters;
 mod forward_set_play_state;
 mod on_domain_config_change;
+mod on_instance_driver_registration;
+mod update_instance_actors;
 
 pub struct FixedInstancesSupervisor {
-    config:    DomainConfig,
-    instances: HashMap<FixedInstanceId, SupervisedInstance>,
-    db:        Db,
+    config:  DomainConfig,
+    drivers: HashMap<InstanceDriverId, SupervisedInstanceDriver>,
+    db:      Db,
 }
 
+#[derive(Clone, Debug)]
+struct SupervisedInstanceDriver {
+    config:    InstanceDriverConfig,
+    instances: HashMap<FixedInstanceId, SupervisedInstance>,
+    last_seen: Instant,
+    online:    Timestamped<bool>,
+    url:       Url,
+}
+
+#[derive(Clone, Debug)]
 struct SupervisedInstance {
     address: Addr<FixedInstanceActor>,
     config:  FixedInstanceConfig,
@@ -38,9 +50,9 @@ struct SupervisedInstance {
 
 impl FixedInstancesSupervisor {
     pub async fn new(boot: &DomainConfig, db: Db) -> anyhow::Result<Self> {
-        Ok(Self { db:        { db },
-                  instances: { HashMap::new() },
-                  config:    { boot.clone() }, })
+        Ok(Self { db:      { db },
+                  drivers: { HashMap::new() },
+                  config:  { boot.clone() }, })
     }
 }
 
@@ -51,6 +63,7 @@ impl Actor for FixedInstancesSupervisor {
     fn started(&mut self, ctx: &mut Self::Context) {
         self.subscribe_system_async::<NotifyDomainConfiguration>(ctx);
         self.subscribe_system_async::<NotifyFixedInstanceReports>(ctx);
+        ctx.run_interval(Duration::from_secs(1), Self::update_instance_actors);
     }
 }
 
@@ -61,9 +74,11 @@ impl Handler<GetMultipleFixedInstanceState> for FixedInstancesSupervisor {
         let mut rv = HashMap::new();
 
         for id in msg.instance_ids {
-            if let Some(instance) = self.instances.get(&id) {
-                if let Some(state) = instance.state.clone() {
-                    rv.insert(id.clone(), state);
+            for driver in self.drivers.values() {
+                if let Some(instance) = driver.instances.get(&id) {
+                    if let Some(state) = instance.state.clone() {
+                        rv.insert(id.clone(), state);
+                    }
                 }
             }
         }

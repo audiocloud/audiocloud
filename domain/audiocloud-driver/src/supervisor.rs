@@ -8,16 +8,14 @@ use std::time::Duration;
 use actix::fut::LocalBoxActorFuture;
 use actix::{fut, Actor, ActorFutureExt, Addr, AsyncContext, Context, ContextFutureSpawner, Handler, WrapFuture};
 use actix_broker::BrokerSubscribe;
-use futures::task::SpawnExt;
 use serde_json::json;
 use tracing::*;
 
 use audiocloud_api::cloud::domains::{FixedInstanceConfig, InstanceDriverConfig};
-use audiocloud_api::domain::DomainCommand::SetDesiredPlayState;
 use audiocloud_api::domain::DomainError;
 use audiocloud_api::instance_driver::{
-    DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverResult, InstanceParametersUpdated, InstanceWithStatus,
-    InstanceWithStatusList,
+    DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceDriverResult, InstanceParametersUpdated,
+    InstanceWithStatus, InstanceWithStatusList,
 };
 use audiocloud_api::{
     now, DesiredInstancePlayState, FixedInstanceId, InstanceDriverId, InstanceParameters, InstancePlayState, InstanceReports, Timestamp,
@@ -29,6 +27,7 @@ use crate::driver::{DriverHandle, DriverRunner};
 use crate::messages::{
     GetInstanceMsg, GetInstancesMsg, NotifyInstanceReportsMsg, SetDesiredStateMsg, SetInstanceDriverConfigMsg, SetParametersMsg,
 };
+use crate::nats;
 
 pub struct DriverSupervisor {
     driver_id: InstanceDriverId,
@@ -79,6 +78,7 @@ impl Handler<NotifyInstanceReportsMsg> for DriverSupervisor {
         if let Some(instance) = self.instances.get_mut(&msg.instance_id) {
             instance.reports.insert(now(), msg.reports.clone());
         }
+        nats::publish(&msg.instance_id, InstanceDriverEvent::Reports { reports: msg.reports });
     }
 }
 

@@ -21,6 +21,8 @@ use crate::{EngineId, InstanceDriverId};
 pub struct DomainConfig {
     /// Id of the domain
     pub domain_id:            DomainId,
+    /// Source of model information for the domain (can include unused models)
+    pub models:               DomainModelSource,
     /// Fixed instances configured on the domain
     #[serde(default)]
     pub fixed_instances:      HashMap<FixedInstanceId, FixedInstanceConfig>,
@@ -51,8 +53,6 @@ pub struct DomainConfig {
     /// Sink for events from the domain to the cloud
     #[serde(default)]
     pub event_sink:           DomainEventSink,
-    /// Source of model information for the domain (can include unused models)
-    pub models:               DomainModelSource,
 }
 
 fn default_min_task_length() -> i64 {
@@ -179,7 +179,7 @@ pub struct DynamicInstanceLimits {
 }
 
 /// Configuration of a fixed instance
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, JsonSchema)]
 pub struct FixedInstanceConfig {
     /// Which driver is using
     #[serde(default)]
@@ -207,15 +207,68 @@ pub struct FixedInstanceConfig {
     pub additional:    serde_json::Value,
 }
 
+impl FixedInstanceConfig {
+    pub fn merge_from_driver(&mut self, source: &Self) {
+        if let Some(driver) = &source.driver {
+            self.driver = Some(driver.clone());
+        }
+        if let Some(engine) = &source.engine {
+            self.engine = Some(engine.clone());
+        }
+
+        if let Some(power) = &source.power {
+            self.power = Some(power.clone());
+        }
+
+        if let Some(media) = &source.media {
+            self.media = Some(media.clone());
+        }
+
+        if let Some(apps_override) = &source.apps_override {
+            self.apps_override = Some(apps_override.clone());
+        }
+
+        if !source.additional.is_null() {
+            self.additional = source.additional.clone();
+        }
+    }
+
+    pub fn merge_from_domain_config(&mut self, source: &Self) {
+        if let Some(engine) = &source.engine {
+            self.engine = Some(engine.clone());
+        }
+
+        if let Some(power) = &source.power {
+            self.power = Some(power.clone());
+        }
+
+        if let Some(media) = &source.media {
+            self.media = Some(media.clone());
+        }
+
+        if let Some(apps_override) = &source.apps_override {
+            self.apps_override = Some(apps_override.clone());
+        }
+
+        if !source.additional.is_null() {
+            self.additional = source.additional.clone();
+        }
+    }
+}
+
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstanceDriverConfig {
     pub instances: HashMap<FixedInstanceId, FixedInstanceConfig>,
 }
 
 impl InstanceDriverConfig {
-    pub fn merge(&mut self, other: Self) {
-        for (id, config) in other.instances {
-            self.instances.insert(id, config);
+    pub fn merge(&mut self, other: &Self) {
+        for (id, config) in &other.instances {
+            if let Some(existing) = self.instances.get_mut(id) {
+                existing.merge_from_driver(config);
+            } else {
+                self.instances.insert(id.clone(), config.clone());
+            }
         }
     }
 }

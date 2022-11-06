@@ -8,13 +8,11 @@ use once_cell::sync::OnceCell;
 use tracing::*;
 
 use audiocloud_api::cloud::domains::{DomainConfig, FixedInstanceRoutingMap};
-pub use drivers::DriversSupervisor;
 pub use messages::*;
 pub use supervisor::FixedInstancesSupervisor;
 
 use crate::db::Db;
 
-mod drivers;
 mod instance;
 mod messages;
 mod supervisor;

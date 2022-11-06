@@ -8,7 +8,6 @@ use std::time::Duration;
 
 use actix::{Actor, ActorFutureExt, AsyncContext, Context, ContextFutureSpawner, StreamHandler, WrapFuture, WrapStream};
 use actix_broker::BrokerIssue;
-use futures::task::SpawnExt;
 use futures::FutureExt;
 use reqwest::Url;
 use tracing::*;

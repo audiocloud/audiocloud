@@ -4,9 +4,8 @@
 
 use std::path::PathBuf;
 
-use actix_web::middleware::Logger;
+use actix_web::web;
 use actix_web::web::ServiceConfig;
-use actix_web::{web, App, HttpServer};
 use clap::Parser;
 use tracing::*;
 
