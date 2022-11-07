@@ -6,22 +6,3 @@ apps:
   - admin
 models: !local
   path: specs/audiocloud-models/models
-engines:
-  default:
-    sample_rate: 192000
-    max_concurrent_tasks: 16
-    resources:
-      ram: 8
-      cpu: 12.8
-fixed_instances:
-  'distopik:dual1084:0':
-    engine_id: default
-    input_start: 0
-    output_start: 0
-  'distopik:summatra:0':
-    engine_id: default
-    input_start: 2
-    output_start: 2
-  'netio:power_pdu_4c:rack1_top':
-    engine_id: default
-  
