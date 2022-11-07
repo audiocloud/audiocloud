@@ -54,7 +54,7 @@ impl<'de> Deserialize<'de> for FixedInstanceId {
         let err = |msg| serde::de::Error::custom(msg);
 
         let s = String::deserialize(deserializer)?;
-        let mut s = s.split(':');
+        let mut s = s.split('/');
         let manufacturer = s.next().ok_or(err("expected manufacturer"))?;
         let name = s.next().ok_or(err("expected manufacturer"))?;
         let instance = s.next().ok_or(err("expected instance"))?;
