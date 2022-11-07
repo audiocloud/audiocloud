@@ -3,6 +3,7 @@
  */
 
 use std::path::PathBuf;
+use std::time::Duration;
 use std::{env, fs};
 
 use actix_web::{web, App, HttpServer};
@@ -19,11 +20,15 @@ use audiocloud_driver::nats::NatsOpts;
 use audiocloud_driver::rest_api;
 use audiocloud_driver::supervisor;
 use audiocloud_rust_clients::DomainServerClient;
+use audiocloud_tracing::O11yOpts;
 
 #[derive(Parser, Debug, Clone)]
 struct DriverOpts {
     #[clap(flatten)]
     nats: NatsOpts,
+
+    #[clap(flatten)]
+    o11y: O11yOpts,
 
     /// The domain server URL. If set, the instance driver will register with the domain server
     #[clap(long, env)]
@@ -38,7 +43,7 @@ struct DriverOpts {
     #[clap(long, env, default_value = "default")]
     driver_id: InstanceDriverId,
 
-    // Configuration file (each file can have multiple instances)
+    // Configuration file (each file can have multiple instances, which we will all own)
     config_files: Vec<PathBuf>,
 }
 
@@ -49,9 +54,9 @@ async fn main() -> anyhow::Result<()> {
         env::set_var("RUST_LOG", "info,audiocloud_api=debug,audiocloud_driver=debug");
     }
 
-    tracing_subscriber::fmt::init();
-
     let opts = DriverOpts::parse();
+
+    let o11y_guard = audiocloud_tracing::init(&opts.o11y, "audiocloud-driver", opts.driver_id.as_str())?;
 
     http_client::init()?;
 
@@ -78,6 +83,8 @@ async fn main() -> anyhow::Result<()> {
     start_http2_server(opts.bind.as_str(), opts.port, move |configure| {
         configure.app_data(client.clone()).configure(rest_api::configure);
     }).await?;
+
+    audiocloud_tracing::shutdown(o11y_guard).await;
 
     Ok(())
 }
