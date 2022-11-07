@@ -17,6 +17,7 @@ pub(crate) fn create_client() -> Result<Client, Error> {
                             .tcp_keepalive(std::time::Duration::from_secs(60))
                             .tcp_nodelay(true)
                             .timeout(std::time::Duration::from_secs(20))
+                            .danger_accept_invalid_certs(true)
                             .build()
 }
 
@@ -26,8 +27,9 @@ mod instance_driver;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use serde::Deserialize;
+
+    use super::*;
 
     #[tokio::test]
     async fn test_http_2() {
