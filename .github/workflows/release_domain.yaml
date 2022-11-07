@@ -257,12 +257,12 @@ jobs:
           restore-keys: |
             armv7-unknown-linux-gnueabihf-driver-${{ env.cache-name }}-
             armv7-unknown-linux-gnueabihf-driver-
-      - uses: actions-rs/cargo@v1
-        name: Build Driver
-        with:
-          use-cross: true
-          command: build
-          args: --release --target armv7-unknown-linux-gnueabihf --manifest-path ./domain/audiocloud-driver/Cargo.toml
+      - name: Install cross
+        run: |
+          cargo install cross --git https://github.com/cross-rs/cross
+      - name: Build Driver
+        run: |
+          cross build --release --target armv7-unknown-linux-gnueabihf --manifest-path ./domain/audiocloud-driver/Cargo.toml
         env:
           CROSS_CONFIG: ./domain/audiocloud-driver/Cross.toml
       - name: Upload driver binary
