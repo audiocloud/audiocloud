@@ -10,7 +10,9 @@ use actix_broker::BrokerSubscribe;
 use reqwest::Url;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{DomainConfig, FixedInstanceConfig, InstanceDriverConfig, TimestampedInstanceDriverConfig};
+use audiocloud_api::cloud::domains::{
+    DomainConfig, FixedInstanceConfig, FixedInstanceRoutingMap, InstanceDriverConfig, TimestampedInstanceDriverConfig,
+};
 use audiocloud_api::{FixedInstanceId, InstanceDriverId, Timestamped};
 
 use crate::config::NotifyDomainConfiguration;
@@ -29,6 +31,7 @@ mod update_instance_actors;
 pub struct FixedInstancesSupervisor {
     config:  DomainConfig,
     drivers: HashMap<InstanceDriverId, SupervisedInstanceDriver>,
+    routing: FixedInstanceRoutingMap,
     db:      Db,
 }
 
@@ -51,6 +54,7 @@ struct SupervisedInstance {
 impl FixedInstancesSupervisor {
     pub async fn new(boot: &DomainConfig, db: Db) -> anyhow::Result<Self> {
         Ok(Self { db:      { db },
+                  routing: { FixedInstanceRoutingMap::new() },
                   drivers: { HashMap::new() },
                   config:  { boot.clone() }, })
     }

@@ -276,15 +276,16 @@ impl InstanceDriverConfig {
 #[serde(rename_all = "snake_case")]
 pub struct DomainFixedInstanceEngine {
     /// Engine hosting the instance, if any
-    pub engine_id:    EngineId,
+    pub name:         EngineId,
     /// Instance inputs start at index on engine
     pub input_start:  u32,
     /// Instance outputs start at index on engine
     pub output_start: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct FixedInstanceRouting {
+    pub engine:         EngineId,
     pub send_count:     usize,
     pub send_channel:   usize,
     pub return_count:   usize,
