@@ -209,6 +209,7 @@ pub fn schemas() -> RootSchema {
                    schema_for!(InstanceDriverId),
                    schema_for!(domains::EngineConfig),
                    schema_for!(domains::InstanceDriverConfig),
+                   schema_for!(domains::TimestampedInstanceDriverConfig),
                    schema_for!(streaming::StreamStats),
                    schema_for!(streaming::DomainServerMessage),
                    schema_for!(streaming::DomainClientMessage),

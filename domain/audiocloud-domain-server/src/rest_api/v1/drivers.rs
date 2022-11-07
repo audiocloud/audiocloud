@@ -9,7 +9,7 @@ use actix_web::{post, web, Error, HttpRequest, Responder};
 use anyhow::anyhow;
 use reqwest::Url;
 
-use audiocloud_api::cloud::domains::InstanceDriverConfig;
+use audiocloud_api::cloud::domains::{InstanceDriverConfig, TimestampedInstanceDriverConfig};
 use audiocloud_api::{InstanceDriverId, ServicePorts};
 
 use crate::fixed_instances::{get_instance_supervisor, FixedInstancesSupervisor, RegisterInstanceDriver};
@@ -21,8 +21,8 @@ pub fn configure(cfg: &mut ServiceConfig) {
 #[post("/{driver_id}/register")]
 async fn register(req: HttpRequest,
                   driver_id: web::Path<InstanceDriverId>,
-                  config: web::Json<InstanceDriverConfig>)
-                  -> Result<web::Json<InstanceDriverConfig>, Error> {
+                  config: web::Json<TimestampedInstanceDriverConfig>)
+                  -> Result<web::Json<TimestampedInstanceDriverConfig>, Error> {
     const PORT: u16 = ServicePorts::InstanceDriverHttps as u16;
 
     let driver_id = driver_id.into_inner();

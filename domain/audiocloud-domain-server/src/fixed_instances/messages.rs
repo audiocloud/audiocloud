@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet};
 use actix::Message;
 use reqwest::Url;
 
-use audiocloud_api::cloud::domains::InstanceDriverConfig;
+use audiocloud_api::cloud::domains::{InstanceDriverConfig, TimestampedInstanceDriverConfig};
 use audiocloud_api::common::instance::{DesiredInstancePlayState, ReportInstancePlayState, ReportInstancePowerState};
 use audiocloud_api::common::newtypes::FixedInstanceId;
 use audiocloud_api::common::task::{InstanceParameters, InstanceReports};
@@ -69,10 +69,10 @@ pub struct NotifyInstanceError {
 }
 
 #[derive(Message, Clone, Debug)]
-#[rtype(result = "DomainResult<InstanceDriverConfig>")]
+#[rtype(result = "DomainResult<TimestampedInstanceDriverConfig>")]
 pub struct RegisterInstanceDriver {
     pub driver_id: InstanceDriverId,
-    pub provided:  InstanceDriverConfig,
+    pub provided:  TimestampedInstanceDriverConfig,
     pub base_url:  Url,
 }
 

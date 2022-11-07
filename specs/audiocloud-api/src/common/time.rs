@@ -2,7 +2,9 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-use chrono::{DateTime, Duration, Utc};
+use std::ops::{Deref, DerefMut};
+
+use chrono::{DateTime, Duration, NaiveDateTime, TimeZone, Utc};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -59,6 +61,20 @@ impl TimeRange {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Hash, PartialEq, JsonSchema)]
 pub struct Timestamped<T>(Timestamp, T);
 
+impl<T> Deref for Timestamped<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        self.get_ref()
+    }
+}
+
+impl<T> DerefMut for Timestamped<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.get_mut()
+    }
+}
+
 impl<T> From<T> for Timestamped<T> {
     fn from(t: T) -> Self {
         Self(Utc::now(), t)
@@ -76,8 +92,12 @@ impl<T> Timestamped<T> {
         t.into()
     }
 
+    pub fn new_with_epoch(t: T) -> Self {
+        Self(Utc.from_utc_datetime(&NaiveDateTime::default()), t)
+    }
+
     pub fn elapsed(&self) -> Duration {
-        Utc::now() - self.0
+        Utc::now() - self.timestamp()
     }
 
     pub fn get_ref(&self) -> &T {
@@ -95,12 +115,32 @@ impl<T> Timestamped<T> {
     pub fn into_inner(self) -> T {
         self.1
     }
+
+    pub fn timestamp(&self) -> Timestamp {
+        self.0
+    }
+
+    pub fn set_timestamp_if_newer(&mut self, ts: Timestamp) -> bool {
+        if self.0 < ts {
+            self.0 = ts;
+            true
+        } else {
+            false
+        }
+    }
 }
 
 impl<T> Timestamped<T> where T: Copy
 {
-    pub fn value_copy(&self) -> T {
+    pub fn value_copied(&self) -> T {
         self.1
+    }
+}
+
+impl<T> Timestamped<T> where T: Clone
+{
+    pub fn value_cloned(&self) -> T {
+        self.1.clone()
     }
 }
 

@@ -605,6 +605,7 @@ dependencies = [
  "audiocloud-api",
  "audiocloud-models",
  "audiocloud-rust-clients",
+ "audiocloud-tracing",
  "byteorder",
  "chrono",
  "clap 4.0.18",
@@ -625,7 +626,6 @@ dependencies = [
  "serde_yaml",
  "tokio",
  "tracing",
- "tracing-subscriber",
  "trim-margin",
 ]
 
@@ -691,6 +691,28 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "audiocloud-tracing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap 4.0.18",
+ "maplit",
+ "once_cell",
+ "opentelemetry 0.18.0",
+ "opentelemetry-otlp",
+ "opentelemetry-prometheus",
+ "prometheus",
+ "reqwest",
+ "sentry",
+ "sentry-tracing",
+ "tokio",
+ "tracing",
+ "tracing-loki",
+ "tracing-opentelemetry 0.18.0",
+ "tracing-subscriber",
 ]
 
 [[package]]

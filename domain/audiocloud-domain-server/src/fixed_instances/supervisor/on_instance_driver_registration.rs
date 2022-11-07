@@ -9,6 +9,7 @@ use actix::Handler;
 use actix_broker::BrokerIssue;
 use tracing::*;
 
+use audiocloud_api::cloud::domains::TimestampedInstanceDriverConfig;
 use audiocloud_api::{cloud::domains::InstanceDriverConfig, Timestamped};
 
 use crate::fixed_instances::NotifyInstanceDriverUrl;
@@ -17,20 +18,10 @@ use crate::{fixed_instances::RegisterInstanceDriver, DomainResult};
 use super::{FixedInstancesSupervisor, SupervisedInstanceDriver};
 
 impl Handler<RegisterInstanceDriver> for FixedInstancesSupervisor {
-    type Result = DomainResult<InstanceDriverConfig>;
+    type Result = DomainResult<TimestampedInstanceDriverConfig>;
 
     #[instrument(skip_all, err, fields(driver_id = %msg.driver_id), name = "register_instance_driver")]
     fn handle(&mut self, mut msg: RegisterInstanceDriver, _ctx: &mut Self::Context) -> Self::Result {
-        for (instance_id, instance_config) in &mut msg.provided.instances {
-            instance_config.driver = Some(msg.driver_id.clone());
-
-            self.config
-                .fixed_instances
-                .entry(instance_id.clone())
-                .or_default()
-                .merge_from_driver(instance_config);
-        }
-
         let result = self.drivers
                          .entry(msg.driver_id.clone())
                          .or_insert_with(|| SupervisedInstanceDriver { config:    { msg.provided.clone() },
@@ -40,6 +31,10 @@ impl Handler<RegisterInstanceDriver> for FixedInstancesSupervisor {
                                                                        url:       { msg.base_url.clone() }, });
 
         result.last_seen = Instant::now();
+        if result.config.timestamp() < msg.provided.timestamp() {
+            result.config = msg.provided.clone();
+        }
+
         let rv = result.config.clone();
 
         for instance in self.drivers

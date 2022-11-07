@@ -13,7 +13,7 @@ use crate::common::model::{Model, ResourceId};
 use crate::common::task::Task;
 use crate::newtypes::{AppId, AppTaskId, DomainId, FixedInstanceId, ModelId};
 use crate::time::{TimeRange, Timestamp};
-use crate::{EngineId, InstanceDriverId};
+use crate::{EngineId, InstanceDriverId, Timestamped};
 
 /// Used by domain for booting up.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
@@ -23,12 +23,6 @@ pub struct DomainConfig {
     pub domain_id:            DomainId,
     /// Source of model information for the domain (can include unused models)
     pub models:               DomainModelSource,
-    /// Fixed instances configured on the domain
-    #[serde(default)]
-    pub fixed_instances:      HashMap<FixedInstanceId, FixedInstanceConfig>,
-    /// Dynamic instances configured on the domain, with associated limits
-    #[serde(default)]
-    pub dynamic_instances:    HashMap<ModelId, DynamicInstanceLimits>,
     /// Engines configured on the domain
     #[serde(default)]
     pub engines:              HashMap<EngineId, EngineConfig>,
@@ -54,6 +48,8 @@ pub struct DomainConfig {
     #[serde(default)]
     pub event_sink:           DomainEventSink,
 }
+
+pub type TimestampedDomainConfig = Timestamped<DomainConfig>;
 
 fn default_min_task_length() -> i64 {
     5_000
@@ -260,6 +256,8 @@ impl FixedInstanceConfig {
 pub struct InstanceDriverConfig {
     pub instances: HashMap<FixedInstanceId, FixedInstanceConfig>,
 }
+
+pub type TimestampedInstanceDriverConfig = Timestamped<InstanceDriverConfig>;
 
 impl InstanceDriverConfig {
     pub fn merge(&mut self, other: &Self) {
