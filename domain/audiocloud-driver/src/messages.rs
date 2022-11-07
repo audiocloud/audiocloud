@@ -4,7 +4,7 @@
 
 use actix::Message;
 
-use audiocloud_api::cloud::domains::InstanceDriverConfig;
+use audiocloud_api::cloud::domains::{InstanceDriverConfig, TimestampedInstanceDriverConfig};
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverResult, InstanceParametersUpdated, InstanceWithStatus, InstanceWithStatusList,
 };
@@ -27,7 +27,7 @@ pub struct SetDesiredStateMsg {
 #[derive(Message, Debug, Clone)]
 #[rtype(result = "InstanceDriverResult")]
 pub struct SetInstanceDriverConfigMsg {
-    pub config: InstanceDriverConfig,
+    pub config: TimestampedInstanceDriverConfig,
 }
 
 #[derive(Message, Debug, Clone)]

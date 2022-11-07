@@ -11,7 +11,7 @@ use actix_broker::BrokerSubscribe;
 use serde_json::json;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{FixedInstanceConfig, InstanceDriverConfig};
+use audiocloud_api::cloud::domains::{FixedInstanceConfig, InstanceDriverConfig, TimestampedInstanceDriverConfig};
 use audiocloud_api::domain::DomainError;
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceDriverResult, InstanceParametersUpdated,
@@ -32,7 +32,7 @@ use crate::nats;
 pub struct DriverSupervisor {
     driver_id: InstanceDriverId,
     client:    Option<DomainServerClient>,
-    config:    InstanceDriverConfig,
+    config:    Timestamped<InstanceDriverConfig>,
     instances: HashMap<FixedInstanceId, SupervisedDriver>,
 }
 
@@ -131,8 +131,11 @@ impl Handler<SetInstanceDriverConfigMsg> for DriverSupervisor {
     type Result = InstanceDriverResult;
 
     fn handle(&mut self, msg: SetInstanceDriverConfigMsg, ctx: &mut Self::Context) -> Self::Result {
-        self.config = msg.config;
-        self.enact_config(ctx);
+        // compare and update
+        if msg.config.timestamp() > self.config.timestamp() {
+            self.config = msg.config;
+            self.enact_config(ctx);
+        }
 
         Ok(())
     }
@@ -214,7 +217,7 @@ impl DriverSupervisor {
             ctx.notify(SetParametersMsg { instance_id: { instance_id.clone() },
                                           parameters:  { parameters.clone() }, });
 
-            if let Some(desired_play_state) = desired_play_state.value_copy().as_ref() {
+            if let Some(desired_play_state) = desired_play_state.value_copied().as_ref() {
                 ctx.notify(SetDesiredStateMsg { instance_id: { instance_id.clone() },
                                                 play_state:  { desired_play_state.clone() }, });
             }
@@ -260,7 +263,9 @@ impl DriverSupervisor {
         }
     }
 
-    fn handle_returned_registration_config(result: Result<InstanceDriverConfig, DomainError>, actor: &mut Self, ctx: &mut Context<Self>) {
+    fn handle_returned_registration_config(result: Result<TimestampedInstanceDriverConfig, DomainError>,
+                                           actor: &mut Self,
+                                           ctx: &mut Context<Self>) {
         match result {
             Ok(config) => {
                 ctx.notify(SetInstanceDriverConfigMsg { config });
@@ -301,7 +306,10 @@ fn new_driver_handle(id: &FixedInstanceId, config: &FixedInstanceConfig) -> Inst
     }
 }
 
-pub fn init(driver_id: InstanceDriverId, client: Option<DomainServerClient>, config: InstanceDriverConfig) -> Addr<DriverSupervisor> {
+pub fn init(driver_id: InstanceDriverId,
+            client: Option<DomainServerClient>,
+            config: TimestampedInstanceDriverConfig)
+            -> Addr<DriverSupervisor> {
     DriverSupervisor { driver_id: { driver_id },
                        client:    { client },
                        config:    { config },

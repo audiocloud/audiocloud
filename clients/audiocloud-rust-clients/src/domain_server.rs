@@ -7,8 +7,7 @@ use serde::de::DeserializeOwned;
 
 use audiocloud_api::cloud::domains::{EngineConfig, InstanceDriverConfig};
 use audiocloud_api::domain::DomainError;
-
-use audiocloud_api::{EngineId, InstanceDriverId};
+use audiocloud_api::{EngineId, InstanceDriverId, Timestamped};
 
 use crate::create_client;
 
@@ -29,8 +28,8 @@ impl DomainServerClient {
 
     pub async fn register_instance_driver(&self,
                                           driver_id: &InstanceDriverId,
-                                          config: &InstanceDriverConfig)
-                                          -> Result<InstanceDriverConfig> {
+                                          config: &Timestamped<InstanceDriverConfig>)
+                                          -> Result<Timestamped<InstanceDriverConfig>> {
         let url = self.url(format!("/v1/drivers/{driver_id}/register"))?;
 
         let response = self.client.post(url).json(config).send().await.map_err(Self::rpc_err)?;

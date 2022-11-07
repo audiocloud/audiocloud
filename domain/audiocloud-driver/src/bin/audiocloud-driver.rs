@@ -13,7 +13,7 @@ use tracing::*;
 
 use audiocloud_actix_utils::start_http2_server;
 use audiocloud_api::cloud::domains::InstanceDriverConfig;
-use audiocloud_api::InstanceDriverId;
+use audiocloud_api::{InstanceDriverId, Timestamped};
 use audiocloud_driver::client::DriverClient;
 use audiocloud_driver::http_client;
 use audiocloud_driver::nats::NatsOpts;
@@ -60,10 +60,16 @@ async fn main() -> anyhow::Result<()> {
 
     http_client::init()?;
 
-    let mut config = InstanceDriverConfig::default();
+    let mut config = Timestamped::new_with_epoch(InstanceDriverConfig::default());
 
     for file in &opts.config_files {
-        config.merge(&serde_yaml::from_reader(fs::File::open(file)?)?);
+        use chrono::prelude::{DateTime, Utc};
+
+        let file = fs::File::open(file)?;
+        let modified_time = file.metadata()?.modified()?;
+
+        config.merge(&serde_yaml::from_reader(file)?);
+        config.set_timestamp_if_newer(modified_time.into());
     }
 
     let domain_client = match opts.domain_server_url.as_ref() {
