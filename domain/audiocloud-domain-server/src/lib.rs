@@ -17,7 +17,6 @@ pub mod fixed_instances;
 pub mod media;
 pub mod models;
 pub mod nats;
-pub mod o11y;
 pub mod remote_value;
 pub mod rest_api;
 pub mod sockets;

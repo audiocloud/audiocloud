@@ -1,5 +1,5 @@
 [target.armv7-unknown-linux-gnueabihf]
-pre-build = ["dpkg --add-architecture armhf && apt-get update && apt-get install --assume-yes libssl-dev:armhf libusb-1.0-0-dev:armhf"]
+pre-build = ["dpkg --add-architecture armhf && apt-get update && apt-get install --assume-yes protobuf-compiler libssl-dev:armhf libusb-1.0-0-dev:armhf"]
 
 [target.arm-unknown-linux-gnueabihf]
-pre-build = ["dpkg --add-architecture armhf && apt-get update && apt-get install --assume-yes libssl-dev:armhf libusb-1.0-0-dev:armhf"]
+pre-build = ["dpkg --add-architecture armhf && apt-get update && apt-get install --assume-yes protobuf-compiler libssl-dev:armhf libusb-1.0-0-dev:armhf"]

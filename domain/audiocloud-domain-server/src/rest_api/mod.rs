@@ -24,7 +24,6 @@ use tracing::*;
 use audiocloud_api::domain::DomainError;
 use audiocloud_api::{AppId, AppTaskId, Codec, Json, MsgPack, SecureKey, TaskId};
 
-use crate::o11y::generate_prometheus_metrics;
 use crate::{DomainSecurity, ResponseMedia};
 
 mod v1;
@@ -46,7 +45,7 @@ async fn healthz() -> impl Responder {
 
 #[get("/metrics")]
 async fn metrics() -> impl Responder {
-    match generate_prometheus_metrics() {
+    match audiocloud_tracing::generate_prometheus_metrics() {
         Ok(metrics) => HttpResponse::Ok().content_type("text/plain; version=0.0.4").body(metrics),
         Err(e) => {
             error!("Failed to generate metrics: {}", e);

@@ -10,7 +10,8 @@ use clap::Parser;
 use tracing::*;
 
 use audiocloud_actix_utils::start_http2_server;
-use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, o11y, rest_api, sockets, tasks};
+use audiocloud_api::DomainId;
+use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, rest_api, sockets, tasks};
 
 #[derive(Parser)]
 struct Opts {
@@ -24,6 +25,10 @@ struct Opts {
 
     #[clap(short, long, env)]
     tls_cert: Option<PathBuf>,
+
+    /// Name of this domain server instance
+    #[clap(long, env, default_value = "")]
+    domain_id: DomainId,
 
     /// NATS URL
     #[clap(long, env, default_value = "nats://localhost:4222")]
@@ -48,7 +53,7 @@ struct Opts {
     rest: rest_api::RestOpts,
 
     #[clap(flatten)]
-    o11y: o11y::O11yOpts,
+    o11y: audiocloud_tracing::O11yOpts,
 }
 
 #[actix_web::main]
@@ -63,17 +68,17 @@ async fn main() -> anyhow::Result<()> {
 
     let cfg = config::init(opts.config).await?;
 
-    if opts.o11y.domain_id.is_empty() {
-        opts.o11y.domain_id = cfg.domain_id.clone();
+    if opts.domain_id.is_empty() {
+        opts.domain_id = cfg.domain_id.clone();
     }
 
     info!(" ⚡ Tracing");
 
-    let _tracing_guard = o11y::init_tracing(&opts.o11y)?;
+    let tracing_guard = audiocloud_tracing::init(&opts.o11y, "audiocloud-domain", opts.domain_id.as_str())?;
 
     info!(" ⚡ Metrics");
 
-    let _metrics_guard = o11y::init_metrics(&opts.o11y)?;
+    let _metrics_guard = audiocloud_tracing::init_metrics(&opts.o11y, "audiocloud-domain", opts.domain_id.as_str())?;
 
     info!(" ⚡ Database");
 
@@ -123,6 +128,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     start_http2_server(opts.bind.as_str(), opts.port, configure).await?;
+
+    audiocloud_tracing::shutdown(tracing_guard).await;
 
     Ok(())
 }
