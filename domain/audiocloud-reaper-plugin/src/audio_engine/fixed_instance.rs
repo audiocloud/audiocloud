@@ -113,14 +113,14 @@ impl EngineFixedInstance {
     }
 
     fn send_count(&self) -> usize {
-        match self.routing {
+        match self.routing.as_ref() {
             None => 2,
             Some(routing) => routing.send_count,
         }
     }
 
     fn return_count(&self) -> usize {
-        match self.routing {
+        match self.routing.as_ref() {
             None => 2,
             Some(routing) => routing.return_count,
         }
@@ -135,7 +135,7 @@ impl EngineFixedInstance {
     }
 
     pub fn fill_peak_meters(&self, peaks: &mut HashMap<NodePadId, PadMetering>) {
-        if let Some(routing) = self.routing {
+        if let Some(routing) = self.routing.as_ref() {
             peaks.insert(self.send_pad_id.clone().into(),
                          get_track_peak_meters(self.send_track, routing.send_count));
 
@@ -161,7 +161,7 @@ struct HwOutSendTemplate<'a> {
 
 impl<'a> HwOutSendTemplate<'a> {
     fn reaper_channel_pairs(&self) -> Vec<(usize, usize)> {
-        if let Some(routing) = self.instance.routing {
+        if let Some(routing) = self.instance.routing.as_ref() {
             let start = routing.send_channel;
             (0..routing.send_count).chunks(2)
                                    .into_iter()
@@ -186,7 +186,7 @@ struct HwOutReturnTemplate<'a> {
 
 impl<'a> HwOutReturnTemplate<'a> {
     fn reaper_rec_input(&self) -> i32 {
-        if let Some(routing) = self.instance.routing {
+        if let Some(routing) = self.instance.routing.as_ref() {
             (match routing.return_count {
                 1 => routing.return_channel,
                 2 => routing.return_channel | 1024,
