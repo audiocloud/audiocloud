@@ -5,14 +5,17 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
-use actix::fut::LocalBoxActorFuture;
-use actix::{fut, Actor, ActorFutureExt, Addr, AsyncContext, Context, ContextFutureSpawner, Handler, WrapFuture};
-use actix_broker::BrokerSubscribe;
+use axum::async_trait;
+use coerce::actor::context::ActorContext;
+use coerce::actor::message::{Handler, Message};
+use coerce::actor::{new_actor, Actor, ActorRef, LocalActorRef};
+use once_cell::sync::OnceCell;
 use serde_json::json;
+use tokio::spawn;
+use tokio::task::JoinHandle;
 use tracing::*;
 
 use audiocloud_api::cloud::domains::{FixedInstanceConfig, InstanceDriverConfig, TimestampedInstanceDriverConfig};
-use audiocloud_api::domain::DomainError;
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceDriverResult, InstanceParametersUpdated,
     InstanceWithStatus, InstanceWithStatusList,
@@ -23,11 +26,17 @@ use audiocloud_api::{
 };
 use audiocloud_rust_clients::DomainServerClient;
 
-use crate::driver::{DriverHandle, DriverRunner};
+use crate::driver::DriverHandle;
 use crate::messages::{
     GetInstanceMsg, GetInstancesMsg, NotifyInstanceReportsMsg, SetDesiredStateMsg, SetInstanceDriverConfigMsg, SetParametersMsg,
 };
-use crate::nats;
+use crate::{nats, BroadcastSender};
+
+static DRIVER_SUPERVISOR: OnceCell<LocalActorRef<DriverSupervisor>> = OnceCell::new();
+
+pub fn get_driver_supervisor() -> &'static LocalActorRef<DriverSupervisor> {
+    DRIVER_SUPERVISOR.get().expect("Driver supervisor not initialized")
+}
 
 pub struct DriverSupervisor {
     driver_id: InstanceDriverId,
@@ -45,22 +54,40 @@ pub struct SupervisedDriver {
     actual_play_state:  Timestamped<Option<InstancePlayState>>,
 }
 
+#[derive(Clone, Copy)]
+struct NotifyUpdateConfigMsg;
+
+impl Message for NotifyUpdateConfigMsg {
+    type Result = ();
+}
+
+#[derive(Clone, Copy)]
+struct NotifyEnactConfigMsg;
+
+impl Message for NotifyEnactConfigMsg {
+    type Result = ();
+}
+
+#[derive(Clone, Copy)]
+struct PruneOldReportsMsg;
+
+impl Message for PruneOldReportsMsg {
+    type Result = ();
+}
+
+#[async_trait]
 impl Actor for DriverSupervisor {
-    type Context = Context<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        ctx.run_interval(Duration::from_secs(1), Self::register_and_update_config);
-        ctx.run_interval(Duration::from_secs(1), Self::enact_config);
-        ctx.run_interval(Duration::from_millis(100), Self::prune_old_reports);
-
-        self.subscribe_system_async::<NotifyInstanceReportsMsg>(ctx);
+    #[instrument(skip_all)]
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        schedule_interval(ctx.actor_ref::<Self>(), Duration::from_secs(1), NotifyUpdateConfigMsg);
+        schedule_interval(ctx.actor_ref::<Self>(), Duration::from_secs(1), NotifyEnactConfigMsg);
+        schedule_interval(ctx.actor_ref::<Self>(), Duration::from_millis(100), PruneOldReportsMsg);
     }
 }
 
+#[async_trait]
 impl Handler<GetInstancesMsg> for DriverSupervisor {
-    type Result = InstanceDriverResult<InstanceWithStatusList>;
-
-    fn handle(&mut self, _msg: GetInstancesMsg, _ctx: &mut Self::Context) -> Self::Result {
+    async fn handle(&mut self, _: GetInstancesMsg, _: &mut ActorContext) -> InstanceDriverResult<InstanceWithStatusList> {
         let mut rv = InstanceWithStatusList::new();
 
         for (instance_id, instance) in self.instances.iter() {
@@ -71,10 +98,9 @@ impl Handler<GetInstancesMsg> for DriverSupervisor {
     }
 }
 
+#[async_trait]
 impl Handler<NotifyInstanceReportsMsg> for DriverSupervisor {
-    type Result = ();
-
-    fn handle(&mut self, msg: NotifyInstanceReportsMsg, _ctx: &mut Self::Context) -> Self::Result {
+    async fn handle(&mut self, msg: NotifyInstanceReportsMsg, _ctx: &mut ActorContext) {
         if let Some(instance) = self.instances.get_mut(&msg.instance_id) {
             instance.reports.insert(now(), msg.reports.clone());
         }
@@ -82,10 +108,9 @@ impl Handler<NotifyInstanceReportsMsg> for DriverSupervisor {
     }
 }
 
+#[async_trait]
 impl Handler<GetInstanceMsg> for DriverSupervisor {
-    type Result = InstanceDriverResult<InstanceWithStatus>;
-
-    fn handle(&mut self, msg: GetInstanceMsg, _ctx: &mut Self::Context) -> Self::Result {
+    async fn handle(&mut self, msg: GetInstanceMsg, _ctx: &mut ActorContext) -> InstanceDriverResult<InstanceWithStatus> {
         match self.instances.get(&msg.instance_id) {
             None => Err(InstanceDriverError::InstanceNotFound { instance: msg.instance_id }),
             Some(instance) => Ok(Self::instance_to_json(&msg.instance_id, instance)),
@@ -93,51 +118,72 @@ impl Handler<GetInstanceMsg> for DriverSupervisor {
     }
 }
 
+#[async_trait]
 impl Handler<SetParametersMsg> for DriverSupervisor {
-    type Result = LocalBoxActorFuture<Self, InstanceDriverResult<InstanceParametersUpdated>>;
-
-    fn handle(&mut self, msg: SetParametersMsg, _ctx: &mut Self::Context) -> Self::Result {
+    async fn handle(&mut self, msg: SetParametersMsg, _ctx: &mut ActorContext) -> InstanceDriverResult<InstanceParametersUpdated> {
         match self.instances.get(&msg.instance_id) {
-            None => fut::err(InstanceDriverError::InstanceNotFound { instance: msg.instance_id }).into_actor(self)
-                                                                                                 .boxed_local(),
-            Some(instance) => instance.handle
-                                      .clone()
-                                      .set_parameters(msg.parameters)
-                                      .into_actor(self)
-                                      .map(move |res, actor, ctx| actor.handle_returned_set_parameters(res))
-                                      .boxed_local(),
+            None => Err(InstanceDriverError::InstanceNotFound { instance: msg.instance_id }),
+            Some(instance) => self.handle_returned_set_parameters(instance.handle.set_parameters(msg.parameters).await),
         }
     }
 }
 
+#[async_trait]
 impl Handler<SetDesiredStateMsg> for DriverSupervisor {
-    type Result = LocalBoxActorFuture<Self, InstanceDriverResult<DesiredInstancePlayStateUpdated>>;
-
-    fn handle(&mut self, msg: SetDesiredStateMsg, _ctx: &mut Self::Context) -> Self::Result {
+    async fn handle(&mut self, msg: SetDesiredStateMsg, _ctx: &mut ActorContext) -> InstanceDriverResult<DesiredInstancePlayStateUpdated> {
         match self.instances.get(&msg.instance_id) {
-            None => fut::err(InstanceDriverError::InstanceNotFound { instance: msg.instance_id }).into_actor(self)
-                                                                                                 .boxed_local(),
-            Some(instance) => instance.handle
-                                      .clone()
-                                      .set_desired_play_state(msg.play_state)
-                                      .into_actor(self)
-                                      .map(move |res, actor, ctx| actor.handle_returned_set_desired_play_state(res))
-                                      .boxed_local(),
+            None => Err(InstanceDriverError::InstanceNotFound { instance: msg.instance_id }),
+            Some(instance) => self.handle_returned_set_desired_play_state(instance.handle.set_desired_play_state(msg.play_state).await),
         }
     }
 }
 
+#[async_trait]
 impl Handler<SetInstanceDriverConfigMsg> for DriverSupervisor {
-    type Result = InstanceDriverResult;
-
-    fn handle(&mut self, msg: SetInstanceDriverConfigMsg, ctx: &mut Self::Context) -> Self::Result {
+    async fn handle(&mut self, msg: SetInstanceDriverConfigMsg, ctx: &mut ActorContext) -> InstanceDriverResult {
         // compare and update
         if msg.config.timestamp() > self.config.timestamp() {
             self.config = msg.config;
-            self.enact_config(ctx);
+            self.enact_config(ctx).await;
         }
 
         Ok(())
+    }
+}
+
+#[async_trait]
+impl Handler<NotifyUpdateConfigMsg> for DriverSupervisor {
+    async fn handle(&mut self, _: NotifyUpdateConfigMsg, ctx: &mut ActorContext) {
+        if let Some(client) = self.client.clone() {
+            let driver_id = self.driver_id.clone();
+            let config = self.config.clone();
+
+            match client.register_instance_driver(&driver_id, &config).await {
+                Ok(config) => {
+                    let _ = ctx.actor_ref::<Self>().notify(SetInstanceDriverConfigMsg { config });
+                }
+                Err(error) => {
+                    warn!(%error, driver_id = %self.driver_id, "Could not register instance driver");
+                }
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl Handler<NotifyEnactConfigMsg> for DriverSupervisor {
+    async fn handle(&mut self, _: NotifyEnactConfigMsg, ctx: &mut ActorContext) {
+        self.enact_config(ctx).await;
+    }
+}
+
+#[async_trait]
+impl Handler<PruneOldReportsMsg> for DriverSupervisor {
+    async fn handle(&mut self, _: PruneOldReportsMsg, _: &mut ActorContext) {
+        let threshold = now() - chrono::Duration::seconds(10);
+        for instance in self.instances.values_mut() {
+            instance.reports.retain(|id, _| *id >= threshold);
+        }
     }
 }
 
@@ -172,20 +218,13 @@ impl DriverSupervisor {
         }
     }
 
-    fn enact_config(&mut self, ctx: &mut Context<Self>) {
+    async fn enact_config(&mut self, ctx: &mut ActorContext) {
         self.shutdown_unneeded_drivers();
 
-        self.create_or_update_drivers(ctx)
+        self.create_or_update_drivers(ctx).await;
     }
 
-    fn prune_old_reports(&mut self, _ctx: &mut Context<Self>) {
-        let threshold = now() - chrono::Duration::seconds(10);
-        for instance in self.instances.values_mut() {
-            instance.reports.retain(|id, _| *id >= threshold);
-        }
-    }
-
-    fn create_or_update_drivers(&mut self, ctx: &mut Context<DriverSupervisor>) {
+    async fn create_or_update_drivers(&mut self, ctx: &mut ActorContext) {
         for (instance_id, config) in &mut self.config.instances {
             if config.maintenance.iter().any(|m| m.time.contains_now()) {
                 continue;
@@ -206,7 +245,7 @@ impl DriverSupervisor {
             let actual_play_state = maybe_existing.map(|instance| instance.actual_play_state.clone())
                                                   .unwrap_or_default();
 
-            let handle = match new_driver_handle(instance_id, config) {
+            let handle = match DriverHandle::new(instance_id.clone(), config.clone()).await {
                 Ok(driver) => driver,
                 Err(error) => {
                     warn!(%error, %instance_id, ?config, "Could not create driver");
@@ -214,12 +253,14 @@ impl DriverSupervisor {
                 }
             };
 
-            ctx.notify(SetParametersMsg { instance_id: { instance_id.clone() },
-                                          parameters:  { parameters.clone() }, });
+            let _ = ctx.actor_ref::<Self>()
+                       .notify(SetParametersMsg { instance_id: { instance_id.clone() },
+                                                  parameters:  { parameters.clone() }, });
 
             if let Some(desired_play_state) = desired_play_state.value_copied().as_ref() {
-                ctx.notify(SetDesiredStateMsg { instance_id: { instance_id.clone() },
-                                                play_state:  { desired_play_state.clone() }, });
+                let _ = ctx.actor_ref::<Self>()
+                           .notify(SetDesiredStateMsg { instance_id: { instance_id.clone() },
+                                                        play_state:  { desired_play_state.clone() }, });
             }
 
             self.instances.insert(instance_id.clone(),
@@ -254,28 +295,6 @@ impl DriverSupervisor {
         }
     }
 
-    fn register_and_update_config(&mut self, ctx: &mut Context<Self>) {
-        if let Some(client) = self.client.clone() {
-            let driver_id = self.driver_id.clone();
-            let config = self.config.clone();
-            let fut = async move { client.register_instance_driver(&driver_id, &config).await }.into_actor(self);
-            fut.map(Self::handle_returned_registration_config).spawn(ctx);
-        }
-    }
-
-    fn handle_returned_registration_config(result: Result<TimestampedInstanceDriverConfig, DomainError>,
-                                           actor: &mut Self,
-                                           ctx: &mut Context<Self>) {
-        match result {
-            Ok(config) => {
-                ctx.notify(SetInstanceDriverConfigMsg { config });
-            }
-            Err(error) => {
-                warn!(%error, driver_id = %actor.driver_id, "Could not register instance driver");
-            }
-        }
-    }
-
     fn instance_to_json(instance_id: &FixedInstanceId, instance: &SupervisedDriver) -> InstanceWithStatus {
         InstanceWithStatus { id:                 { instance_id.clone() },
                              parameters:         { instance.parameters.clone() },
@@ -285,33 +304,53 @@ impl DriverSupervisor {
     }
 }
 
-fn new_driver_handle(id: &FixedInstanceId, config: &FixedInstanceConfig) -> InstanceDriverResult<DriverHandle> {
-    use audiocloud_models as models;
-    match (id.manufacturer.as_str(), id.name.as_str()) {
-        #[cfg(unix)]
-        (models::distopik::NAME, models::distopik::dual1084::NAME) => {
-            let driver = crate::distopik::dual_1084::Dual1084::new(id.clone(),
-                                                                   crate::distopik::dual_1084::Config::from_json(config.additional
-                                                                                                                       .clone())?)?;
-            Ok(DriverRunner::run(id.clone(), driver))
-        }
-        (models::netio::NAME, models::netio::power_pdu_4c::NAME) => {
-            let driver = crate::netio::power_pdu_4c::PowerPdu4c::new(id.clone(),
-                                                                     crate::netio::power_pdu_4c::Config::from_json(config.additional
-                                                                                                                         .clone())?)?;
-            Ok(DriverRunner::run(id.clone(), driver))
-        }
-        (manufacturer, name) => Err(InstanceDriverError::DriverNotSupported { manufacturer: manufacturer.to_string(),
-                                                                              name:         name.to_string(), }),
-    }
+pub async fn init(driver_id: InstanceDriverId,
+                  client: Option<DomainServerClient>,
+                  config: TimestampedInstanceDriverConfig)
+                  -> LocalActorRef<DriverSupervisor> {
+    let actor_ref: LocalActorRef<DriverSupervisor> =
+        new_actor(DriverSupervisor { driver_id: { driver_id },
+                                     client:    { client },
+                                     config:    { config },
+                                     instances: { Default::default() }, }).await
+                                                                          .expect("Could not create driver supervisor")
+                                                                          .into();
+    DRIVER_SUPERVISOR.set(actor_ref.clone()).expect("Could not set driver supervisor");
+    actor_ref
 }
 
-pub fn init(driver_id: InstanceDriverId,
-            client: Option<DomainServerClient>,
-            config: TimestampedInstanceDriverConfig)
-            -> Addr<DriverSupervisor> {
-    DriverSupervisor { driver_id: { driver_id },
-                       client:    { client },
-                       config:    { config },
-                       instances: { Default::default() }, }.start()
+fn schedule_interval<A: Actor, M: Message + Copy>(actor: impl Into<ActorRef<A>>, interval: Duration, msg: M) -> JoinHandle<()>
+    where A: Handler<M>
+{
+    let actor = actor.into();
+    spawn(async move {
+        let mut interval = tokio::time::interval(interval);
+        loop {
+            interval.tick().await;
+            if let Err(_) = actor.send(msg).await {
+                break;
+            }
+        }
+    })
+}
+
+fn subscribe<A: Actor, M: Message + Clone>(actor: impl Into<ActorRef<A>>, sender: &BroadcastSender<M>) -> JoinHandle<()>
+    where A: Handler<M>
+{
+    let actor = actor.into();
+    let mut receiver = sender.subscribe();
+    spawn(async move {
+        loop {
+            match receiver.recv().await {
+                Ok(message) => match actor.send(message).await {
+                    Ok(_) => {}
+                    Err(_) => break,
+                },
+                Err(error) => {
+                    trace!(%error, "Subscription to broadcast channel closed");
+                    break;
+                }
+            }
+        }
+    })
 }

@@ -99,8 +99,8 @@ path = "../../specs/audiocloud-models"
 [dependencies.audiocloud-rust-clients]
 path = "../../clients/audiocloud-rust-clients"
 
-[dependencies.audiocloud-actix-utils]
-path = "../../lib/audiocloud-actix-utils"
+[dependencies.audiocloud-http]
+path = "../../lib/audiocloud-http"
 
 [dependencies.audiocloud-tracing]
 path = "../../lib/audiocloud-tracing"

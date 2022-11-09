@@ -7,8 +7,6 @@ edition = "2021"
 nats-aflowt = "0.16"
 once_cell = "1"
 dotenv = "0.15"
-actix = "0.13"
-actix-broker = "0.4"
 serde_yaml = "0.9"
 serde_repr = "0.1"
 serde_json = "1"
@@ -19,8 +17,10 @@ futures = "0.3"
 byteorder = "1"
 hidapi = "1"
 rand = "0.8"
-actix-web = "4"
 dashmap = "5"
+async-trait = "0.1"
+axum = "0.6.0-rc.4"
+flume = "0.10"
 
 [dependencies.nix]
 version = "0.25"
@@ -28,7 +28,6 @@ features = ["ioctl"]
 
 [dependencies.tokio]
 version = "1"
-features = ["full"]
 
 [dependencies.reqwest]
 version = "0.11"
@@ -42,13 +41,12 @@ features = ["derive"]
 version = "4"
 features = ["derive", "env"]
 
-[dependencies.openssl]
-version = "0.10"
-features = ["vendored"]
-
 [dependencies.chrono]
 version = "0.4"
 features = ["serde"]
+
+[dependencies.coerce]
+git = "https://github.com/distopik/coerce-rs"
 
 [dependencies.audiocloud-api]
 path = "../../specs/audiocloud-api"
@@ -59,8 +57,8 @@ path = "../../specs/audiocloud-models"
 [dependencies.audiocloud-rust-clients]
 path = "../../clients/audiocloud-rust-clients"
 
-[dependencies.audiocloud-actix-utils]
-path = "../../lib/audiocloud-actix-utils"
+[dependencies.audiocloud-http]
+path = "../../lib/audiocloud-http"
 
 [dependencies.audiocloud-tracing]
 path = "../../lib/audiocloud-tracing"

@@ -17,7 +17,7 @@ use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_api::{toggle_off, toggle_value, InstanceParameters, Stereo, ToggleOr};
 use audiocloud_models::distopik::dual1084::*;
-use audiocloud_models::distopik::{Dual1084Parameters, Dual1084Preset, Dual1084Reports};
+use audiocloud_models::distopik::{Dual1084Parameters, Dual1084Preset};
 
 use crate::driver::Driver;
 use crate::driver::Result;
@@ -46,8 +46,6 @@ impl Config {
         Dual1084::new(id.clone(), self)
     }
 }
-
-const RECV_TIMEOUT: Duration = Duration::from_millis(10);
 
 pub struct Dual1084 {
     id:               FixedInstanceId,
@@ -341,10 +339,10 @@ impl Dual1084 {
 }
 
 impl Driver for Dual1084 {
-    type Params = Dual1084Parameters;
-    type Reports = Dual1084Reports;
+    fn on_parameters_changed(&mut self, params: InstanceParameters) -> Result<InstanceParameters> {
+        let mut params: Dual1084Parameters =
+            serde_json::from_value(params).map_err(|e| InstanceDriverError::ParametersMalformed { error: e.to_string() })?;
 
-    fn on_parameters_changed(&mut self, mut params: Self::Params) -> Result<InstanceParameters> {
         if let Some(Stereo { left, right }) = params.input_gain.take() {
             self.set_input_gain(left, right);
         }

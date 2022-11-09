@@ -16,6 +16,7 @@ pub mod domain;
 pub mod instance_driver;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u16)]
 pub enum ServicePorts {
     CloudServerHttps = 7000,
     DomainServerHttps = 7200,

@@ -22,18 +22,17 @@ struct Netio4cMocked {
 }
 
 impl Driver for Netio4cMocked {
-    type Params = ();
-    type Reports = PowerPdu4CReports;
-
     fn set_power_channel(&mut self, channel: usize, value: bool) -> Result {
         self.state[channel] = value;
         Ok(())
     }
 
     fn poll(&mut self) -> Option<Duration> {
-        Self::emit_reports(self.id.clone(),
-                           PowerPdu4CReports { power: Some(self.state.clone()),
-                                               ..Default::default() });
+        if let Ok(reports) = serde_json::to_value(PowerPdu4CReports { power: Some(self.state.clone()),
+                                                                      ..Default::default() })
+        {
+            let _ = self.emit_reports(self.id.clone(), reports);
+        }
 
         Some(Duration::from_secs(5))
     }

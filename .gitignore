@@ -463,3 +463,5 @@ fleet.toml
 .idea/dataSources.xml
 /domain/surreal-tests
 /domain/audiocloud-domain-server/src/db/prisma.rs
+
+/*.sh

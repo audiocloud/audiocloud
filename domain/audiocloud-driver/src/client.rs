@@ -2,7 +2,7 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-use actix::Addr;
+use coerce::actor::LocalActorRef;
 
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverResult, InstanceParametersUpdated, InstanceWithStatus,
@@ -15,11 +15,11 @@ use crate::supervisor::DriverSupervisor;
 
 #[derive(Debug, Clone)]
 pub struct DriverClient {
-    addr: Addr<DriverSupervisor>,
+    addr: LocalActorRef<DriverSupervisor>,
 }
 
 impl DriverClient {
-    pub fn new(addr: Addr<DriverSupervisor>) -> Self {
+    pub fn new(addr: LocalActorRef<DriverSupervisor>) -> Self {
         Self { addr }
     }
 

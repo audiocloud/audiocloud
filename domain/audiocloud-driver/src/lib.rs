@@ -2,6 +2,8 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
+pub use tokio::sync::broadcast::{Receiver as BroadcastReceiver, Sender as BroadcastSender};
+
 pub mod client;
 pub mod distopik;
 pub mod driver;

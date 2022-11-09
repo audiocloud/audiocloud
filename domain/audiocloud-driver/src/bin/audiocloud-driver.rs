@@ -3,22 +3,22 @@
  */
 
 use std::path::PathBuf;
-use std::time::Duration;
 use std::{env, fs};
 
-use actix_web::{web, App, HttpServer};
+use axum::Router;
 use clap::Parser;
 use reqwest::Url;
 use tracing::*;
 
-use audiocloud_actix_utils::start_http2_server;
 use audiocloud_api::cloud::domains::InstanceDriverConfig;
-use audiocloud_api::{InstanceDriverId, Timestamped};
+use audiocloud_api::{InstanceDriverId, ServicePorts, Timestamped};
 use audiocloud_driver::client::DriverClient;
 use audiocloud_driver::http_client;
 use audiocloud_driver::nats::NatsOpts;
 use audiocloud_driver::rest_api;
+use audiocloud_driver::rest_api::DriverState;
 use audiocloud_driver::supervisor;
+use audiocloud_http::HttpOpts;
 use audiocloud_rust_clients::DomainServerClient;
 use audiocloud_tracing::O11yOpts;
 
@@ -30,15 +30,12 @@ struct DriverOpts {
     #[clap(flatten)]
     o11y: O11yOpts,
 
+    #[clap(flatten)]
+    http: HttpOpts,
+
     /// The domain server URL. If set, the instance driver will register with the domain server
     #[clap(long, env)]
     domain_server_url: Option<Url>,
-
-    #[clap(long, env, default_value = "0.0.0.0")]
-    bind: String,
-
-    #[clap(long, env, default_value = "7400")]
-    port: u16,
 
     #[clap(long, env, default_value = "default")]
     driver_id: InstanceDriverId,
@@ -47,7 +44,7 @@ struct DriverOpts {
     config_files: Vec<PathBuf>,
 }
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = dotenv::dotenv();
     if env::var("RUST_LOG").is_err() {
@@ -63,8 +60,6 @@ async fn main() -> anyhow::Result<()> {
     let mut config = Timestamped::new_with_epoch(InstanceDriverConfig::default());
 
     for file in &opts.config_files {
-        use chrono::prelude::{DateTime, Utc};
-
         let file = fs::File::open(file)?;
         let modified_time = file.metadata()?.modified()?;
 
@@ -81,14 +76,15 @@ async fn main() -> anyhow::Result<()> {
         None => None,
     };
 
-    let supervisor = supervisor::init(opts.driver_id, domain_client, config);
-    let client = web::Data::new(DriverClient::new(supervisor));
+    let supervisor = supervisor::init(opts.driver_id, domain_client, config).await;
+    let state = DriverState { instances: DriverClient::new(supervisor), };
+    let port = ServicePorts::InstanceDriverHttps as u16;
 
-    info!(bind = opts.bind, port = opts.port, " ==== AudioCloud Driver server ==== ");
+    info!(http = ?opts.http, port, " ==== AudioCloud Driver server ==== ");
 
-    start_http2_server(opts.bind.as_str(), opts.port, move |configure| {
-        configure.app_data(client.clone()).configure(rest_api::configure);
-    }).await?;
+    let router = rest_api::configure(Router::new(), state);
+
+    audiocloud_http::http_server(&opts.http, port as u16, router).await;
 
     audiocloud_tracing::shutdown(o11y_guard).await;
 
