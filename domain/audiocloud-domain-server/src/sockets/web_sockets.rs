@@ -6,22 +6,24 @@
 
 use std::time::Duration;
 
-use actix::{Actor, ActorContext, ActorFutureExt, AsyncContext, ContextFutureSpawner, Handler, StreamHandler, WrapFuture};
-use actix_web::{get, web, HttpRequest, Responder};
-use actix_web_actors::ws;
-use actix_web_actors::ws::WebsocketContext;
-use futures::FutureExt;
+use axum::extract::ws::WebSocket;
+use axum::extract::{Path, WebSocketUpgrade};
+use axum::response::IntoResponse;
+use axum::routing::get;
+use axum::Router;
+use futures::{FutureExt, SinkExt, StreamExt};
 use serde::Deserialize;
 use tracing::*;
 
 use audiocloud_api::newtypes::SecureKey;
-use audiocloud_api::ClientSocketId;
+use audiocloud_api::{ClientId, ClientSocketId, SocketId};
 
 use crate::sockets::messages::{RegisterWebSocket, SocketReceived, SocketSend};
-use crate::sockets::{get_sockets_supervisor, Disconnect};
+use crate::sockets::{get_sockets_supervisor, Disconnect, SocketConnectedMsg};
+use crate::DomainContext;
 
-pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(ws_handler);
+pub fn configure(router: Router<DomainContext>) -> Router<DomainContext> {
+    router.route("/ws/{client_id}/{socket_id}", get(ws_handler))
 }
 
 #[derive(Deserialize)]
@@ -29,92 +31,34 @@ struct AuthParams {
     secure_key: SecureKey,
 }
 
-#[get("/ws/{client_id}/{socket_id}")]
-async fn ws_handler(req: HttpRequest, id: web::Path<ClientSocketId>, stream: web::Payload) -> impl Responder {
-    let id = id.into_inner();
-    debug!(%id, "connected web_socket with");
-
-    let resp = ws::start(WebSocketActor { id }, &req, stream);
-    resp
+async fn ws_handler(Path((client_id, socket_id)): Path<(ClientId, SocketId)>, ws: WebSocketUpgrade) -> impl IntoResponse {
+    ws.on_upgrade(|socket| handle_socket(ClientSocketId { client_id, socket_id }, socket))
 }
 
-#[derive(Debug)]
-pub struct WebSocketActor {
-    id: ClientSocketId,
-}
+async fn handle_socket(id: ClientSocketId, mut socket: WebSocket) {
+    let (socket_tx, socket_rx) = socket.split();
+    let (cmd_rx, cmd_tx) = tokio::sync::mpsc::channel(256);
 
-impl Actor for WebSocketActor {
-    type Context = WebsocketContext<Self>;
+    // could also just send the stream to the supervisor and let it handle the rest
 
-    fn started(&mut self, ctx: &mut Self::Context) {
-        debug!(id = %self.id, "WebSocket started");
+    get_sockets_supervisor().send(SocketConnectedMsg {}).await;
 
-        let register_cmd = RegisterWebSocket { address:   ctx.address(),
-                                               socket_id: self.id.clone(), };
-
-        get_sockets_supervisor().send(register_cmd)
-                                .into_actor(self)
-                                .map(|res, act, ctx| {
-                                    if res.is_err() {
-                                        warn!(id = %act.id, "Failed to register websocket actor, giving up");
-                                        ctx.stop();
-                                    }
-                                })
-                                .wait(ctx);
-    }
-
-    fn stopped(&mut self, ctx: &mut Self::Context) {
-        debug!(id = %self.id, "WebSocket stopped");
-    }
-}
-
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
-        match msg {
-            Ok(ws::Message::Ping(msg)) => {
-                debug!(id = ?self.id, "PING");
-                ctx.pong(&msg)
-            }
-            Ok(ws::Message::Text(text)) => {
-                get_sockets_supervisor().send(SocketReceived::Text(self.id.clone(), text.to_string()))
-                                        .map(drop)
-                                        .into_actor(self)
-                                        .spawn(ctx);
-            }
-            Ok(ws::Message::Binary(bytes)) => {
-                get_sockets_supervisor().send(SocketReceived::Bytes(self.id.clone(), bytes))
-                                        .map(drop)
-                                        .into_actor(self)
-                                        .spawn(ctx);
-            }
-            Err(error) => {
-                warn!(%error, "WebSocket reported error");
-                ctx.stop();
-            }
-            _ => (),
-        }
-    }
-}
-
-impl Handler<SocketSend> for WebSocketActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: SocketSend, ctx: &mut Self::Context) {
-        match msg {
-            SocketSend::Bytes(bytes) => {
-                ctx.binary(bytes);
-            }
-            SocketSend::Text(text) => {
-                ctx.text(text);
+    loop {
+        tokio::select! {
+            msg = socket_rx.next() => match msg {
+                None => break,
+                Some(msg) => {
+                }
+            },
+            cmd  = cmd_rx.next() => match cmd {
+                None => break,
+                Some(event) => {
+                    // todo; ...
+                }
             }
         }
     }
-}
 
-impl Handler<Disconnect> for WebSocketActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: Disconnect, ctx: &mut Self::Context) -> Self::Result {
-        ctx.run_later(Duration::default(), |_, ctx| ctx.stop());
-    }
+    // Send cleanup
+    get_sockets_supervisor().send(SocketDisconnected {}).await;
 }

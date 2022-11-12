@@ -82,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
 
     info!(http = ?opts.http, port, " ==== AudioCloud Driver server ==== ");
 
-    let router = rest_api::configure(Router::new(), state);
+    let router = rest_api::configure(Router::with_state(state));
 
     audiocloud_http::http_server(&opts.http, port as u16, router).await;
 

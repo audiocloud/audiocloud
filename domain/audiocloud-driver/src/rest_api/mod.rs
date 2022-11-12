@@ -8,8 +8,8 @@ use crate::client::DriverClient;
 
 mod v1;
 
-pub fn configure(router: Router, state: DriverState) -> Router {
-    router.nest("/v1", v1::configure(state))
+pub fn configure(router: Router<DriverState>) -> Router<DriverState> {
+    router.nest("/v1", v1::configure())
 }
 
 #[derive(Clone)]

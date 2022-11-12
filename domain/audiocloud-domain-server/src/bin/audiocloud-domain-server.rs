@@ -4,28 +4,19 @@
 
 use std::path::PathBuf;
 
-use actix_web::web;
-use actix_web::web::ServiceConfig;
+use axum::Router;
 use clap::Parser;
 use tracing::*;
 
+use actix_web::web;
+use actix_web::web::ServiceConfig;
 use audiocloud_actix_utils::start_http2_server;
-use audiocloud_api::DomainId;
-use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, rest_api, sockets, tasks};
+use audiocloud_api::{DomainId, ServicePorts};
+use audiocloud_domain_server::{config, db, events, fixed_instances, media, models, nats, rest_api, sockets, tasks, DomainContext};
+use audiocloud_http::http_server;
 
 #[derive(Parser)]
 struct Opts {
-    /// REST and WebSocket API port
-    #[clap(short, long, env, default_value = "7200")]
-    port: u16,
-
-    /// REST and WebSocket API host
-    #[clap(short, long, env, default_value = "0.0.0.0")]
-    bind: String,
-
-    #[clap(short, long, env)]
-    tls_cert: Option<PathBuf>,
-
     /// Name of this domain server instance
     #[clap(long, env, default_value = "")]
     domain_id: DomainId,
@@ -54,9 +45,12 @@ struct Opts {
 
     #[clap(flatten)]
     o11y: audiocloud_tracing::O11yOpts,
+
+    #[clap(flatten)]
+    http: audiocloud_http::HttpOpts,
 }
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // the domain server is basically a bunch of timers and event handlers running on top of an sqlite database.
 
@@ -116,18 +110,21 @@ async fn main() -> anyhow::Result<()> {
 
     sockets::init(opts.sockets)?;
 
-    info!(bind = opts.bind, port = opts.port, " ==== AudioCloud Domain server ==== ");
+    let port = ServicePorts::DomainServerHttps;
 
-    let rest_opts = web::Data::new(opts.rest.clone());
+    info!(http = %opts.bind, port, " ==== AudioCloud Domain server ==== ");
+
     if rest_opts.rest_auth_strategy.is_development() {
         warn!("*** development authentication strategy enabled! ***");
     }
 
-    let configure = |service: &mut ServiceConfig| {
-        service.configure(rest_api::configure).configure(sockets::configure);
-    };
+    let ctx = DomainContext { auth_strategy: rest_opts.rest_auth_strategy, };
 
-    start_http2_server(opts.bind.as_str(), opts.port, configure).await?;
+    let router = Router::with_state(ctx);
+    let router = rest_api::configure(router);
+    let router = sockets::configure(router);
+
+    http_server(&opts.http, port, router).await?;
 
     audiocloud_tracing::shutdown(tracing_guard).await;
 

@@ -63,5 +63,8 @@ path = "../../lib/audiocloud-http"
 [dependencies.audiocloud-tracing]
 path = "../../lib/audiocloud-tracing"
 
+[dependencies.audiocloud-actors]
+path = "../../lib/audiocloud-actors"
+
 [dev-dependencies]
 trim-margin = "0.1.0"

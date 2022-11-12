@@ -11,10 +11,9 @@ use coerce::actor::message::{Handler, Message};
 use coerce::actor::{new_actor, Actor, ActorRef, LocalActorRef};
 use once_cell::sync::OnceCell;
 use serde_json::json;
-use tokio::spawn;
-use tokio::task::JoinHandle;
 use tracing::*;
 
+use audiocloud_actors::schedule_interval;
 use audiocloud_api::cloud::domains::{FixedInstanceConfig, InstanceDriverConfig, TimestampedInstanceDriverConfig};
 use audiocloud_api::instance_driver::{
     DesiredInstancePlayStateUpdated, InstanceDriverError, InstanceDriverEvent, InstanceDriverResult, InstanceParametersUpdated,
@@ -317,40 +316,4 @@ pub async fn init(driver_id: InstanceDriverId,
                                                                           .into();
     DRIVER_SUPERVISOR.set(actor_ref.clone()).expect("Could not set driver supervisor");
     actor_ref
-}
-
-fn schedule_interval<A: Actor, M: Message + Copy>(actor: impl Into<ActorRef<A>>, interval: Duration, msg: M) -> JoinHandle<()>
-    where A: Handler<M>
-{
-    let actor = actor.into();
-    spawn(async move {
-        let mut interval = tokio::time::interval(interval);
-        loop {
-            interval.tick().await;
-            if let Err(_) = actor.send(msg).await {
-                break;
-            }
-        }
-    })
-}
-
-fn subscribe<A: Actor, M: Message + Clone>(actor: impl Into<ActorRef<A>>, sender: &BroadcastSender<M>) -> JoinHandle<()>
-    where A: Handler<M>
-{
-    let actor = actor.into();
-    let mut receiver = sender.subscribe();
-    spawn(async move {
-        loop {
-            match receiver.recv().await {
-                Ok(message) => match actor.send(message).await {
-                    Ok(_) => {}
-                    Err(_) => break,
-                },
-                Err(error) => {
-                    trace!(%error, "Subscription to broadcast channel closed");
-                    break;
-                }
-            }
-        }
-    })
 }

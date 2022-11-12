@@ -8,18 +8,18 @@ use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use reqwest::StatusCode;
 
-use audiocloud_api::instance_driver::{InstanceDriverError};
+use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_api::DesiredInstancePlayState;
 
 use crate::rest_api::DriverState;
 
-pub fn configure(state: DriverState) -> Router<DriverState> {
-    Router::with_state(state).route("/instances", get(get_instances))
-                             .route("/:manufacturer/:name/:instance", get(get_instance))
-                             .route("/:manufacturer/:name/:instance/parameters", post(set_parameters))
-                             .route("/:manufacturer/:name/:instance/parameters/:parameter_id", post(set_parameter))
-                             .route("/:manufacturer/:name/:instance/play_state", put(set_desired_instance_state))
+pub fn configure() -> Router<DriverState> {
+    Router::inherit_state().route("/instances", get(get_instances))
+                           .route("/:manufacturer/:name/:instance", get(get_instance))
+                           .route("/:manufacturer/:name/:instance/parameters", post(set_parameters))
+                           .route("/:manufacturer/:name/:instance/parameters/:parameter_id", post(set_parameter))
+                           .route("/:manufacturer/:name/:instance/play_state", put(set_desired_instance_state))
 }
 
 async fn get_instances(State(state): State<DriverState>) -> impl IntoResponse {

@@ -35,7 +35,7 @@ pub struct RegisterWebSocket {
 
 #[derive(Message, Clone, Debug)]
 #[rtype(result = "()")]
-pub struct SocketConnected {
+pub struct SocketConnectedMsg {
     pub socket_id: ClientSocketId,
 }
 

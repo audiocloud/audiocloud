@@ -1,0 +1,13 @@
+[package]
+name = "audiocloud-actors"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = "1"
+tracing = "0.1"
+
+[dependencies.coerce]
+git = "https://github.com/distopik/coerce-rs"
