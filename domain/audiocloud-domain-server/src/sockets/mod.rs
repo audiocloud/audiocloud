@@ -2,9 +2,11 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-use actix::{Actor, Addr};
 use anyhow::anyhow;
 use clap::Args;
+use coerce::actor::scheduler::{start_actor, ActorType};
+use coerce::actor::system::ActorSystem;
+use coerce::actor::{ActorId, ActorRef, LocalActorRef};
 use nanoid::nanoid;
 use once_cell::sync::OnceCell;
 use tracing::*;
@@ -19,7 +21,7 @@ mod supervisor;
 mod web_rtc;
 mod web_sockets;
 
-static SOCKETS_SUPERVISOR: OnceCell<Addr<SocketsSupervisor>> = OnceCell::new();
+static SOCKETS_SUPERVISOR: OnceCell<LocalActorRef<SocketsSupervisor>> = OnceCell::new();
 
 #[derive(Args, Clone, Debug)]
 pub struct SocketsOpts {
@@ -50,18 +52,19 @@ struct SocketMembership {
 }
 
 #[instrument(skip_all, err)]
-pub fn init(cfg: SocketsOpts) -> anyhow::Result<()> {
+pub async fn init(cfg: SocketsOpts) -> anyhow::Result<()> {
     let web_rtc_cfg = cfg.web_rtc.clone();
     let supervisor = SocketsSupervisor::new(cfg);
 
     web_rtc::init(&web_rtc_cfg)?;
 
-    SOCKETS_SUPERVISOR.set(supervisor.start())
+    SOCKETS_SUPERVISOR.set(ActorSystem::global_system().new_actor(ActorId::from("sockets-supervisor"), supervisor, ActorType::Tracked)
+                                                       .await?)
                       .map_err(|_| anyhow!("Sockets supervisor already initialized"))?;
 
     Ok(())
 }
 
-pub fn get_sockets_supervisor() -> &'static Addr<SocketsSupervisor> {
+pub fn get_sockets_supervisor() -> &'static LocalActorRef<SocketsSupervisor> {
     SOCKETS_SUPERVISOR.get().expect("Sockets supervisor not initialized")
 }

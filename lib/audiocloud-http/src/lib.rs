@@ -77,7 +77,7 @@ mod test {
 
     #[test_log::test(tokio::test)]
     async fn test_http1_server() {
-        let opts = HttpOpts { http_port:                  0,
+        let opts = HttpOpts { http_port:                  None,
                               http_bind:                  IpAddr::from_str("0.0.0.0").expect("IP address"),
                               http_certificate:           None,
                               http_private_key:           None,
@@ -88,12 +88,12 @@ mod test {
 
         // TODO: make a request to the server and check the response
 
-        handle.await;
+        handle.await.expect("Should time out gracefully");
     }
 
     #[test_log::test(tokio::test)]
     async fn test_http2_server() {
-        let opts = HttpOpts { http_port:                  0,
+        let opts = HttpOpts { http_port:                  None,
                               http_bind:                  IpAddr::from_str("0.0.0.0").expect("IP address"),
                               http_certificate:           Some(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("self_signed_certs")
                                                                                                         .join("cert.pem")),
@@ -106,12 +106,12 @@ mod test {
 
         // TODO: make a request to the server and check the response
 
-        handle.await;
+        handle.await.expect("Should time out gracefully");
     }
 
     #[test_log::test(tokio::test)]
     async fn test_http2_self_signed_server() {
-        let opts = HttpOpts { http_port:                  0,
+        let opts = HttpOpts { http_port:                  None,
                               http_bind:                  IpAddr::from_str("0.0.0.0").expect("IP address"),
                               http_certificate:           None,
                               http_private_key:           None,
@@ -122,7 +122,7 @@ mod test {
 
         // TODO: make a request to the server and check the response
 
-        handle.await;
+        handle.await.expect("Should time out gracefully");
     }
 
     async fn hello_world() -> &'static str {

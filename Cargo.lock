@@ -441,6 +441,7 @@ version = "0.2.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "audiocloud-actors",
  "audiocloud-api",
  "audiocloud-http",
  "audiocloud-models",

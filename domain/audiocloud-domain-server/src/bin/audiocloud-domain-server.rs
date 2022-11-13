@@ -78,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
 
     let db = db::init(opts.db).await?;
 
-    info!(" ⚡ NATS");
+    info!(" ⚡ Messaging");
 
     let _nats_guard = nats::init(&opts.nats_url).await?;
 
@@ -108,9 +108,9 @@ async fn main() -> anyhow::Result<()> {
 
     info!(" ⚡ Sockets");
 
-    sockets::init(opts.sockets)?;
+    sockets::init(opts.sockets).await?;
 
-    let port = ServicePorts::DomainServerHttps;
+    let port = ServicePorts::DomainServerHttps as u16;
 
     info!(http = %opts.bind, port, " ==== AudioCloud Domain server ==== ");
 

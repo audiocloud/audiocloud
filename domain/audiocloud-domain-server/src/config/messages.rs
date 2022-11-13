@@ -4,25 +4,31 @@
 
 use std::collections::HashMap;
 
-use actix::Message;
+use coerce::actor::message::Message;
 
 use audiocloud_api::cloud::domains::{DomainConfig, FixedInstanceRouting};
 use audiocloud_api::{FixedInstanceId, Model, ModelId};
 
-#[derive(Message, Clone, Debug)]
-#[rtype(result = "()")]
 pub struct NotifyDomainConfiguration {
     pub config: DomainConfig,
 }
 
-#[derive(Message, Clone, Debug)]
-#[rtype(result = "()")]
+impl Message for NotifyDomainConfiguration {
+    type Result = ();
+}
+
 pub struct NotifyModels {
     pub models: HashMap<ModelId, Model>,
 }
 
-#[derive(Message, Clone, Debug)]
-#[rtype(result = "()")]
+impl Message for NotifyModels {
+    type Result = ();
+}
+
 pub struct NotifyFixedInstanceRouting {
     pub routing: HashMap<FixedInstanceId, FixedInstanceRouting>,
+}
+
+impl Message for NotifyFixedInstanceRouting {
+    type Result = ();
 }

@@ -1,12 +1,14 @@
 /*
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 use std::time::Duration;
 
 use coerce::actor::message::{Handler, Message};
 use coerce::actor::{Actor, ActorRef};
 use tokio::spawn;
-use tokio::sync::broadcast::Sender as BroadcastSender;
+use tokio::sync::broadcast::{Receiver as BroadcastReceiver, Sender as BroadcastSender};
 use tokio::task::JoinHandle;
 use tracing::trace;
 
@@ -46,11 +48,10 @@ pub fn schedule_interval_counted<A: Actor, M: Message, G, R>(actor: R, interval:
     })
 }
 
-pub fn subscribe<A: Actor, M: Message + Clone>(actor: impl Into<ActorRef<A>>, sender: &BroadcastSender<M>) -> JoinHandle<()>
+pub fn subscribe<A: Actor, M: Message + Clone>(actor: impl Into<ActorRef<A>>, mut receiver: BroadcastReceiver<M>) -> JoinHandle<()>
     where A: Handler<M>
 {
     let actor = actor.into();
-    let mut receiver = sender.subscribe();
 
     spawn(async move {
         loop {
@@ -69,4 +70,10 @@ pub fn subscribe<A: Actor, M: Message + Clone>(actor: impl Into<ActorRef<A>>, se
             }
         }
     })
+}
+
+pub fn subscribe_to_sender<A: Actor, M: Message + Clone>(actor: impl Into<ActorRef<A>>, sender: &BroadcastSender<M>) -> JoinHandle<()>
+    where A: Handler<M>
+{
+    subscribe(actor, sender.subscribe())
 }

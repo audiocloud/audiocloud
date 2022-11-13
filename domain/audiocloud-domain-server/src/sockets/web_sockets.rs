@@ -23,7 +23,7 @@ use crate::sockets::{get_sockets_supervisor, Disconnect, SocketConnectedMsg};
 use crate::DomainContext;
 
 pub fn configure(router: Router<DomainContext>) -> Router<DomainContext> {
-    router.route("/ws/{client_id}/{socket_id}", get(ws_handler))
+    router.route("/ws/:client_id/:socket_id", get(ws_handler))
 }
 
 #[derive(Deserialize)]

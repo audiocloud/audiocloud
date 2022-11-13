@@ -106,5 +106,8 @@ path = "../../lib/audiocloud-http"
 [dependencies.audiocloud-tracing]
 path = "../../lib/audiocloud-tracing"
 
+[dependencies.audiocloud-actors]
+path = "../../lib/audiocloud-actors"
+
 [features]
 kafka = ["rdkafka", "sasl2-sys"]
