@@ -4,6 +4,7 @@
 
 //! Various IDs and wrappers
 
+use std::default;
 use std::fmt::Formatter;
 use std::marker::PhantomData;
 use std::str::FromStr;
@@ -18,7 +19,7 @@ use crate::cloud::CloudError;
 use crate::{InputPadId, OutputPadId};
 
 /// Id of a fixed instance
-#[derive(Clone, Debug, Eq, PartialEq, Hash, Display, Constructor)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Display, Constructor, Default)]
 #[display(fmt = "{manufacturer}/{name}/{instance}")]
 pub struct FixedInstanceId {
     /// manufacturer name, may not contain ':' or whitespace

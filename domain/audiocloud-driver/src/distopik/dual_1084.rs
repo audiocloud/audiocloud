@@ -27,6 +27,9 @@ use crate::utils::*;
 pub struct Config {
     #[serde(default = "Config::default_device")]
     device: String,
+
+    #[serde(default)]
+    test: bool,
 }
 
 impl Config {
@@ -38,12 +41,16 @@ impl Config {
         if json.is_object() {
             serde_json::from_value(json).map_err(|error| InstanceDriverError::ConfigMalformed { error: error.to_string() })
         } else {
-            Ok(Self { device: Self::default_device(), })
+            Ok(Self { device: Self::default_device(), test: false, })
         }
     }
 
     pub fn driver(self, id: &FixedInstanceId) -> Result<impl Driver> {
         Dual1084::new(id.clone(), self)
+    }
+
+    pub fn driver_test() -> Dual1084 {
+        Dual1084::new(FixedInstanceId { ..Default::default() }, Config {device: Config::default_device(), test: true }).unwrap()
     }
 }
 
@@ -147,11 +154,19 @@ impl UnirelRegion {
 impl Dual1084 {
     pub fn new(id: FixedInstanceId, config: Config) -> Result<Self> {
         info!(device = &config.device, "👋 Summatra Nuclear instance_driver");
-        let raw_fd = File::options().read(true)
-                                    .write(true)
-                                    .open(&config.device)
-                                    .map_err(|error| InstanceDriverError::IOError { error: error.to_string() })?
-                                    .into_raw_fd();
+
+        let raw_fd;
+
+        if let false = config.test {
+            raw_fd = File::options().read(true)
+                                         .write(true)
+                                         .open(&config.device)
+                                         .map_err(|error| InstanceDriverError::IOError { error: error.to_string() })?
+                                         .into_raw_fd()
+        } else {
+            raw_fd = 0
+        }
+        
 
         let values = Dual1084Preset { low_gain:         Stereo::both(0.0),
                                       eql_toggle:       Stereo::both(false),
@@ -225,10 +240,10 @@ impl Dual1084 {
     }
 
     fn set_low_gain(&mut self, left: f64, right: f64) {
-        let rescaled = rescale(left, &LOW_GAIN_VALUES, 128_f64);
+        let rescaled = rescale(left, &LOW_GAIN_VALUES, 127_f64);
         self.low_gain[0].write(&mut self.io_exp_data, rescaled as u16);
 
-        let rescaled = rescale(right, &LOW_GAIN_VALUES, 128_f64);
+        let rescaled = rescale(right, &LOW_GAIN_VALUES, 127_f64);
         self.low_gain[1].write(&mut self.io_exp_data, rescaled as u16);
 
         self.values.low_gain = Stereo { left, right };
@@ -247,10 +262,10 @@ impl Dual1084 {
     }
 
     fn set_low_mid_gain(&mut self, left: f64, right: f64) {
-        let rescaled = rescale(left, &LOW_MID_GAIN_VALUES, 128.0);
+        let rescaled = rescale(left, &LOW_MID_GAIN_VALUES, 127.0);
         self.low_mid_gain[0].write(&mut self.io_exp_data, rescaled as u16);
 
-        let rescaled = rescale(right, &LOW_MID_GAIN_VALUES, 128.0);
+        let rescaled = rescale(right, &LOW_MID_GAIN_VALUES, 127.0);
         self.low_mid_gain[1].write(&mut self.io_exp_data, rescaled as u16);
 
         self.values.low_mid_gain = Stereo { left, right };
@@ -274,10 +289,10 @@ impl Dual1084 {
     }
 
     fn set_high_mid_gain(&mut self, left: f64, right: f64) {
-        let rescaled = rescale(left, &HIGH_MID_GAIN_VALUES, 128.0);
+        let rescaled = rescale(left, &HIGH_MID_GAIN_VALUES, 127.0);
         self.high_mid_gain[0].write(&mut self.io_exp_data, rescaled as u16);
 
-        let rescaled = rescale(right, &HIGH_MID_GAIN_VALUES, 128.0);
+        let rescaled = rescale(right, &HIGH_MID_GAIN_VALUES, 127.0);
         self.high_mid_gain[1].write(&mut self.io_exp_data, rescaled as u16);
 
         self.values.high_mid_gain = Stereo { left, right };
@@ -301,10 +316,10 @@ impl Dual1084 {
     }
 
     fn set_high_gain(&mut self, left: f64, right: f64) {
-        let rescaled = rescale(left, &HIGH_GAIN_VALUES, 128.0);
+        let rescaled = rescale(left, &HIGH_GAIN_VALUES, 127.0);
         self.high_gain[0].write(&mut self.io_exp_data, rescaled as u16);
 
-        let rescaled = rescale(right, &HIGH_GAIN_VALUES, 128.0);
+        let rescaled = rescale(right, &HIGH_GAIN_VALUES, 127.0);
         self.high_gain[1].write(&mut self.io_exp_data, rescaled as u16);
 
         self.values.high_gain = Stereo { left, right };
@@ -337,6 +352,10 @@ impl Dual1084 {
         self.eql_toggle[1].write_switch(&mut self.io_exp_data, right as u16);
 
         self.values.eql_toggle = Stereo { left, right };
+    }
+
+    fn get_data_slice(&self, slice: usize) -> [u16; 6]{
+        self.io_exp_data[slice]
     }
 }
 
@@ -469,3 +488,94 @@ pub fn transfer_data(fd: RawFd) -> io::Result<()> {
     unsafe { ioctl::write_data_32(fd) }?;
     Ok(())
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_input_gain() {
+        let driver = &mut Config::driver_test();
+        driver.set_input_gain( ToggleOr::Value(5), ToggleOr::Value(0));
+        assert_eq!( driver.get_data_slice(1), [0x1, 0x0, 0x0, 0x0, 0x0, 0x900]);
+        assert_eq!( driver.get_data_slice(3), [0x1, 0x0, 0x0, 0x0, 0x0, 0x1100]);
+    }
+
+    #[test]
+    fn test_set_high_pass_filter() {
+        let driver = &mut Config::driver_test();
+        driver.set_high_pass_filter( ToggleOr::Value(22), ToggleOr::Value(70));
+        assert_eq!( driver.get_data_slice(1), [0x1, 0x0, 0x0, 0x0, 0x4902, 0x0]);
+        assert_eq!( driver.get_data_slice(3), [0x1, 0x0, 0x0, 0x0, 0xC300, 0x0]);
+    }
+
+    #[test]
+    fn test_set_low_gain() {
+        let driver = &mut Config::driver_test();
+        driver.set_low_gain( -10.0, 15.0);
+        assert_eq!( driver.get_data_slice(5), [0x1, 0x0, 0xB0E0, 0x0, 0x2E00, 0x0]);
+    }
+
+    #[test]
+    fn test_set_low_freq() {
+        let driver = &mut Config::driver_test();
+        driver.set_low_freq( ToggleOr::Value(35), ToggleOr::Value(220));
+        assert_eq!( driver.get_data_slice(1), [0x1, 0x0, 0x61, 0x800, 0x0, 0x0]);
+        assert_eq!( driver.get_data_slice(3), [0x1, 0x0, 0x45, 0x100, 0x0, 0x0]);
+    }
+
+    #[test]
+    fn test_set_low_mid_gain() {
+        let driver = &mut Config::driver_test();
+        driver.set_low_mid_gain( 10.0, -5.0);
+        assert_eq!( driver.get_data_slice(5), [0x1, 0x100, 0x14, 0x0, 0x2E, 0x0]);
+    }
+
+    #[test]
+    fn test_set_low_mid_freq() {
+        let driver = &mut Config::driver_test();
+        driver.set_low_mid_freq( ToggleOr::Value(240), ToggleOr::Value(3200));
+        assert_eq!( driver.get_data_slice(1), [0x1, 0x10, 0x2000, 0x0, 0x0, 0x0]);
+        assert_eq!( driver.get_data_slice(3), [0x1, 0x90, 0x0, 0x0, 0x0, 0x0]);
+    }
+
+    #[test]
+    fn test_set_high_mid_gain() {
+        let driver = &mut Config::driver_test();
+        driver.set_high_mid_gain( -6.0, 11.0);
+        assert_eq!( driver.get_data_slice(5), [0x1, 0xE480, 0x0, 0xF00, 0x1, 0x0]);
+    }
+
+    #[test]
+    fn test_set_high_mid_freq() {
+        let driver = &mut Config::driver_test();
+        driver.set_high_mid_freq( ToggleOr::Value(7200), ToggleOr::Value(1600));
+        assert_eq!( driver.get_data_slice(1), [0x1, 0x1100, 0x0, 0x0, 0x0, 0x0]);
+        assert_eq!( driver.get_data_slice(3), [0x1, 0x104, 0x0, 0x0, 0x0, 0x0]);
+    }
+
+    #[test]
+    fn test_set_high_gain() {
+        let driver = &mut Config::driver_test();
+        driver.set_high_gain( 14.0, -8.0);
+        assert_eq!( driver.get_data_slice(5), [0x1, 0x7C, 0x0, 0xC0B8, 0x0, 0x0]);
+    }
+
+    #[test]
+    fn test_set_high_freq() {
+        let driver = &mut Config::driver_test();
+        driver.set_high_freq( ToggleOr::Value(8000), ToggleOr::Value(16000));
+        assert_eq!( driver.get_data_slice(1), [0x1, 0x0, 0x0, 0x1045, 0x0, 0x0]);
+        assert_eq!( driver.get_data_slice(3), [0x1, 0x0, 0x0, 0x300C, 0x0, 0x0]);
+    }
+
+    #[test]
+    fn test_set_output_pad() {
+        let driver = &mut Config::driver_test();
+        driver.set_output_pad( ToggleOr::Value(-10), ToggleOr::Value(-20));
+        assert_eq!( driver.get_data_slice(7), [0x1, 0x2B, 0x0, 0x0, 0x0, 0x0]);
+    }
+}
+

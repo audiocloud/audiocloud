@@ -240,7 +240,6 @@ impl Driver for Summatra {
             self.set_bus_assign(channels);
         }
 
-        todo!("set func and pages");
         Summatra::send_pages(self);
 
         // self.issue_system_async(self.values.clone());
