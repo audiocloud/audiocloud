@@ -4,11 +4,12 @@
 
 use std::path::PathBuf;
 
-use actix_broker::{Broker, SystemBroker};
 use anyhow::anyhow;
 use clap::{Args, ValueEnum};
+use once_cell::sync::Lazy;
 use reqwest::Url;
-use tokio::time;
+use tokio::sync::broadcast::Sender;
+use tokio::{spawn, time};
 use tracing::*;
 
 use audiocloud_api::cloud::domains::DomainConfig;
@@ -67,11 +68,20 @@ async fn load_config(cfg: ConfigOpts) -> anyhow::Result<DomainConfig> {
     }
 }
 
+static BROADCAST_CONFIG: Lazy<Sender<NotifyDomainConfiguration>> = Lazy::new(|| {
+    let (tx, _) = tokio::sync::broadcast::channel(256);
+    tx
+});
+
+pub fn get_broadcast_config() -> &'static Sender<NotifyDomainConfiguration> {
+    &BROADCAST_CONFIG
+}
+
 #[instrument(skip_all, err)]
 pub async fn init(cfg: ConfigOpts) -> anyhow::Result<DomainConfig> {
     let rv = load_config(cfg.clone()).await?;
 
-    actix::spawn({
+    spawn({
         let mut rv = rv.clone();
         async move {
             loop {
@@ -85,7 +95,7 @@ pub async fn init(cfg: ConfigOpts) -> anyhow::Result<DomainConfig> {
                              }
                              Ok(config) => {
                                  if &rv != &config {
-                                     Broker::<SystemBroker>::issue_async(NotifyDomainConfiguration { config: config.clone() });
+                                     let _ = BROADCAST_CONFIG.send(NotifyDomainConfiguration { config: config.clone() });
                                      config
                                  } else {
                                      rv

@@ -6,21 +6,18 @@
 
 use std::time::Duration;
 
-use actix::{spawn, AsyncContext};
-use futures::TryFutureExt;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use tracing::*;
 
 use audiocloud_api::common::time::Timestamp;
-use audiocloud_api::instance_driver::{InstanceDriverError, InstanceDriverEvent};
+use audiocloud_api::instance_driver::{InstanceDriverError};
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_models::netio::PowerPdu4CReports;
 
 use crate::driver::Driver;
 use crate::driver::Result;
-use crate::nats;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Config {
@@ -43,50 +40,51 @@ pub struct PowerPdu4c {
     id:       FixedInstanceId,
     config:   Config,
     base_url: Url,
+    client:   reqwest::blocking::Client,
 }
 
 impl Driver for PowerPdu4c {
-    type Params = ();
-    type Reports = ();
-
     #[instrument(skip(self))]
     fn set_power_channel(&mut self, channel: usize, value: bool) -> Result {
-        let id = self.id.clone();
-        let url = self.base_url.clone();
         let action = if value { PowerAction::On } else { PowerAction::Off };
         let update = NetioPowerRequest { outputs: vec![NetioPowerOutputAction { id:     { (channel + 1) as u32 },
                                                                                 action: { action }, }], };
 
-        spawn(async move {
-                  let url = url.join("/netio.json")?;
-                  let client = reqwest::Client::new();
-                  let response = client.post(url).json(&update).send().await?.json::<NetioPowerResponse>().await?;
+        let url = self.base_url.join("/netio.json").map_err(io_error)?;
 
-                  Self::handle_response(id, response);
+        let response = self.client
+                           .post(url)
+                           .json(&update)
+                           .send()
+                           .map_err(io_error)?
+                           .json::<NetioPowerResponse>()
+                           .map_err(io_error)?;
 
-                  anyhow::Result::<()>::Ok(())
-              }.map_err(|err| {
-                   info!(?err, "Update failed");
-               }));
+        self.handle_response(response);
 
         Ok(())
     }
 
     fn poll(&mut self) -> Option<Duration> {
-        let id = self.id.clone();
-        let url = self.base_url.clone();
+        let attempt = || {
+            let url = self.base_url.join("/netio.json").map_err(io_error)?;
+            let client = reqwest::blocking::Client::new();
+            self.client
+                .get(url)
+                .send()
+                .map_err(io_error)?
+                .json::<NetioPowerResponse>()
+                .map_err(io_error)
+        };
 
-        spawn(async move {
-                  let url = url.join("/netio.json")?;
-                  let client = reqwest::Client::new();
-                  let response = client.get(url).send().await?.json::<NetioPowerResponse>().await?;
-
-                  Self::handle_response(id, response);
-
-                  anyhow::Result::<()>::Ok(())
-              }.map_err(|err| {
-                   info!(?err, "Update failed");
-               }));
+        match attempt() {
+            Ok(response) => {
+                self.handle_response(response);
+            }
+            Err(error) => {
+                warn!(%error, "While polling power PDU");
+            }
+        }
 
         Some(Duration::from_secs(15))
     }
@@ -95,11 +93,14 @@ impl Driver for PowerPdu4c {
 impl PowerPdu4c {
     pub fn new(id: FixedInstanceId, config: Config) -> Result<Self> {
         let base_url = Url::parse(&config.address).map_err(|error| InstanceDriverError::ConfigMalformed { error: error.to_string() })?;
-        Ok(Self { id, config, base_url })
+        Ok(Self { id:       { id },
+                  config:   { config },
+                  base_url: { base_url },
+                  client:   { reqwest::blocking::Client::new() }, })
     }
 
-    #[instrument(skip(response))]
-    fn handle_response(id: FixedInstanceId, response: NetioPowerResponse) {
+    #[instrument(skip_all)]
+    fn handle_response(&self, response: NetioPowerResponse) {
         println!("response: {response:#?}");
 
         let mut power_values = vec![false; 4];
@@ -120,7 +121,7 @@ impl PowerPdu4c {
 
         match serde_json::to_value(&reports) {
             Ok(reports) => {
-                nats::publish(&id, InstanceDriverEvent::Reports { reports });
+                let _ = self.emit_reports(self.id.clone(), reports);
             }
             Err(error) => {
                 error!(%error, "Failed to encode NETIO reports");
@@ -193,4 +194,8 @@ pub enum PowerAction {
 pub enum PowerState {
     Off = 0,
     On = 1,
+}
+
+fn io_error(err: impl ToString) -> InstanceDriverError {
+    InstanceDriverError::IOError { error: err.to_string() }
 }

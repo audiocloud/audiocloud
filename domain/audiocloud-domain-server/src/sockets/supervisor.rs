@@ -219,10 +219,10 @@ impl Handler<RegisterWebSocket> for SocketsSupervisor {
     }
 }
 
-impl Handler<SocketConnected> for SocketsSupervisor {
+impl Handler<SocketConnectedMsg> for SocketsSupervisor {
     type Result = ();
 
-    fn handle(&mut self, msg: SocketConnected, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SocketConnectedMsg, ctx: &mut Self::Context) -> Self::Result {
         if let Some(socket) = self.clients
                                   .get_mut(&msg.socket_id.client_id)
                                   .and_then(|client| client.sockets.get_mut(&msg.socket_id.socket_id))

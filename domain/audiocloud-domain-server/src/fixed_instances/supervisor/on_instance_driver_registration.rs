@@ -5,16 +5,18 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use actix::Handler;
+use actix::fut::LocalBoxActorFuture;
+use actix::{fut, ActorFutureExt, Handler, WrapFuture};
 use actix_broker::BrokerIssue;
 use futures::executor::block_on;
 use tokio::task::block_in_place;
 use tracing::*;
 
-use audiocloud_api::cloud::domains::{FixedInstanceRouting, FixedInstanceRoutingMap, TimestampedInstanceDriverConfig};
-use audiocloud_api::{cloud::domains::InstanceDriverConfig, Timestamped};
+use audiocloud_api::cloud::domains::{FixedInstanceConfig, FixedInstanceRouting, FixedInstanceRoutingMap, TimestampedInstanceDriverConfig};
+use audiocloud_api::{cloud::domains::InstanceDriverConfig, FixedInstanceId, InstanceDriverId, Timestamped};
 
 use crate::config::NotifyFixedInstanceRouting;
+use crate::db::Db;
 use crate::fixed_instances::NotifyInstanceDriverUrl;
 use crate::{fixed_instances::RegisterInstanceDriver, DomainResult};
 
@@ -52,23 +54,28 @@ impl Handler<RegisterInstanceDriver> for FixedInstancesSupervisor {
         }
 
         if config_updated {
-            self.update_routing();
+            Self::generate_routing(self.db.clone(), self.drivers.clone()).into_actor(self).map(move |routing, actor, ctx| {
+                actor.routing = routing;
+                ctx.issue_system_async(NotifyFixedInstanceRouting { routing: { actor.routing.clone() }, });
+                Ok(rv)
+            }).boxed_local()
+        } else {
+            fut::ready(Ok(rv)).into_actor(self).boxed_local()
         }
-
-        Ok(rv)
     }
 }
 
 impl FixedInstancesSupervisor {
-    fn update_routing(&mut self) {
+    async fn generate_routing(db: Db,
+                              drivers: HashMap<InstanceDriverId, SupervisedInstanceDriver>)
+                              -> HashMap<FixedInstanceId, FixedInstanceRouting> {
         let mut routing = FixedInstanceRoutingMap::new();
 
-        for (driver_id, driver) in self.drivers.iter() {
+        for (driver_id, driver) in drivers.iter() {
             for (instance_id, instance) in driver.config.instances.iter() {
                 if let Some(engine) = instance.engine.as_ref() {
-                    let db = self.db.clone();
                     let model_id = instance_id.model_id();
-                    if let Ok(Some(model)) = block_in_place(move || block_on(db.get_model(&model_id))) {
+                    if let Ok(Some(model)) = db.get_model(&model_id).await {
                         routing.insert(instance_id.clone(),
                                        FixedInstanceRouting { engine:         { engine.name.clone() },
                                                               send_count:     { model.get_audio_input_channel_count() },
@@ -80,7 +87,6 @@ impl FixedInstancesSupervisor {
             }
         }
 
-        self.routing = routing.clone();
-        self.issue_system_async(NotifyFixedInstanceRouting { routing })
+        routing
     }
 }

@@ -11,10 +11,11 @@ use serde_json::json;
 use tracing::*;
 
 use audiocloud_api::common::time::{now, Timestamp};
+use audiocloud_api::instance_driver::InstanceDriverError;
 use audiocloud_api::newtypes::FixedInstanceId;
 use audiocloud_api::InstanceParameters;
 use audiocloud_models::distopik::summatra::{INPUT_VALUES, PAN_VALUES};
-use audiocloud_models::distopik::{SummatraParameters, SummatraPreset, SummatraReports};
+use audiocloud_models::distopik::{SummatraParameters, SummatraPreset};
 
 use crate::driver::Driver;
 use crate::utils::*;
@@ -40,8 +41,6 @@ impl Config {
         22353 as u16
     }
 }
-
-const RECV_TIMEOUT: Duration = Duration::from_millis(10);
 
 struct Summatra {
     id:          FixedInstanceId,
@@ -226,10 +225,10 @@ impl Summatra {
 }
 
 impl Driver for Summatra {
-    type Params = SummatraParameters;
-    type Reports = SummatraReports;
+    fn on_parameters_changed(&mut self, params: InstanceParameters) -> crate::driver::Result<InstanceParameters> {
+        let mut params: SummatraParameters =
+            serde_json::from_value(params).map_err(|e| InstanceDriverError::ParametersMalformed { error: e.to_string() })?;
 
-    fn on_parameters_changed(&mut self, mut params: Self::Params) -> crate::driver::Result<InstanceParameters> {
         if let Some(channels) = params.input.take() {
             self.set_input(channels);
         }

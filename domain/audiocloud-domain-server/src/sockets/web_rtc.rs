@@ -18,7 +18,7 @@ use audiocloud_api::domain::streaming::DomainServerMessage;
 use audiocloud_api::ClientSocketId;
 
 use crate::sockets::messages::{SocketReceived, SocketSend};
-use crate::sockets::{get_sockets_supervisor, Disconnect, SendToClient, SocketConnected};
+use crate::sockets::{get_sockets_supervisor, Disconnect, SendToClient, SocketConnectedMsg};
 use crate::ResponseMedia;
 
 #[derive(Args, Clone, Debug)]
@@ -245,7 +245,7 @@ impl Handler<Opened> for WebRtcActor {
 
     fn handle(&mut self, _msg: Opened, _ctx: &mut Self::Context) -> Self::Result {
         self.connected = true;
-        get_sockets_supervisor().do_send(SocketConnected { socket_id: self.id.clone(), });
+        get_sockets_supervisor().do_send(SocketConnectedMsg { socket_id: self.id.clone(), });
     }
 }
 

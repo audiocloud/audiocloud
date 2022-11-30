@@ -16,6 +16,9 @@
       <sourceFolder url="file://$MODULE_DIR$/domain/prisma/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/audiocloud-actix-utils/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/lib/audiocloud-tracing/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/audiocloud-actors/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/audiocloud-http/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/lib/test-actors/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

@@ -2,30 +2,35 @@
  * Copyright (c) Audio Cloud, 2022. This code is licensed under MIT license (see LICENSE for details)
  */
 
-use actix::{Actor, Context, Handler};
-use actix_broker::BrokerSubscribe;
+use async_trait::async_trait;
+use coerce::actor::context::ActorContext;
+use coerce::actor::message::Handler;
+use coerce::actor::scheduler::{start_actor, ActorType};
+use coerce::actor::{new_actor_id, Actor, ActorId};
 use tracing::debug;
 
-use crate::events::NotifyDomainEvent;
+use audiocloud_actors::subscribe;
 
-pub async fn init() -> anyhow::Result<()> {
+use crate::events::{subscribe_domain_events, NotifyDomainEvent};
+
+pub async fn init(id: ActorId) -> anyhow::Result<()> {
+    start_actor(LogEventsActor, id, ActorType::Tracked, None, None, None);
+
     Ok(())
 }
 
 struct LogEventsActor;
 
+#[async_trait]
 impl Actor for LogEventsActor {
-    type Context = Context<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        self.subscribe_system_async::<NotifyDomainEvent>(ctx);
+    async fn started(&mut self, ctx: &mut ActorContext) {
+        subscribe(ctx.actor_ref(), subscribe_domain_events());
     }
 }
 
+#[async_trait]
 impl Handler<NotifyDomainEvent> for LogEventsActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: NotifyDomainEvent, _ctx: &mut Self::Context) -> Self::Result {
-        debug!(event = ?msg.event, "Event!");
+    async fn handle(&mut self, message: NotifyDomainEvent, _ctx: &mut ActorContext) {
+        debug!(event = ?message.event, "Event!");
     }
 }

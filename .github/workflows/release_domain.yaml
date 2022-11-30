@@ -66,10 +66,6 @@ jobs:
         run: |
           rustup update --no-self-update stable
           rustup target add ${{ matrix.build }}
-      - name: Generate prisma
-        run: |
-          cargo run generate
-        working-directory: ./domain/prisma
       - name: Build domain binary
         run: |
           cargo build --release --target=${{ matrix.build }} -p audiocloud-domain-server ${{ matrix.features }}

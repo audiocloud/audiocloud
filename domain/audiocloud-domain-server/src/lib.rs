@@ -5,6 +5,7 @@
 extern crate core;
 
 use derive_more::IsVariant;
+use rest_api::AuthStrategy;
 use serde::{Deserialize, Serialize};
 
 use audiocloud_api::domain::DomainError;
@@ -45,4 +46,9 @@ pub fn to_serializable<T>(result: DomainResult<T>) -> SerializableResult<T, Doma
         Ok(t) => SerializableResult::Ok(t),
         Err(err) => SerializableResult::Error(err),
     }
+}
+
+#[derive(Clone)]
+pub struct DomainContext {
+    pub auth_strategy: AuthStrategy,
 }
