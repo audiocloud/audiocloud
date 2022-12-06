@@ -27,6 +27,8 @@ pub struct Config {
     vendor_id:  u16,
     #[serde(default = "Config::default_product_id")]
     product_id: u16,
+    #[serde(default)]
+    test:       bool,
 }
 
 impl Config {
@@ -39,6 +41,14 @@ impl Config {
     fn default_product_id() -> u16 {
         22353 as u16
     }
+    fn driver_test() -> Summatra {
+        Summatra::new(
+            FixedInstanceId { ..Default::default() }, 
+            Config {serial: Config::default_serial(),
+            vendor_id: Config::default_vendor_id(),
+            product_id: Config::default_product_id(), test: true }
+        ).unwrap()
+    }
 }
 
 const RECV_TIMEOUT: Duration = Duration::from_millis(10);
@@ -47,7 +57,7 @@ struct Summatra {
     id:          FixedInstanceId,
     config:      Config,
     last_update: Timestamp,
-    hid_api:     HidDevice,
+    hid_api:     Option<HidDevice>,
     pages:       [[u16; 32]; 2],
     values:      SummatraPreset,
     bus_assign:  [BusRegion; 24], //[CH_x, CH_x+1 ...]
@@ -102,8 +112,15 @@ impl BusRegion {
 impl Summatra {
     pub fn new(id: FixedInstanceId, config: Config) -> anyhow::Result<Self> {
         info!("👋 Summatra Nuclear instance_driver");
-        let api = HidApi::new()?;
-        let hid_api = api.open_serial(config.vendor_id, config.product_id, &config.serial)?;
+
+        let hid_api;
+        if let false = config.test {
+            let api = HidApi::new()?;
+            hid_api = Some(api.open_serial(config.vendor_id, config.product_id, &config.serial)?);
+        }
+        else{
+            hid_api = None;
+        }
 
         let values = SummatraPreset { bus_assign: vec![0; 24],
                                       input:      vec![-48.0; 24],
@@ -223,6 +240,18 @@ impl Summatra {
 
         self.values.bus_assign = channels;
     }
+
+    fn set_master_faders(&mut self) {
+        let rescaled = rescale(db_to_gain_factor(0_f64), &INPUT_VALUES, 1023_f64) as u16;
+        self.masters[0].write(&mut self.pages, rescaled);
+        self.masters[1].write(&mut self.pages, rescaled);
+        self.masters[2].write(&mut self.pages, rescaled);
+        self.masters[3].write(&mut self.pages, rescaled);
+    }
+
+    fn get_data_slice(&self, page:usize, slice: usize, ) -> u16 {
+        self.pages[page][slice]
+    }
 }
 
 impl Driver for Summatra {
@@ -260,17 +289,40 @@ impl Summatra {
         let mut temp_page: [u8; 64] = [0; 64];
         LittleEndian::write_u16_into(&self.pages[0], &mut temp_page);
         println!("temp_page: {:#?}", temp_page);
-        info!("{:#?}", self.hid_api.write(&temp_page));
+        info!("{:#?}", self.hid_api.as_ref().unwrap().write(&temp_page));
 
         LittleEndian::write_u16_into(&self.pages[0], &mut temp_page);
-        info!("{:#?}", self.hid_api.write(&temp_page));
+        info!("{:#?}", self.hid_api.as_ref().unwrap().write(&temp_page));
+    }
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_set_input() {
+        let driver = &mut Config::driver_test();
+        let test_values = vec![-48.0,2.0];
+        driver.set_input( test_values );
+        //assert_eq!( driver.get_data_slice(1), [0x1, 0x0, 0x0, 0x0, 0x0, 0x900]);
+        assert!(false,"{:#?}",driver.pages[1]);
     }
 
-    fn set_master_faders(&mut self) {
-        let rescaled = rescale(db_to_gain_factor(0_f64), &INPUT_VALUES, 1023_f64) as u16;
-        self.masters[0].write(&mut self.pages, rescaled);
-        self.masters[1].write(&mut self.pages, rescaled);
-        self.masters[2].write(&mut self.pages, rescaled);
-        self.masters[3].write(&mut self.pages, rescaled);
+    #[test]
+    fn test_set_pan() {
+        let driver = &mut Config::driver_test();
+        //driver.set_pan( );
+        //assert_eq!( driver.get_data_slice(1), [0x1, 0x0, 0x0, 0x0, 0x4902, 0x0]);
+        //assert_eq!( driver.get_data_slice(3), [0x1, 0x0, 0x0, 0x0, 0xC300, 0x0]);
+    }
+
+    #[test]
+    fn test_set_bus_assign() {
+        let driver = &mut Config::driver_test();
+        //driver.set_bus_assign( -10.0);
+        //assert_eq!( driver.get_data_slice(5), [0x1, 0x0, 0xB0E0, 0x0, 0x2E00, 0x0]);
     }
 }
