@@ -10,6 +10,7 @@ use tracing::warn;
 use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
 
 use crate::instance_driver::bin_page_utils::{write_binary_within_page, write_packed_value};
+use crate::instance_driver::scripting::ScriptingEngine;
 
 use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
 use super::{Driver, Result};
@@ -20,6 +21,7 @@ pub struct UsbHidDriver {
   config:                  UsbHidDriverConfig,
   parameter_pages:         HashMap<u8, ParameterPage>,
   report_pages:            HashMap<u8, ReportPage>,
+  scripting:               ScriptingEngine,
   encountered_fatal_error: bool,
 }
 
@@ -58,6 +60,8 @@ impl Driver for UsbHidDriver {
                   .map(|p| Some(p.as_str()) == dev.serial_number())
                   .unwrap_or(true)
       {
+        let scripting = ScriptingEngine::new()?;
+
         let device = dev.open_device(&*shared)?;
 
         let parameter_pages = config.parameter_pages
@@ -92,7 +96,8 @@ impl Driver for UsbHidDriver {
                          parameter_pages,
                          report_pages,
                          config,
-                         encountered_fatal_error });
+                         encountered_fatal_error,
+                         scripting });
       }
     }
 
@@ -107,6 +112,12 @@ impl Driver for UsbHidDriver {
                                               parameter_config.remap.as_ref(),
                                               parameter_config.rescale.as_ref(),
                                               parameter_config.clamp.as_ref())?;
+
+          let value = match parameter_config.transform.as_ref() {
+            | Some(script) => self.scripting.process(script, value),
+            | None => value,
+          };
+
           let value = write_packed_value(value, &parameter_config.packing);
           write_binary_within_page(&mut page.data, value, &parameter_config.position);
 
@@ -168,19 +179,19 @@ impl UsbHidDriver {
         warn!(instance_id = &self.instance_id, page_id, "Received page with wrong size");
       }
 
-      self.maybe_update_param_page(page_id, page)
+      self.maybe_update_param_page(*page_id, page)
     }
 
     if page_found {
-      return self.read_page_events(self.report_pages.get(page_id).unwrap());
+      return self.read_page_events(*page_id);
     }
 
     Ok(vec![])
   }
 
-  fn maybe_update_param_page(&mut self, page_id: &u8, page: &[u8]) {
+  fn maybe_update_param_page(&mut self, page_id: u8, page: &[u8]) {
     for param_page in self.parameter_pages.values_mut() {
-      if param_page.waiting_for_report_page == Some(*page_id) {
+      if param_page.waiting_for_report_page == Some(page_id) {
         if param_page.data.len() == page.len() {
           param_page.data.copy_from_slice(&page);
           param_page.waiting_for_report_page = None;
@@ -195,7 +206,8 @@ impl UsbHidDriver {
     }
   }
 
-  fn read_page_events(&self, rep_page: &ReportPage) -> Result<Vec<InstanceDriverEvent>> {
+  fn read_page_events(&mut self, page_id: u8) -> Result<Vec<InstanceDriverEvent>> {
+    let rep_page = self.report_pages.get_mut(&page_id).unwrap();
     let mut events = vec![];
     let captured_at = Instant::now();
 
@@ -203,6 +215,12 @@ impl UsbHidDriver {
       for (channel, report_config) in report_configs.iter().enumerate() {
         let value = read_binary_within_page(rep_page.data.as_slice(), &report_config.position);
         let value = read_packed_value(&value, &report_config.packing);
+
+        let value = match report_config.transform.as_ref() {
+          | None => value,
+          | Some(script) => self.scripting.process(script, value),
+        };
+
         let value = remap_and_rescale_value(value, report_config.remap.as_ref(), report_config.rescale.as_ref(), None)?;
 
         events.push(InstanceDriverEvent::Report(InstanceDriverReportEvent { instance_id: self.instance_id.clone(),

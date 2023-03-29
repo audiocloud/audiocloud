@@ -1,9 +1,5 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 
-pub mod instance;
 pub mod instance_driver;
 pub mod nats_utils;
 pub mod request_tracker;
@@ -27,7 +23,4 @@ pub enum ServiceRef {
 }
 
 #[derive(Clone)]
-pub struct ServiceRegistry {
-  instance_services: HashMap<String, Arc<instance::server::Service>>,
-  instance_clients:  HashMap<String, Arc<instance::client::Client>>,
-}
+pub struct ServiceRegistry {}
