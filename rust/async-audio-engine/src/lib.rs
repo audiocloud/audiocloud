@@ -550,13 +550,13 @@ impl AudioEngine {
 
 // TODO: how do we generate Nodes for Players? That's up to the user of the async library
 pub struct GraphPlayerHandle {
-  player_id:      String,
-  graph_id:       String,
-  app_id:         String,
-  spec:           AudioGraphSpec,
-  engine:         Arc<AudioEngine>,
-  node_resolver:  Box<dyn NodeResolver>,
-  media_resolver: Box<dyn MediaResolver>,
+  pub player_id:      String,
+  pub graph_id:       String,
+  pub app_id:         String,
+  pub spec:           AudioGraphSpec,
+  pub engine:         Arc<AudioEngine>,
+  pub node_resolver:  Box<dyn NodeResolver>,
+  pub media_resolver: Box<dyn MediaResolver>,
 }
 
 #[async_trait]

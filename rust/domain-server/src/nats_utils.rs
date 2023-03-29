@@ -11,20 +11,20 @@ pub(crate) trait ExtractValue {
 
 impl ExtractValue for kv::Entry {
   fn extract<K: FromStr, V: DeserializeOwned>(&self) -> anyhow::Result<(K, V)> {
-    let key = K::from_str(&self.key).map_err(|e| anyhow!("Failed to parse key"))?;
+    let key = K::from_str(&self.key).map_err(|_e| anyhow!("Failed to parse key"))?;
     let value = from_slice(self.value.as_slice())?;
 
     Ok((key, value))
   }
 }
 
-pub struct EncodedParameterId {
+pub struct InstanceParameterId {
   pub instance_id: String,
   pub parameter:   String,
   pub channel:     usize,
 }
 
-impl FromStr for EncodedParameterId {
+impl FromStr for InstanceParameterId {
   type Err = anyhow::Error;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {

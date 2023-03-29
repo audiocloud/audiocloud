@@ -10,7 +10,7 @@ use axum::http::StatusCode;
 use axum::response::{sse, IntoResponse};
 use axum::routing::get;
 use axum::{routing::put, Json, Router};
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use serde_json::json;
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
@@ -39,7 +39,7 @@ async fn main() {
 
   // TODO: we should subscribe to NATS and observe changes
 
-  let handle = match cfg.clone() {
+  let _handle = match cfg.clone() {
     | InstanceDriverConfig::USBHID(usb_config) =>
       spawn(run_driver_server::<UsbHidDriver>("instance".to_string(), usb_config, rx_cmd, tx_evt)),
     | InstanceDriverConfig::Serial(_) => {
@@ -50,7 +50,7 @@ async fn main() {
     }
   };
 
-  let (tx_brd, rx_brd) = broadcast::channel(0xff);
+  let (tx_brd, _rx_brd) = broadcast::channel(0xff);
   spawn({
     let tx_brd = tx_brd.clone();
     async move {

@@ -8,9 +8,10 @@ use lazy_static::lazy_static;
 use tracing::warn;
 
 use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
+use api::instance::IdAndChannel;
 
 use crate::instance_driver::bin_page_utils::{write_binary_within_page, write_packed_value};
-use crate::instance_driver::scripting::ScriptingEngine;
+use crate::instance_driver::scripting::{Script, ScriptingEngine};
 
 use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
 use super::{Driver, Result};
@@ -21,6 +22,8 @@ pub struct UsbHidDriver {
   config:                  UsbHidDriverConfig,
   parameter_pages:         HashMap<u8, ParameterPage>,
   report_pages:            HashMap<u8, ReportPage>,
+  parameter_transforms:    HashMap<IdAndChannel, Script>,
+  report_transforms:       HashMap<IdAndChannel, Script>,
   scripting:               ScriptingEngine,
   encountered_fatal_error: bool,
 }
@@ -60,7 +63,7 @@ impl Driver for UsbHidDriver {
                   .map(|p| Some(p.as_str()) == dev.serial_number())
                   .unwrap_or(true)
       {
-        let scripting = ScriptingEngine::new()?;
+        let mut scripting = ScriptingEngine::new()?;
 
         let device = dev.open_device(&*shared)?;
 
@@ -73,6 +76,27 @@ impl Driver for UsbHidDriver {
                                                        waiting_for_report_page: page.copy_from_report_page, })
                                     })
                                     .collect();
+
+        let mut parameter_transforms = HashMap::new();
+        let mut report_transforms = HashMap::new();
+
+        for (parameter_id, parameter_configs) in &config.parameters {
+          for (channel, parameter_config) in parameter_configs.iter().enumerate() {
+            if let Some(transform) = parameter_config.transform.as_ref() {
+              let script = scripting.compile(transform)?;
+              parameter_transforms.insert(IdAndChannel::from((parameter_id, channel)), script);
+            }
+          }
+        }
+
+        for (report_id, report_configs) in &config.reports {
+          for (channel, report_config) in report_configs.iter().enumerate() {
+            if let Some(transform) = report_config.transform.as_ref() {
+              let script = scripting.compile(transform)?;
+              report_transforms.insert(IdAndChannel::from((report_id, channel)), script);
+            }
+          }
+        }
 
         let report_pages = config.report_pages
                                  .iter()
@@ -96,6 +120,8 @@ impl Driver for UsbHidDriver {
                          parameter_pages,
                          report_pages,
                          config,
+                         parameter_transforms,
+                         report_transforms,
                          encountered_fatal_error,
                          scripting });
       }
@@ -104,17 +130,19 @@ impl Driver for UsbHidDriver {
     Err(anyhow!("No matching HID device found"))
   }
 
-  fn set_parameter(&mut self, shared: &mut Self::Shared, parameter: &str, channel: usize, value: f64) -> Result<()> {
-    if let Some(parameter_configs) = self.config.parameters.get(parameter) {
+  fn set_parameter(&mut self, _shared: &mut Self::Shared, parameter_id: &str, channel: usize, value: f64) -> Result<()> {
+    if let Some(parameter_configs) = self.config.parameters.get(parameter_id) {
       if let Some(parameter_config) = parameter_configs.get(channel) {
         if let Some(page) = self.parameter_pages.get_mut(&parameter_config.page) {
+          let parameter_channel_id = IdAndChannel::from((parameter_id, channel));
+
           let value = remap_and_rescale_value(value,
                                               parameter_config.remap.as_ref(),
                                               parameter_config.rescale.as_ref(),
                                               parameter_config.clamp.as_ref())?;
 
-          let value = match parameter_config.transform.as_ref() {
-            | Some(script) => self.scripting.process(script, value),
+          let value = match self.parameter_transforms.get(&parameter_channel_id) {
+            | Some(script) => self.scripting.eval_f64_to_f64(script, value),
             | None => value,
           };
 
@@ -125,22 +153,22 @@ impl Driver for UsbHidDriver {
         } else {
           warn!(instance_id = &self.instance_id,
                 page = parameter_config.page,
-                parameter,
+                parameter_id,
                 channel,
                 "Parameter config references page that is not declared as parameter page")
         }
       } else {
         warn!(instance_id = &self.instance_id,
-              parameter, channel, "No parameter config for channel");
+              parameter_id, channel, "No parameter config for channel");
       }
     } else {
-      warn!(instance_id = &self.instance_id, parameter, "No parameter config for parameter");
+      warn!(instance_id = &self.instance_id, parameter_id, "No parameter config for parameter");
     }
 
     Ok(())
   }
 
-  fn poll(&mut self, shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
+  fn poll(&mut self, _shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
     self.send_dirty_pages()?;
 
     // read the device
@@ -213,12 +241,14 @@ impl UsbHidDriver {
 
     for (report_id, report_configs) in rep_page.reports.iter() {
       for (channel, report_config) in report_configs.iter().enumerate() {
+        let report_channel_id = IdAndChannel::from((report_id, channel));
+
         let value = read_binary_within_page(rep_page.data.as_slice(), &report_config.position);
         let value = read_packed_value(&value, &report_config.packing);
 
-        let value = match report_config.transform.as_ref() {
+        let value = match self.report_transforms.get(&report_channel_id) {
           | None => value,
-          | Some(script) => self.scripting.process(script, value),
+          | Some(script) => self.scripting.eval_f64_to_f64(script, value),
         };
 
         let value = remap_and_rescale_value(value, report_config.remap.as_ref(), report_config.rescale.as_ref(), None)?;

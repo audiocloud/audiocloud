@@ -1,6 +1,6 @@
 type: USBHID
 vendorId: 0x4D8
-productOd: 0xF034
+productId: 0xF034
 parameterPages:
   - page: 0
     size: 80

@@ -12,6 +12,7 @@ pub mod bin_page_utils;
 pub mod run;
 pub mod server;
 pub mod usb_hid;
+pub mod serial;
 pub mod scripting;
 
 pub type Result<T = ()> = anyhow::Result<T>;
@@ -32,7 +33,7 @@ pub trait Driver: Sized {
 }
 
 impl ServiceRegistry {
-  pub fn register_instance(&self, instance: RegisterInstanceRequest) -> Result {
+  pub fn register_instance(&self, _instance: RegisterInstanceRequest) -> Result {
     Ok(())
   }
 }

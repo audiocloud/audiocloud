@@ -109,23 +109,39 @@ pub struct UsbHidParameterConfig {
 #[serde(rename_all = "camelCase")]
 pub struct SerialDriverConfig {
   #[serde(default)]
-  pub vendor_id:               Option<String>,
+  pub vendor_id:               Option<u16>,
   #[serde(default)]
-  pub product_id:              Option<String>,
+  pub product_id:              Option<u16>,
+  #[serde(default = "default_baud_rate")]
+  pub baud_rate:               u32,
+  #[serde(default = "default_receive_time_out")]
+  pub receive_time_out_ms:     u64,
   #[serde(default)]
   pub serial_number:           Option<String>,
   #[serde(default)]
   pub serial_port:             Option<String>,
   #[serde(default)]
   pub line_handler:            Option<String>,
-  #[serde(default)]
-  pub send_line_terminator:    Option<String>,
-  #[serde(default)]
-  pub receive_line_terminator: Option<String>,
+  #[serde(default = "default_line_terminator")]
+  pub send_line_terminator:    String,
+  #[serde(default = "default_line_terminator")]
+  pub receive_line_terminator: String,
   #[serde(default)]
   pub parameters:              HashMap<String, Vec<SerialParameterConfig>>,
   #[serde(default)]
   pub reports:                 HashMap<String, Vec<SerialReportConfig>>,
+}
+
+fn default_baud_rate() -> u32 {
+  115_200
+}
+
+fn default_receive_time_out() -> u64 {
+  1000
+}
+
+fn default_line_terminator() -> String {
+  "\r\n".to_string()
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -239,13 +255,19 @@ pub struct UsbHidReportConfig {
 #[serde(rename_all = "camelCase")]
 pub struct SerialParameterConfig {
   #[serde(default)]
-  pub format_string: Option<String>,
+  pub format_string:   Option<String>,
   #[serde(default)]
-  pub transform:     Option<String>,
+  pub transform:       Option<String>,
   #[serde(default)]
-  pub rescale:       Option<Rescale>,
+  pub to_string:       Option<String>,
   #[serde(default)]
-  pub remap:         Option<Remap>,
+  pub rescale:         Option<Rescale>,
+  #[serde(default)]
+  pub remap:           Option<Remap>,
+  #[serde(default)]
+  pub clamp:           Option<Clamp>,
+  #[serde(default)]
+  pub line_terminator: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -352,8 +374,8 @@ pub mod status_keys {
 mod serde_instant {
   use std::time::{Duration, Instant};
 
-  use serde::{Deserialize, Deserializer, Serialize, Serializer};
   use serde::de::Error;
+  use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
   pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
     where S: Serializer
@@ -367,7 +389,8 @@ mod serde_instant {
   {
     let duration = Duration::deserialize(deserializer)?;
     let now = Instant::now();
-    let instant = now.checked_sub(duration).ok_or_else(|| Error::custom("Invalid time manipulation, could not deserialize"))?;
+    let instant = now.checked_sub(duration)
+                     .ok_or_else(|| Error::custom("Invalid time manipulation, could not deserialize"))?;
     Ok(instant)
   }
 }

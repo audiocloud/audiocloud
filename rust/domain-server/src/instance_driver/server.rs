@@ -14,7 +14,7 @@ use api::driver::{buckets, control_keys, status_keys, InstanceDriverConfig, Inst
 
 use crate::instance_driver::run::{run_driver_server, InstanceDriverCommand};
 use crate::instance_driver::usb_hid::UsbHidDriver;
-use crate::nats_utils::{EncodedParameterId, ExtractValue};
+use crate::nats_utils::{InstanceParameterId, ExtractValue};
 
 use super::Result;
 
@@ -71,7 +71,7 @@ pub async fn server(driver_id: String, ctx: Context) -> Result {
         }
       },
       Some((instance_id, Ok(entry))) = watches.next() => {
-        if let Ok((EncodedParameterId {parameter, channel, ..}, value)) = entry.extract::<EncodedParameterId, f64>() {
+        if let Ok((InstanceParameterId {parameter, channel, ..}, value)) = entry.extract::<InstanceParameterId, f64>() {
           if let Some((_, tx_cmd, _)) = servers.get(&instance_id) {
             let parameter = parameter.to_string();
             let _ = tx_cmd.send(InstanceDriverCommand::SetParameters(SetInstanceParameterRequest {

@@ -1,9 +1,24 @@
+use std::str::FromStr;
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::driver::InstanceDriverConfig;
 use crate::graph::PlayId;
 use crate::Timestamp;
+
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct IdAndChannel {
+  pub id:      String,
+  pub channel: usize,
+}
+
+impl<T: AsRef<str>> From<(T, usize)> for IdAndChannel {
+  fn from((name, channel): (T, usize)) -> Self {
+    Self { id: name.as_ref().to_owned(),
+           channel }
+  }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
