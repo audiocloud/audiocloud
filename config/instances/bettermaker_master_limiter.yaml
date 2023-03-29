@@ -1,0 +1,133 @@
+type: USBHID
+vendorId: 0x4D8
+productOd: 0xF034
+parameterPages:
+  - page: 0
+    size: 80
+    copyFromReportPage: 1
+reportPages:
+  - page: 1
+    size: 80
+parameters:
+  inputLevel:
+    - position:
+        byte: 11
+      rescale: [ [ 0, 20 ], [ 0, 200 ] ]
+  outputLevel:
+    - position:
+        byte: 12
+      rescale: [ [ -15, 5 ], [ 0, 200 ] ]
+  attack:
+    - position:
+        bytes: [ 13, 14 ]
+      clamp:
+        min: 1
+        max: 2500
+      packing: uint16le
+  release:
+    - position:
+        bytes: [ 15, 16 ]
+      clamp:
+        min: 10
+        max: 1300
+      packing: uint16le
+  clippiterAmount:
+    - position:
+        byte: 17
+      clamp:
+        max: 0xff
+  midSideWidth:
+    - position:
+        byte: 18
+      clamp:
+        max: 0xff
+  evenColorEnabled:
+    - position:
+        bit: [ 40, 3 ]
+  evenColorDrive:
+    - position:
+        byte: 19
+      rescale: [ [ 0, 100 ], [ 1, 21 ] ]
+  evenColorAmount:
+    - position:
+        byte: 20
+      rescale: [ [ 0, 100 ], [ 1, 21 ] ]
+  evenColorFrequency:
+    - position:
+        byte: 21
+      remap:
+        type: linear
+        values: [ 35, 45, 56, 67, 83, 100, 130, 160, 200, 300, 440, 560, 700, 900, 1050, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8500, 10000, 11500, 13500, 15000, 17000, 19000, 21000, 23000 ]
+  oddColorEnabled:
+    - position:
+        bit: [ 40, 2 ]
+  oddColorDrive:
+    - position:
+        byte: 22
+      rescale: [ [ 0, 100 ], [ 1, 21 ] ]
+  oddColorAmount:
+    - position:
+        byte: 23
+      rescale: [ [ 0, 100 ], [ 1, 21 ] ]
+  oddColorFrequency:
+    - position:
+        byte: 24
+      remap:
+        type: linear
+        values: [ 35, 45, 56, 67, 83, 100, 130, 160, 200, 300, 440, 560, 700, 900, 1050, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8500, 10000, 11500, 13500, 15000, 17000, 19000, 21000, 23000 ]
+  measureOutput:
+    - position:
+        bit: [ 41, 6 ]
+  processingEnabled:
+    - position:
+        bit: [ 40, 7 ]
+  clippiterEnabled:
+    - position:
+        bit: [ 40, 6 ]
+  intelligentReleaseEnabled:
+    - position:
+        bit: [ 40, 4 ]
+  midSideEnabled:
+    - position:
+        bit: [ 40, 5 ]
+reports:
+  gainReduction:
+    - page: 1
+      packing: uint16le
+      position:
+        bytes: [ 1, 2 ]
+      transform: gainFactorToDb(value / 256.0)
+    - page: 1
+      packing: uint16le
+      position:
+        bytes: [ 3, 4 ]
+      transform: gainFactorToDb(value / 256.0)
+  clip:
+    - page: 1
+      position:
+        byte: 5
+    - page: 1
+      position:
+        byte: 6
+  peakLevel:
+    - page: 1
+      packing: int16be
+      position:
+        bytes: [ 7, 8 ]
+      transform: gainFactorToDb(value / 256.0)
+    - page: 1
+      packing: int16be
+      position:
+        bytes: [ 9, 10 ]
+      transform: gainFactorToDb(value / 256.0)
+  rmsLevel:
+    - page: 1
+      packing: int16be
+      position:
+        bytes: [ 15, 16 ]
+      transform: gainFactorToDb(value / 256.0)
+    - page: 1
+      packing: int16be
+      position:
+        bytes: [ 17, 18 ]
+      transform: gainFactorToDb(value / 256.0)
