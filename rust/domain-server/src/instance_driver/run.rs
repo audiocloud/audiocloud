@@ -60,7 +60,7 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
             }
             | Ok(events) => {
               for event in events {
-                info!(instance_id, ?event, "generated event");
+                trace!(instance_id, ?event, "generated event");
                 tx_evt.send(event).await?;
               }
             }
