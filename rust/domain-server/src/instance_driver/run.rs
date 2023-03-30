@@ -16,12 +16,14 @@ pub enum InstanceDriverCommand {
   Terminate,
 }
 
-#[instrument(skip(rx_cmd, tx_evt))]
+#[instrument(err, skip(config, rx_cmd, tx_evt))]
 pub async fn run_driver_server<Drv: Driver>(instance_id: String,
                                             config: Drv::Config,
                                             mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
                                             tx_evt: mpsc::Sender<InstanceDriverEvent>)
                                             -> Result {
+  info!(?config, " -- Starting driver server -- ");
+
   let mut shared = block_in_place(|| Drv::create_shared())?;
   debug!("Created driver shared data");
 
@@ -34,7 +36,7 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
     let mut instance = match block_in_place(|| Drv::new(&instance_id, &mut shared, config.clone())) {
       | Ok(instance) => instance,
       | Err(err) => {
-        warn!(instance_id, %err, "Failed to create instance");
+        warn!(%err, "Failed to create instance");
         sleep(Duration::from_secs(1)).await;
         continue;
       }
@@ -47,7 +49,7 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
           match cmd {
             | InstanceDriverCommand::SetParameters(SetInstanceParameterRequest { parameter, value, channel }) => {
               if let Err(err) = instance.set_parameter(&mut shared, &parameter, channel, value) {
-                warn!(instance_id, %err, parameter, channel, value, "Failed to set parameter");
+                warn!(%err, parameter, channel, value, "Failed to set parameter");
               }
             }
             | InstanceDriverCommand::Terminate => {
@@ -59,11 +61,11 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
           let deadline = Instant::now() + Duration::from_millis(100);
           match block_in_place(|| instance.poll(&mut shared, deadline)) {
             | Err(err) => {
-              warn!(instance_id, ?err, "Failed to poll instance");
+              warn!(?err, "Failed to poll instance");
             }
             | Ok(events) => {
               for event in events {
-                trace!(instance_id, ?event, "generated event");
+                trace!(?event, "generated event");
                 tx_evt.send(event).await?;
               }
             }

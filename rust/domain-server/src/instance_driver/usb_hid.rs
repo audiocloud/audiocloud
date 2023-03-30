@@ -52,7 +52,7 @@ impl Driver for UsbHidDriver {
     Ok(HID_API.clone())
   }
 
-  #[instrument(skip(shared))]
+  #[instrument(err, skip(shared))]
   fn new(instance_id: &str, shared: &mut Self::Shared, config: UsbHidDriverConfig) -> Result<Self> {
     let mut shared = shared.lock().expect("HID API lock failed");
     shared.refresh_devices()?;
@@ -132,7 +132,7 @@ impl Driver for UsbHidDriver {
     Err(anyhow!("No matching HID device found"))
   }
 
-  #[instrument(skip(self, _shared))]
+  #[instrument(err, skip(self, _shared), fields(instance_id = self.instance_id))]
   fn set_parameter(&mut self, _shared: &mut Self::Shared, parameter_id: &str, channel: usize, value: f64) -> Result<()> {
     if let Some(parameter_configs) = self.config.parameters.get(parameter_id) {
       if let Some(parameter_config) = parameter_configs.get(channel) {
@@ -172,7 +172,7 @@ impl Driver for UsbHidDriver {
     Ok(())
   }
 
-  #[instrument(skip(self, _shared))]
+  #[instrument(err, skip(self, _shared, deadline), fields(instance_id = self.instance_id))]
   fn poll(&mut self, _shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
     self.send_dirty_pages()?;
 
@@ -202,7 +202,7 @@ impl Driver for UsbHidDriver {
 }
 
 impl UsbHidDriver {
-  #[instrument(skip(self, page))]
+  #[instrument(err, skip(self, page))]
   fn on_page_received(&mut self, page_id: u8, page: &[u8]) -> Result<Vec<InstanceDriverEvent>> {
     let mut page_found = false;
     if let Some(rep_page) = self.report_pages.get_mut(&page_id) {
@@ -241,6 +241,7 @@ impl UsbHidDriver {
     }
   }
 
+  #[instrument(err, skip(self))]
   fn read_page_events(&mut self, page_id: u8) -> Result<Vec<InstanceDriverEvent>> {
     let Some(rep_page) = self.report_pages.get_mut(&page_id) else {
       return Err(anyhow!("Received page '{page_id}' that is not declared as report page"));
@@ -275,6 +276,7 @@ impl UsbHidDriver {
     Ok(events)
   }
 
+  #[instrument(err, skip(self))]
   fn send_dirty_pages(&mut self) -> Result {
     for (page_id, page) in self.parameter_pages.iter_mut() {
       if page.dirty {
