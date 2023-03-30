@@ -155,18 +155,14 @@ impl Driver for UsbHidDriver {
 
           page.dirty = true;
         } else {
-          warn!(instance_id = &self.instance_id,
-                page = parameter_config.page,
-                parameter_id,
-                channel,
+          warn!(page = parameter_config.page,
                 "Parameter config references page that is not declared as parameter page")
         }
       } else {
-        warn!(instance_id = &self.instance_id,
-              parameter_id, channel, "No parameter config for channel");
+        warn!("No parameter config for channel");
       }
     } else {
-      warn!(instance_id = &self.instance_id, parameter_id, "No parameter config for parameter");
+      warn!("No parameter config for parameter");
     }
 
     Ok(())
@@ -190,7 +186,6 @@ impl Driver for UsbHidDriver {
       }
       | Err(err) => {
         self.encountered_fatal_error = true;
-        warn!(instance_id = &self.instance_id, ?err, "Error while reading from HID device");
         Err(err.into())
       }
     }
@@ -210,7 +205,7 @@ impl UsbHidDriver {
         rep_page.data.copy_from_slice(&page);
         page_found = true;
       } else {
-        warn!(instance_id = &self.instance_id, page_id, "Received page with wrong size");
+        warn!("Received page with wrong size");
       }
 
       self.maybe_update_param_page(page_id, page)
@@ -285,11 +280,7 @@ impl UsbHidDriver {
 
         if let Err(err) = self.device.write(&page.data) {
           self.encountered_fatal_error = true;
-          warn!(instance_id = &self.instance_id,
-                ?err,
-                page_id,
-                len = page.data.len(),
-                "Error while writing page to HID device");
+          warn!(?err, page_id, len = page.data.len(), "Error while writing page to HID device");
           return Err(err.into());
         }
       }
