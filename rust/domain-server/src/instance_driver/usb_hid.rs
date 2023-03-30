@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use boa_engine::JsValue;
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
-use tracing::warn;
+use tracing::{warn, instrument};
 
 use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
 use api::instance::IdAndChannel;
@@ -14,8 +14,8 @@ use api::instance::IdAndChannel;
 use crate::instance_driver::bin_page_utils::{write_binary_within_page, write_packed_value};
 use crate::instance_driver::scripting::{Script, ScriptingEngine};
 
-use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
 use super::{Driver, Result};
+use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
 
 pub struct UsbHidDriver {
   instance_id:             String,
@@ -52,6 +52,7 @@ impl Driver for UsbHidDriver {
     Ok(HID_API.clone())
   }
 
+  #[instrument(skip(shared))]
   fn new(instance_id: &str, shared: &mut Self::Shared, config: UsbHidDriverConfig) -> Result<Self> {
     let mut shared = shared.lock().expect("HID API lock failed");
     shared.refresh_devices()?;
@@ -131,6 +132,7 @@ impl Driver for UsbHidDriver {
     Err(anyhow!("No matching HID device found"))
   }
 
+  #[instrument(skip(self, _shared))]
   fn set_parameter(&mut self, _shared: &mut Self::Shared, parameter_id: &str, channel: usize, value: f64) -> Result<()> {
     if let Some(parameter_configs) = self.config.parameters.get(parameter_id) {
       if let Some(parameter_config) = parameter_configs.get(channel) {
@@ -170,6 +172,7 @@ impl Driver for UsbHidDriver {
     Ok(())
   }
 
+  #[instrument(skip(self, _shared))]
   fn poll(&mut self, _shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
     self.send_dirty_pages()?;
 
@@ -199,6 +202,7 @@ impl Driver for UsbHidDriver {
 }
 
 impl UsbHidDriver {
+  #[instrument(skip(self, page))]
   fn on_page_received(&mut self, page_id: &u8, page: &[u8]) -> Result<Vec<InstanceDriverEvent>> {
     let mut page_found = true;
     if let Some(rep_page) = self.report_pages.get_mut(&page_id) {
@@ -219,6 +223,7 @@ impl UsbHidDriver {
     Ok(vec![])
   }
 
+  #[instrument(skip(self, page))]
   fn maybe_update_param_page(&mut self, page_id: u8, page: &[u8]) {
     for param_page in self.parameter_pages.values_mut() {
       if param_page.waiting_for_report_page == Some(page_id) {
