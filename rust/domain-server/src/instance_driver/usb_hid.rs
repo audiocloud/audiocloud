@@ -186,7 +186,7 @@ impl Driver for UsbHidDriver {
         let page = &temp_page_buffer[..size];
         let page_id = page[0];
 
-        self.on_page_received(&page_id, &page)
+        self.on_page_received(page_id, &page)
       }
       | Err(err) => {
         self.encountered_fatal_error = true;
@@ -203,7 +203,7 @@ impl Driver for UsbHidDriver {
 
 impl UsbHidDriver {
   #[instrument(skip(self, page))]
-  fn on_page_received(&mut self, page_id: &u8, page: &[u8]) -> Result<Vec<InstanceDriverEvent>> {
+  fn on_page_received(&mut self, page_id: u8, page: &[u8]) -> Result<Vec<InstanceDriverEvent>> {
     let mut page_found = true;
     if let Some(rep_page) = self.report_pages.get_mut(&page_id) {
       if page.len() == rep_page.data.len() {
@@ -213,11 +213,11 @@ impl UsbHidDriver {
         warn!(instance_id = &self.instance_id, page_id, "Received page with wrong size");
       }
 
-      self.maybe_update_param_page(*page_id, page)
+      self.maybe_update_param_page(page_id, page)
     }
 
     if page_found {
-      return self.read_page_events(*page_id);
+      return self.read_page_events(page_id);
     }
 
     Ok(vec![])
@@ -243,7 +243,7 @@ impl UsbHidDriver {
 
   fn read_page_events(&mut self, page_id: u8) -> Result<Vec<InstanceDriverEvent>> {
     let Some(rep_page) = self.report_pages.get_mut(&page_id) else {
-      return Err(anyhow!("Received page that is not declared as report page").context(page_id));
+      return Err(anyhow!("Received page '{page_id}' that is not declared as report page"));
     };
 
     let mut events = vec![];
