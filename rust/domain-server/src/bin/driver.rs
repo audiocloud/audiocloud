@@ -16,10 +16,10 @@ use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::BroadcastStream;
 use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::EnvFilter;
 
 use api::driver::{InstanceDriverConfig, InstanceDriverEvent, SetInstanceParameterRequest};
-use domain_server::instance_driver::run::{run_driver_server, InstanceDriverCommand};
-use domain_server::instance_driver::usb_hid::UsbHidDriver;
+use domain_server::instance_driver::run::InstanceDriverCommand;
 
 #[derive(Clone)]
 struct ServerState {
@@ -40,6 +40,7 @@ async fn main() {
                                                        .with_file(true)
                                                        .with_thread_ids(true)
                                                        .with_thread_names(true)
+                                                       .with_env_filter(EnvFilter::from_default_env())
                                                        .init();
 
   let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
