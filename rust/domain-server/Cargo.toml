@@ -26,6 +26,7 @@ lazy_static = "1"
 boa_engine = "0.16"
 gc = "0.4"
 regex = "1"
+console-subscriber = "0.1"
 
 [dependencies.tokio-stream]
 version = "0.1"
@@ -41,7 +42,7 @@ features = ["json"]
 
 [dependencies.tokio]
 version = "1"
-features = ["full"]
+features = ["full", "tracing"]
 
 [dependencies.chrono]
 version = "0.4"
