@@ -4,7 +4,7 @@ use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::block_in_place;
 use tokio::time::sleep;
-use tracing::{info, trace, warn};
+use tracing::{debug, info, instrument, trace, warn};
 
 use api::driver::{InstanceDriverEvent, SetInstanceParameterRequest};
 
@@ -16,15 +16,18 @@ pub enum InstanceDriverCommand {
   Terminate,
 }
 
+#[instrument(skip(rx_cmd, tx_evt))]
 pub async fn run_driver_server<Drv: Driver>(instance_id: String,
                                             config: Drv::Config,
                                             mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
                                             tx_evt: mpsc::Sender<InstanceDriverEvent>)
                                             -> Result {
   let mut shared = block_in_place(|| Drv::create_shared())?;
+  debug!("Created driver shared data");
 
   loop {
     while let Ok(InstanceDriverCommand::Terminate) = rx_cmd.try_recv() {
+      debug!("Requested termination before driver is ready, exiting");
       return Ok(());
     }
 

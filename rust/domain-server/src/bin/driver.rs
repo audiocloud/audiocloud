@@ -19,7 +19,8 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::EnvFilter;
 
 use api::driver::{InstanceDriverConfig, InstanceDriverEvent, SetInstanceParameterRequest};
-use domain_server::instance_driver::run::InstanceDriverCommand;
+use domain_server::instance_driver::run::{run_driver_server, InstanceDriverCommand};
+use domain_server::instance_driver::usb_hid::UsbHidDriver;
 
 #[derive(Clone)]
 struct ServerState {
