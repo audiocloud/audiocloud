@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use boa_engine::JsValue;
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
-use tracing::{warn, instrument};
+use tracing::{instrument, warn};
 
 use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
 use api::instance::IdAndChannel;
@@ -14,8 +14,8 @@ use api::instance::IdAndChannel;
 use crate::instance_driver::bin_page_utils::{write_binary_within_page, write_packed_value};
 use crate::instance_driver::scripting::{Script, ScriptingEngine};
 
-use super::{Driver, Result};
 use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
+use super::{Driver, Result};
 
 pub struct UsbHidDriver {
   instance_id:             String,
@@ -242,7 +242,10 @@ impl UsbHidDriver {
   }
 
   fn read_page_events(&mut self, page_id: u8) -> Result<Vec<InstanceDriverEvent>> {
-    let rep_page = self.report_pages.get_mut(&page_id).unwrap();
+    let Some(rep_page) = self.report_pages.get_mut(&page_id) else {
+      return Err(anyhow!("Received page that is not declared as report page").context(page_id));
+    };
+
     let mut events = vec![];
     let captured_at = Instant::now();
 
