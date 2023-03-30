@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use boa_engine::JsValue;
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
-use tracing::{instrument, warn};
+use tracing::{debug, instrument, warn};
 
 use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
 use api::instance::IdAndChannel;
@@ -277,11 +277,14 @@ impl UsbHidDriver {
       if page.dirty {
         page.data[0] = *page_id;
         page.dirty = false;
+        debug!(page_id, len = page.data.len(), "sending dirty page");
 
         if let Err(err) = self.device.write(&page.data) {
-          self.encountered_fatal_error = true;
           warn!(?err, page_id, len = page.data.len(), "Error while writing page to HID device");
+          self.encountered_fatal_error = true;
           return Err(err.into());
+        } else {
+          debug!(page_id, "success");
         }
       }
     }
