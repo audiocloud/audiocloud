@@ -1,6 +1,4 @@
 use std::ops::Deref;
-use std::sync::atomic::{AtomicU32, AtomicU64};
-use std::sync::Arc;
 
 use anyhow::anyhow;
 use boa_engine::prelude::*;
@@ -8,9 +6,7 @@ use boa_engine::vm::CodeBlock;
 use gc::Gc;
 
 pub struct ScriptingEngine {
-  context:  Context,
-  position: Arc<AtomicU64>,
-  state:    Arc<AtomicU32>,
+  context: Context,
 }
 
 unsafe impl Send for ScriptingEngine {}
@@ -38,30 +34,12 @@ pub mod state {
 impl ScriptingEngine {
   pub fn new() -> anyhow::Result<Self> {
     let mut context = Context::builder().build();
-    let position = Arc::new(AtomicU64::new(0));
-    let state = Arc::new(AtomicU32::new(0));
 
     context.eval("function gainFactorToDb(gainFactor) { return 20 * Math.log10(gainFactor); }")
            .map_err(|e| anyhow!("failed to register gainFactorToDb: {e:?}"))?;
+
     context.eval("function dbToGainFactor(db) { return Math.pow(10, db / 20); }")
            .map_err(|e| anyhow!("failed to register gainFactorToDb: {e:?}"))?;
-
-    context.register_global_closure("setState", 1, move |_, args, ctx| {
-             let new_state = args[0].to_string(ctx).unwrap();
-             println!("setState: {}", new_state);
-
-             Ok(JsValue::undefined())
-           })
-           .expect("failed to register setState");
-
-    context.register_global_closure("setPosition", 1, move |_, args, ctx| {
-             let new_position = args[0].to_number(ctx).unwrap();
-             println!("setPosition: {}", new_position);
-             position.store(new_position as u64, std::sync::atomic::Ordering::Relaxed);
-
-             Ok(JsValue::undefined())
-           })
-           .expect("failed to register setPosition");
 
     Ok(Self { context })
   }
@@ -87,6 +65,18 @@ impl ScriptingEngine {
       global.set(key, value, false, &mut self.context).expect("failed to set value");
     }
     self.context.execute(script.0.clone()).unwrap_or_default()
+  }
+
+  pub fn get_position(&mut self) -> Option<f64> {
+    let global = self.context.global_object().to_owned();
+    global.get("position", &mut self.context).ok().and_then(|v| v.as_number())
+  }
+
+  pub fn get_state(&mut self) -> Option<u32> {
+    let global = self.context.global_object().to_owned();
+    global.get("state", &mut self.context)
+          .ok()
+          .and_then(|v| v.as_number().map(|v| v as u32))
   }
 
   pub fn convert_to_f64(&mut self, value: JsValue) -> f64 {
