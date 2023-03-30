@@ -35,9 +35,10 @@ async fn main() {
     env::set_var("RUST_LOG", "info,domain_server=trace");
   }
 
-  tracing_subscriber::fmt::SubscriberBuilder::default().compact()
+  tracing_subscriber::fmt::SubscriberBuilder::default().pretty()
                                                        .with_span_events(FmtSpan::ENTER)
                                                        .with_thread_ids(true)
+                                                       .with_target(false)
                                                        .with_env_filter(EnvFilter::from_default_env())
                                                        .init();
 
