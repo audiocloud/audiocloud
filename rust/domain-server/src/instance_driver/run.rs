@@ -56,7 +56,7 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
           let deadline = Instant::now() + Duration::from_millis(100);
           match block_in_place(|| instance.poll(&mut shared, deadline)) {
             | Err(err) => {
-              warn!(instance_id, %err, "Failed to poll instance");
+              warn!(instance_id, ?err, "Failed to poll instance");
             }
             | Ok(events) => {
               for event in events {
