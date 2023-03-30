@@ -204,7 +204,7 @@ impl Driver for UsbHidDriver {
 impl UsbHidDriver {
   #[instrument(skip(self, page))]
   fn on_page_received(&mut self, page_id: u8, page: &[u8]) -> Result<Vec<InstanceDriverEvent>> {
-    let mut page_found = true;
+    let mut page_found = false;
     if let Some(rep_page) = self.report_pages.get_mut(&page_id) {
       if page.len() == rep_page.data.len() {
         rep_page.data.copy_from_slice(&page);
