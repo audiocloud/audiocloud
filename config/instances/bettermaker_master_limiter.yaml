@@ -3,11 +3,11 @@ vendorId: 0x4D8
 productId: 0xF034
 parameterPages:
   - page: 0
-    size: 80
+    size: 64
     copyFromReportPage: 1
 reportPages:
   - page: 1
-    size: 80
+    size: 64
 parameters:
   inputLevel:
     - position:
