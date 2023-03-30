@@ -25,6 +25,7 @@ tokio-util = "0.7"
 lazy_static = "1"
 boa_engine = "0.16"
 gc = "0.4"
+regex = "1"
 
 [dependencies.tokio-stream]
 version = "0.1"

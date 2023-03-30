@@ -136,6 +136,7 @@ impl Default for DesiredInstancePowerState {
 pub enum InstancePlayState {
   Rewinding,
   Stopped,
+  Busy,
   Playing { play_id: PlayId, duration: f64 },
 }
 

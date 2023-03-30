@@ -33,6 +33,7 @@ pub struct SetInstanceParameterRequest {
 pub enum InstanceDriverConfig {
   #[serde(rename = "USBHID")]
   USBHID(UsbHidDriverConfig),
+  #[serde(rename = "serial")]
   Serial(SerialDriverConfig),
   #[serde(rename = "OSC")]
   OSC(OscDriverConfig),
@@ -109,31 +110,45 @@ pub struct UsbHidParameterConfig {
 #[serde(rename_all = "camelCase")]
 pub struct SerialDriverConfig {
   #[serde(default)]
-  pub vendor_id:               Option<u16>,
+  pub vendor_id:                      Option<u16>,
   #[serde(default)]
-  pub product_id:              Option<u16>,
+  pub product_id:                     Option<u16>,
   #[serde(default = "default_baud_rate")]
-  pub baud_rate:               u32,
-  #[serde(default = "default_receive_time_out")]
-  pub receive_time_out_ms:     u64,
+  pub baud_rate:                      u32,
   #[serde(default)]
-  pub serial_number:           Option<String>,
+  pub flow_control:                   Option<SerialFlowControl>,
   #[serde(default)]
-  pub serial_port:             Option<String>,
+  pub serial_number:                  Option<String>,
   #[serde(default)]
-  pub line_handler:            Option<String>,
+  pub serial_port:                    Option<String>,
+  #[serde(default)]
+  pub line_handler:                   Option<String>,
   #[serde(default = "default_line_terminator")]
-  pub send_line_terminator:    String,
+  pub send_line_terminator:           String,
   #[serde(default = "default_line_terminator")]
-  pub receive_line_terminator: String,
+  pub receive_line_terminator:        String,
   #[serde(default)]
-  pub parameters:              HashMap<String, Vec<SerialParameterConfig>>,
+  pub parameters:                     HashMap<String, Vec<SerialParameterConfig>>,
   #[serde(default)]
-  pub reports:                 HashMap<String, Vec<SerialReportConfig>>,
+  pub reports:                        HashMap<String, Vec<SerialReportConfig>>,
+  #[serde(default)]
+  pub comments_start_with:            Vec<String>,
+  #[serde(default)]
+  pub errors_start_with:              Vec<String>,
+  #[serde(default)]
+  pub read_response_after_every_send: bool,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum SerialFlowControl {
+  XonXoff,
+  RtsCts,
 }
 
 fn default_baud_rate() -> u32 {
-  115_200
+  // from mixanalog v2
+  460_800
 }
 
 fn default_receive_time_out() -> u64 {
@@ -238,17 +253,19 @@ impl Default for ValuePacking {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UsbHidReportConfig {
-  pub position:  BinaryPosition,
+  pub position:       BinaryPosition,
   #[serde(default = "page_zero")]
-  pub page:      u8,
+  pub page:           u8,
   #[serde(default)]
-  pub packing:   ValuePacking,
+  pub packing:        ValuePacking,
   #[serde(default)]
-  pub transform: Option<String>,
+  pub transform:      Option<String>,
   #[serde(default)]
-  pub rescale:   Option<Rescale>,
+  pub rescale:        Option<Rescale>,
   #[serde(default)]
-  pub remap:     Option<Remap>,
+  pub remap:          Option<Remap>,
+  #[serde(default)]
+  pub request_timers: Vec<SerialRequestTimer>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -273,13 +290,24 @@ pub struct SerialParameterConfig {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SerialReportConfig {
-  pub matcher: SerialReportMatcher,
+  pub matcher:       SerialReportMatcher,
   #[serde(default)]
-  pub value:   SerialReportValueInterpretation,
+  pub value:         SerialReportValueInterpretation,
   #[serde(default)]
-  pub rescale: Option<Rescale>,
+  pub rescale:       Option<Rescale>,
   #[serde(default)]
-  pub remap:   Option<Remap>,
+  pub remap:         Option<Remap>,
+  #[serde(default)]
+  pub clamp:         Option<Clamp>,
+  #[serde(default)]
+  pub request_timer: Option<SerialRequestTimer>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SerialRequestTimer {
+  pub line:        String,
+  pub interval_ms: u64,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

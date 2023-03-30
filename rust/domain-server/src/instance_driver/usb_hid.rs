@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use anyhow::anyhow;
+use boa_engine::JsValue;
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
 use tracing::warn;
@@ -142,10 +143,11 @@ impl Driver for UsbHidDriver {
                                               parameter_config.clamp.as_ref())?;
 
           let value = match self.parameter_transforms.get(&parameter_channel_id) {
-            | Some(script) => self.scripting.eval_f64_to_f64(script, value),
-            | None => value,
+            | Some(script) => self.scripting.execute(script, JsValue::Rational(value)),
+            | None => JsValue::Rational(value),
           };
 
+          let value = self.scripting.convert_to_f64(value);
           let value = write_packed_value(value, &parameter_config.packing);
           write_binary_within_page(&mut page.data, value, &parameter_config.position);
 
@@ -247,10 +249,11 @@ impl UsbHidDriver {
         let value = read_packed_value(&value, &report_config.packing);
 
         let value = match self.report_transforms.get(&report_channel_id) {
-          | None => value,
-          | Some(script) => self.scripting.eval_f64_to_f64(script, value),
+          | Some(script) => self.scripting.execute(script, JsValue::Rational(value)),
+          | None => JsValue::Rational(value),
         };
 
+        let value = self.scripting.convert_to_f64(value);
         let value = remap_and_rescale_value(value, report_config.remap.as_ref(), report_config.rescale.as_ref(), None)?;
 
         events.push(InstanceDriverEvent::Report(InstanceDriverReportEvent { instance_id: self.instance_id.clone(),
