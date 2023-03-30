@@ -4,8 +4,10 @@ productId: 0xF034
 parameterPages:
   - page: 0
     size: 64
-    copyFromReportPage: 1
+    copyFromReportPage: 0
 reportPages:
+  - page: 0
+    size: 64
   - page: 1
     size: 64
 parameters:
