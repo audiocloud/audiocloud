@@ -35,7 +35,7 @@ async fn main() {
   }
 
   tracing_subscriber::fmt::SubscriberBuilder::default().compact()
-                                                       .with_span_events(FmtSpan::FULL)
+                                                       .with_span_events(FmtSpan::ENTER | FmtSpan::EXIT)
                                                        .with_line_number(true)
                                                        .with_file(true)
                                                        .with_thread_ids(true)
