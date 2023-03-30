@@ -36,7 +36,7 @@ async fn main() {
   }
 
   tracing_subscriber::fmt::SubscriberBuilder::default().compact()
-                                                       .with_span_events(FmtSpan::ENTER | FmtSpan::EXIT)
+                                                       .with_span_events(FmtSpan::ENTER)
                                                        .with_thread_ids(true)
                                                        .with_env_filter(EnvFilter::from_default_env())
                                                        .init();
