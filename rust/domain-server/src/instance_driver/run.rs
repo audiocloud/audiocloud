@@ -4,7 +4,7 @@ use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::block_in_place;
 use tokio::time::sleep;
-use tracing::{info, warn};
+use tracing::{info, trace, warn};
 
 use api::driver::{InstanceDriverEvent, SetInstanceParameterRequest};
 
