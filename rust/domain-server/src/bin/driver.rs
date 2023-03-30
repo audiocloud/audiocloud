@@ -1,9 +1,9 @@
 use fs::read;
 use std::env::args;
-use std::fs;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
+use std::{env, fs};
 
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
@@ -29,7 +29,11 @@ struct ServerState {
 
 #[tokio::main]
 async fn main() {
-  console_subscriber::init();
+  if env::var("RUST_LOG").is_err() {
+    env::set_var("RUST_LOG", "info,domain_server=trace");
+  }
+
+  tracing_subscriber::fmt::init();
 
   let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
   let (tx_evt, mut rx_evt) = mpsc::channel(0xff);
