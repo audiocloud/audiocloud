@@ -15,6 +15,7 @@ use serde_json::json;
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::BroadcastStream;
+use tracing_subscriber::fmt::format::FmtSpan;
 
 use api::driver::{InstanceDriverConfig, InstanceDriverEvent, SetInstanceParameterRequest};
 use domain_server::instance_driver::run::{run_driver_server, InstanceDriverCommand};
@@ -33,7 +34,13 @@ async fn main() {
     env::set_var("RUST_LOG", "info,domain_server=trace");
   }
 
-  tracing_subscriber::fmt::init();
+  tracing_subscriber::fmt::SubscriberBuilder::default().compact()
+                                                       .with_span_events(FmtSpan::FULL)
+                                                       .with_line_number(true)
+                                                       .with_file(true)
+                                                       .with_thread_ids(true)
+                                                       .with_thread_names(true)
+                                                       .init();
 
   let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
   let (tx_evt, mut rx_evt) = mpsc::channel(0xff);
