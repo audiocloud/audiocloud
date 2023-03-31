@@ -1,10 +1,12 @@
 type: USBHID
 vendorId: 0x4D8
 productId: 0xF034
+pageMask: 0xF
 parameterPages:
   - page: 0
     size: 64
     copyFromReportPage: 0
+    header: [ 0x80, 0x00 ]
 reportPages:
   - page: 0
     size: 64
@@ -36,11 +38,13 @@ parameters:
   clippiterAmount:
     - position:
         byte: 17
+      rescale: [ [ 0, 100 ], [ 0, 0xff ] ]
       clamp:
         max: 0xff
   midSideWidth:
     - position:
         byte: 18
+      rescale: [ [ 0, 100 ], [ 0, 0xff ] ]
       clamp:
         max: 0xff
   evenColorEnabled:

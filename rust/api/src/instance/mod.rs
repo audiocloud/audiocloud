@@ -7,6 +7,8 @@ use crate::driver::InstanceDriverConfig;
 use crate::graph::PlayId;
 use crate::Timestamp;
 
+pub mod model;
+
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct IdAndChannel {
   pub id:      String,

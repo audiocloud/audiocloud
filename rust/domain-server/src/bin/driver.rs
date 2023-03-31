@@ -36,7 +36,6 @@ async fn main() {
   }
 
   tracing_subscriber::fmt::SubscriberBuilder::default().compact()
-                                                       .with_span_events(FmtSpan::ENTER)
                                                        .with_thread_ids(true)
                                                        .with_target(false)
                                                        .with_env_filter(EnvFilter::from_default_env())
@@ -47,8 +46,6 @@ async fn main() {
 
   let cfg = serde_yaml::from_slice::<InstanceDriverConfig>(read(args().skip(1).next().expect("Need config file parameter")).expect("Failed to open config file")
                                                                                            .as_slice()).expect("Failed to parse config");
-
-  // TODO: we should subscribe to NATS and observe changes
 
   let _handle = match cfg.clone() {
     | InstanceDriverConfig::USBHID(usb_config) =>

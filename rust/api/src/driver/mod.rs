@@ -60,6 +60,12 @@ pub struct UsbHidDriverConfig {
   pub parameter_pages:   Vec<UsbHidParameterPage>,
   #[serde(default)]
   pub report_pages:      Vec<UsbHidReportPage>,
+  #[serde(default = "default_frame_mask")]
+  pub frame_mask:        u8,
+}
+
+fn default_frame_mask() -> u8 {
+  0xFF
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -70,6 +76,8 @@ pub struct UsbHidParameterPage {
   pub size:                  usize,
   #[serde(default)]
   pub copy_from_report_page: Option<u8>,
+  #[serde(default)]
+  pub header:                Vec<u8>,
 }
 
 fn default_hid_page_size() -> usize {

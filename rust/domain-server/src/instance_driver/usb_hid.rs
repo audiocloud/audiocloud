@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use boa_engine::JsValue;
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
 use api::instance::IdAndChannel;
@@ -30,6 +30,7 @@ pub struct UsbHidDriver {
 }
 
 struct ParameterPage {
+  header:                  Vec<u8>,
   data:                    Vec<u8>,
   dirty:                   bool,
   waiting_for_report_page: Option<u8>,
@@ -73,7 +74,8 @@ impl Driver for UsbHidDriver {
                                     .iter()
                                     .map(|page| {
                                       (page.page,
-                                       ParameterPage { data:                    vec![0u8; page.size],
+                                       ParameterPage { header:                  page.header.clone(),
+                                                       data:                    vec![0u8; page.size],
                                                        dirty:                   false,
                                                        waiting_for_report_page: page.copy_from_report_page, })
                                     })
@@ -144,13 +146,20 @@ impl Driver for UsbHidDriver {
                                               parameter_config.rescale.as_ref(),
                                               parameter_config.clamp.as_ref())?;
 
+          info!(remap_rescale = value, "remapped and rescaled to");
+
           let value = match self.parameter_transforms.get(&parameter_channel_id) {
             | Some(script) => self.scripting.execute(script, JsValue::Rational(value)),
             | None => JsValue::Rational(value),
           };
 
           let value = self.scripting.convert_to_f64(value);
+          info!(transformed = value, "transformed to");
+
           let value = write_packed_value(value, &parameter_config.packing);
+          info!(packed = value.into_iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "),
+                "packed to");
+
           write_binary_within_page(&mut page.data, value, &parameter_config.position);
 
           page.dirty = true;
@@ -180,7 +189,7 @@ impl Driver for UsbHidDriver {
       | Ok(0) => Ok(vec![]),
       | Ok(size) => {
         let page = &temp_page_buffer[..size];
-        let page_id = page[0];
+        let page_id = page[0] & self.config.frame_mask;
 
         self.on_page_received(page_id, &page)
       }
@@ -275,7 +284,9 @@ impl UsbHidDriver {
   fn send_dirty_pages(&mut self) -> Result {
     for (page_id, page) in self.parameter_pages.iter_mut() {
       if page.dirty {
-        page.data[0] = *page_id;
+        for (pos, byte) in page.header.iter().copied().enumerate() {
+          page.data[pos] = byte;
+        }
         page.dirty = false;
         debug!(page_id, len = page.data.len(), "sending dirty page");
 

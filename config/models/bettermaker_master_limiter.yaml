@@ -1,0 +1,99 @@
+parameters:
+  inputLevel:
+    min: 0
+    max: 20
+    unit: dB
+    channels: 1
+  outputLevel:
+    min: -15
+    max: 5
+    unit: dB
+    channels: 1
+  attack:
+    min: 1
+    max: 2500
+    unit: ms
+    channels: 1
+  release:
+    min: 10
+    max: 1300
+    unit: ms
+    channels: 1
+  clippiterAmount:
+    min: 0
+    max: 100
+    unit: %
+    channels: 1
+  midSideWidth:
+    min: 0
+    max: 100
+    unit: %
+    channels: 1
+  evenColorEnabled:
+    step: 1
+    channels: 1
+  evenColorDrive:
+    min: 0
+    max: 100
+    unit: %
+    channels: 1
+  evenColorAmount:
+    min: 0
+    max: 100
+    unit: %
+    channels: 1
+  evenColorFrequency:
+    unit: hz
+    channels: 1
+    min: 35
+    max: 23000
+    allowedValues: [ 35, 45, 56, 67, 83, 100, 130, 160, 200, 300, 440, 560, 700, 900, 1050, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8500, 10000, 11500, 13500, 15000, 17000, 19000, 21000, 23000 ]
+  oddColorEnabled:
+    step: 1
+    channels: 1
+  oddColorDrive:
+    min: 0
+    max: 100
+    unit: %
+    channels: 1
+  oddColorAmount:
+    min: 0
+    max: 100
+    unit: %
+    channels: 1
+  oddColorFrequency:
+    unit: hz
+    channels: 1
+    min: 35
+    max: 23000
+    allowedValues: [ 35, 45, 56, 67, 83, 100, 130, 160, 200, 300, 440, 560, 700, 900, 1050, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8500, 10000, 11500, 13500, 15000, 17000, 19000, 21000, 23000 ]
+  measureOutput:
+    channels: 1
+    step: 1
+  processingEnabled:
+    channels: 1
+    step: 1
+  clippiterEnabled:
+    channels: 1
+    step: 1
+  intelligentReleaseEnabled:
+    channels: 1
+    step: 1
+  midSideEnabled:
+    channels: 1
+    step: 1
+reports:
+  gainReduction:
+    unit: dB
+    min: -20
+    max: 0
+  clip:
+    step: 1
+  peakLevel:
+    unit: dB
+    min: -20
+    max: 10
+  rmsLevel:
+    unit: dB
+    min: -20
+    max: 10
