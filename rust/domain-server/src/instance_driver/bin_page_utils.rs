@@ -56,7 +56,7 @@ pub fn write_packed_value(value: f64, packing: &ValuePacking) -> [u8; 8] {
 pub fn write_binary_within_page(page: &mut [u8], value: [u8; 8], position: &BinaryPosition) {
   match position {
     | BinaryPosition::Byte(byte) => {
-      trace!(byte, value = value[0] "writing byte");
+      trace!(byte, value = value[0], "writing byte");
       page[*byte as usize] = value[0];
     }
     | BinaryPosition::Bytes(from, to) => {
