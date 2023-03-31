@@ -24,17 +24,18 @@ parameters:
   attack:
     - position:
         bytes: [ 13, 14 ]
+      rescale: [ [ 0, 2500 ], [ 0, 25000 ] ]
       clamp:
-        min: 1
-        max: 2500
-      packing: uint16le
+        min: 0
+        max: 25000
+      packing: uint16be
   release:
     - position:
         bytes: [ 15, 16 ]
       clamp:
         min: 10
         max: 1300
-      packing: uint16le
+      packing: uint16be
   clippiterAmount:
     - position:
         byte: 17
@@ -49,35 +50,35 @@ parameters:
         max: 0xff
   evenColorEnabled:
     - position:
-        bit: [ 40, 3 ]
+        bit: [ 40, 2 ]
   evenColorDrive:
     - position:
-        byte: 19
+        byte: 22
       rescale: [ [ 0, 100 ], [ 1, 21 ] ]
   evenColorAmount:
     - position:
-        byte: 20
+        byte: 23
       rescale: [ [ 0, 100 ], [ 1, 21 ] ]
   evenColorFrequency:
     - position:
-        byte: 21
+        byte: 24
       remap:
         type: linear
         values: [ 0, 35, 45, 56, 67, 83, 100, 130, 160, 200, 300, 440, 560, 700, 900, 1050, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8500, 10000, 11500, 13500, 15000, 17000, 19000, 21000, 23000 ]
   oddColorEnabled:
     - position:
-        bit: [ 40, 2 ]
+        bit: [ 40, 3 ]
   oddColorDrive:
     - position:
-        byte: 22
+        byte: 19
       rescale: [ [ 0, 100 ], [ 1, 21 ] ]
   oddColorAmount:
     - position:
-        byte: 23
+        byte: 20
       rescale: [ [ 0, 100 ], [ 1, 21 ] ]
   oddColorFrequency:
     - position:
-        byte: 24
+        byte: 21
       remap:
         type: linear
         values: [ 0, 35, 45, 56, 67, 83, 100, 130, 160, 200, 300, 440, 560, 700, 900, 1050, 1250, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8500, 10000, 11500, 13500, 15000, 17000, 19000, 21000, 23000 ]

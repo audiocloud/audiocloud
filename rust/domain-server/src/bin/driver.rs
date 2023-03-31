@@ -1,25 +1,24 @@
 use fs::read;
+use std::{env, fs};
 use std::env::args;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use std::{env, fs};
 
+use axum::{Json, Router, routing::put};
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
-use axum::response::{sse, IntoResponse};
+use axum::response::{IntoResponse, sse};
 use axum::routing::get;
-use axum::{routing::put, Json, Router};
 use futures::StreamExt;
 use serde_json::json;
 use tokio::spawn;
 use tokio::sync::{broadcast, mpsc};
 use tokio_stream::wrappers::BroadcastStream;
-use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::EnvFilter;
 
 use api::driver::{InstanceDriverConfig, InstanceDriverEvent, SetInstanceParameterRequest};
-use domain_server::instance_driver::run::{run_driver_server, InstanceDriverCommand};
+use domain_server::instance_driver::run::{InstanceDriverCommand, run_driver_server};
 use domain_server::instance_driver::usb_hid::UsbHidDriver;
 
 #[derive(Clone)]
