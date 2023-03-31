@@ -57,7 +57,7 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
             }
           }
         }
-        _ = sleep(Duration::from_millis(10)) => {
+        _ = sleep(Duration::from_millis(1)) => {
           let deadline = Instant::now() + Duration::from_millis(100);
           match block_in_place(|| instance.poll(&mut shared, deadline)) {
             | Err(err) => {

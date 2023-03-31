@@ -53,7 +53,7 @@ impl Driver for UsbHidDriver {
     Ok(HID_API.clone())
   }
 
-  #[instrument(err, skip(shared))]
+  #[instrument(err, skip(shared, instance_id))]
   fn new(instance_id: &str, shared: &mut Self::Shared, config: UsbHidDriverConfig) -> Result<Self> {
     let mut shared = shared.lock().expect("HID API lock failed");
     shared.refresh_devices()?;
@@ -134,7 +134,7 @@ impl Driver for UsbHidDriver {
     Err(anyhow!("No matching HID device found"))
   }
 
-  #[instrument(err, skip(self, _shared), fields(instance_id = self.instance_id))]
+  #[instrument(err, skip(self, _shared))]
   fn set_parameter(&mut self, _shared: &mut Self::Shared, parameter_id: &str, channel: usize, value: f64) -> Result<()> {
     if let Some(parameter_configs) = self.config.parameters.get(parameter_id) {
       if let Some(parameter_config) = parameter_configs.get(channel) {
@@ -177,7 +177,7 @@ impl Driver for UsbHidDriver {
     Ok(())
   }
 
-  #[instrument(err, skip(self, _shared, deadline), fields(instance_id = self.instance_id))]
+  #[instrument(err, skip(self, _shared, deadline))]
   fn poll(&mut self, _shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
     self.send_dirty_pages()?;
 
