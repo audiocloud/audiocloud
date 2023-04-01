@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use anyhow::anyhow;
 use boa_engine::JsValue;
+use chrono::Utc;
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
 use tracing::{debug, info, instrument, warn};
@@ -252,7 +253,7 @@ impl UsbHidDriver {
     };
 
     let mut events = vec![];
-    let captured_at = Instant::now();
+    let captured_at = Utc::now();
 
     for (report_id, report_configs) in rep_page.reports.iter() {
       for (channel, report_config) in report_configs.iter().enumerate() {

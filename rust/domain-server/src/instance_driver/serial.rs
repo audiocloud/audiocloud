@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use anyhow::anyhow;
 use boa_engine::JsValue;
 use byteorder::ReadBytesExt;
+use chrono::Utc;
 use regex::Regex;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
 use tracing::debug;
@@ -258,7 +259,7 @@ fn handle_line_with_pattern(instance_id: &str,
 
     Ok::<_, anyhow::Error>(Some(InstanceDriverEvent::Report(InstanceDriverReportEvent { report_id: report_id.to_owned(),
                                                                                         instance_id: instance_id.to_owned(),
-                                                                                        captured_at: Instant::now(),
+                                                                                        captured_at: Utc::now(),
                                                                                         channel,
                                                                                         value })))
   };

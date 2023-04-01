@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::time::Instant;
+use crate::Timestamp;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,6 @@ pub struct SetInstancePlayRequest {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SetInstanceParameterRequest {
-  #[serde(flatten)]
   pub parameter: String,
   pub channel:   usize,
   pub value:     f64,
@@ -344,21 +343,32 @@ impl Default for SerialReportValueInterpretation {
 #[serde(rename_all = "camelCase")]
 pub struct OscParameterConfig {}
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum InstanceDriverEvent {
   Report(InstanceDriverReportEvent),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceDriverReportEvent {
   pub instance_id: String,
   pub report_id:   String,
   pub channel:     usize,
   pub value:       f64,
-  #[serde(with = "serde_instant")]
-  pub captured_at: Instant,
+  pub captured_at: Timestamp,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum WsDriverRequest {
+  SetParameter(SetInstanceParameterRequest)
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum WsDriverEvent {
+  Report(InstanceDriverReportEvent)
 }
 
 // we have up to three buckets for each service
@@ -404,29 +414,5 @@ pub mod status_keys {
 
   pub fn instance_report_value(instance_id: &str, report_id: &str, channel: usize) -> String {
     format!("{instance_id}.report.{report_id}.{channel}")
-  }
-}
-
-mod serde_instant {
-  use std::time::{Duration, Instant};
-
-  use serde::de::Error;
-  use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-  pub fn serialize<S>(instant: &Instant, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer
-  {
-    let duration = instant.elapsed();
-    duration.serialize(serializer)
-  }
-
-  pub fn deserialize<'de, D>(deserializer: D) -> Result<Instant, D::Error>
-    where D: Deserializer<'de>
-  {
-    let duration = Duration::deserialize(deserializer)?;
-    let now = Instant::now();
-    let instant = now.checked_sub(duration)
-                     .ok_or_else(|| Error::custom("Invalid time manipulation, could not deserialize"))?;
-    Ok(instant)
   }
 }
