@@ -53,6 +53,7 @@ pub struct RegisterInstanceRequest {
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstancePowerSpec {
+  // instance id
   pub power_controller: String,
   pub channel:          u32,
   pub warm_up_ms:       u64,

@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::graph::{AudioGraphModification, AudioGraphSpec};
+use crate::driver::InstanceDriverEvent;
+use crate::graph::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent};
 use crate::Timestamp;
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
@@ -35,4 +36,12 @@ pub struct TaskSummary {}
 pub enum TaskId {
   All,
   Specific(String),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskEvent {
+  play_id:         Option<String>,
+  instance_events: Vec<InstanceDriverEvent>,
+  player_events:   Vec<GraphPlaybackEvent>,
 }

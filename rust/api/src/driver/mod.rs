@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use crate::Timestamp;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::instance::{DesiredInstancePlayState, DesiredInstancePowerState};
+use crate::Timestamp;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -362,13 +362,13 @@ pub struct InstanceDriverReportEvent {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WsDriverRequest {
-  SetParameter(SetInstanceParameterRequest)
+  SetParameter(SetInstanceParameterRequest),
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WsDriverEvent {
-  Report(InstanceDriverReportEvent)
+  Report(InstanceDriverReportEvent),
 }
 
 // we have up to three buckets for each service
@@ -383,6 +383,7 @@ pub mod buckets {
 
   pub const INSTANCE_CONTROL: &str = "audiocloud.instance.control";
   pub const INSTANCE_STATE: &str = "audiocloud.instance.state";
+  pub const INSTANCE_SPEC: &str = "audiocloud.instance.spec";
 }
 
 pub mod control_keys {
@@ -400,19 +401,7 @@ pub mod control_keys {
 }
 
 pub mod status_keys {
-  pub fn instance_power_state(instance_id: &str) -> String {
-    format!("{instance_id}.power")
-  }
-
-  pub fn instance_play_state(instance_id: &str) -> String {
-    format!("{instance_id}.play")
-  }
-
-  pub fn instance_report_value_wildcard(instance_id: &str) -> String {
-    format!("{instance_id}.report.*")
-  }
-
-  pub fn instance_report_value(instance_id: &str, report_id: &str, channel: usize) -> String {
-    format!("{instance_id}.report.{report_id}.{channel}")
+  pub fn instance_wildcard(instance_id: &str) -> String {
+    format!("{instance_id}.*")
   }
 }

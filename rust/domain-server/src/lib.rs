@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 pub mod instance_driver;
 pub mod nats_utils;
 pub mod request_tracker;
+pub mod tasks;
 
 pub type Result<T = ()> = anyhow::Result<T>;
 

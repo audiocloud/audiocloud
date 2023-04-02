@@ -14,7 +14,7 @@ use api::driver::{buckets, control_keys, status_keys, InstanceDriverConfig, Inst
 
 use crate::instance_driver::run::{run_driver_server, InstanceDriverCommand};
 use crate::instance_driver::usb_hid::UsbHidDriver;
-use crate::nats_utils::{InstanceParameterId, ExtractValue};
+use crate::nats_utils::{ExtractValue, InstanceParameterId};
 
 use super::Result;
 
@@ -104,9 +104,10 @@ pub async fn server(driver_id: String, ctx: Context) -> Result {
             let Ok(value) = serde_json::to_string(&report.value) else { continue };
             let value = Bytes::from(value);
 
-            state_bucket.put(status_keys::instance_report_value(&report.instance_id, &report.report_id, report.channel), value)
-                        .await
-                        .map_err(|e| anyhow!("Failed to put report update").context(e))?;
+            // TODO: update report key
+            // state_bucket.put(status_keys::instance_report_value(&report.instance_id, &report.report_id, report.channel), value)
+            //             .await
+            //             .map_err(|e| anyhow!("Failed to put report update").context(e))?;
           }
         }
       },

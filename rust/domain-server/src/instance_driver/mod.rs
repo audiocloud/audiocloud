@@ -10,10 +10,10 @@ use crate::ServiceRegistry;
 
 pub mod bin_page_utils;
 pub mod run;
+pub mod scripting;
+pub mod serial;
 pub mod server;
 pub mod usb_hid;
-pub mod serial;
-pub mod scripting;
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
