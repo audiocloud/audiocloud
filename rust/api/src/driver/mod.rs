@@ -369,6 +369,7 @@ pub enum WsDriverRequest {
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WsDriverEvent {
   Report(InstanceDriverReportEvent),
+  KeepAlive,
 }
 
 // we have up to three buckets for each service

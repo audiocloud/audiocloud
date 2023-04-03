@@ -67,6 +67,8 @@ export namespace Driver {
         case "report":
           handler.report(parsed.reportId, parsed.channel, parsed.value);
           break;
+        case "keepAlive":
+          break;
       }
     };
 

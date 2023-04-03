@@ -37,7 +37,7 @@ pub async fn run_driver_server<Drv: Driver>(instance_id: String,
       | Ok(instance) => instance,
       | Err(err) => {
         warn!(%err, "Failed to create instance");
-        sleep(Duration::from_secs(1)).await;
+        sleep(Duration::from_secs(120)).await;
         continue;
       }
     };

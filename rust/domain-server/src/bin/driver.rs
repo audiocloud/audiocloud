@@ -1,20 +1,27 @@
 use fs::read;
 use std::env::args;
+use std::fs;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::{env, fs};
+use std::time::Duration;
 
+use axum::body::HttpBody;
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{ConnectInfo, Path, State, WebSocketUpgrade};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::routing::get;
 use axum::{headers, routing::put, Json, Router, TypedHeader};
+use futures::{SinkExt, StreamExt};
 use tokio::sync::{broadcast, mpsc};
-use tokio::{select, spawn};
+use tokio::{select, spawn, time};
 use tower_http::cors;
+use tower_http::services::ServeDir;
+use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{debug, error, info, instrument};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::util::SubscriberInitExt;
 
 use api::driver::{InstanceDriverConfig, InstanceDriverEvent, SetInstanceParameterRequest, WsDriverEvent, WsDriverRequest};
 use domain_server::instance_driver::run::{run_driver_server, InstanceDriverCommand};
@@ -27,17 +34,13 @@ struct ServerState {
   config: Arc<InstanceDriverConfig>,
 }
 
+const LOG_DEFAULTS: &'static str = "info,driver=trace,domain_server=trace,tower_http=debug";
+
 #[tokio::main]
 async fn main() {
-  if env::var("RUST_LOG").is_err() {
-    env::set_var("RUST_LOG", "info,domain_server=trace");
-  }
-
-  tracing_subscriber::fmt::SubscriberBuilder::default().compact()
-                                                       .with_thread_ids(true)
-                                                       .with_target(false)
-                                                       .with_env_filter(EnvFilter::from_default_env())
-                                                       .init();
+  tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| LOG_DEFAULTS.into()))
+                                .with(tracing_subscriber::fmt::layer())
+                                .init();
 
   let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
   let (tx_evt, mut rx_evt) = mpsc::channel(0xff);
@@ -69,17 +72,22 @@ async fn main() {
 
   let config = Arc::new(cfg);
 
-  let router = Router::new().route("/ws", get(ws_handler))
+  let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
+
+  let router = Router::new().fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true))
+                            .route("/ws", get(ws_handler))
                             .route("/config", get(get_config))
                             .route("/parameter/:parameter_id/:channel", put(set_parameter))
                             .with_state(ServerState { tx_cmd, tx_brd, config })
-                            .layer(cors::CorsLayer::very_permissive());
+                            .layer(cors::CorsLayer::permissive())
+                            .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)));
 
   let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
-  axum::Server::bind(&addr).serve(router.into_make_service())
+  debug!("listening on {addr}");
+  axum::Server::bind(&addr).serve(router.into_make_service_with_connect_info::<SocketAddr>())
                            .await
-                           .expect("successful serving");
+                           .unwrap();
 }
 
 async fn set_parameter(State(ServerState { tx_cmd, .. }): State<ServerState>,
@@ -97,27 +105,46 @@ async fn set_parameter(State(ServerState { tx_cmd, .. }): State<ServerState>,
 async fn ws_handler(State(state): State<ServerState>,
                     ws: WebSocketUpgrade,
                     user_agent: Option<TypedHeader<headers::UserAgent>>,
-                    ConnectInfo(addr): ConnectInfo<SocketAddr>)
+                    ConnectInfo(remote): ConnectInfo<SocketAddr>)
                     -> impl IntoResponse {
   let user_agent = if let Some(TypedHeader(user_agent)) = user_agent {
     user_agent.to_string()
   } else {
     String::from("Unknown browser")
   };
-  info!(%user_agent, %addr, "connected.");
-  // finalize the upgrade process by returning upgrade callback.
-  // we can customize the callback by sending additional info such as address.
-  ws.on_upgrade(move |socket| handle_socket(state, socket, addr))
+  info!(%user_agent, "connected from {remote}.");
+  ws.on_upgrade(move |socket| handle_socket(state, socket, remote))
 }
 
 #[instrument(skip(state, socket))]
-async fn handle_socket(state: ServerState, mut socket: WebSocket, who: SocketAddr) {
+async fn handle_socket(state: ServerState, socket: WebSocket, remote: SocketAddr) {
   let mut sub = state.tx_brd.subscribe();
+
+  let (mut tx, mut rx) = socket.split();
 
   loop {
     select! {
-      Some(Ok(message)) = socket.recv() => {
-        let Message::Text(message) = message else { continue; };
+      message = rx.next() => {
+        let Some(message) = message else { break; };
+        let message = match message {
+          Ok(message) => message,
+          Err(err) => {
+            error!(%err, "failed to receive message, bailing");
+            break;
+          }
+        };
+
+        let message = match message {
+          | Message::Close(_) => {
+            info!("closed by remote, bailing");
+            break;
+          }
+          | Message::Text(message) => { message }
+          | _ => {
+            continue;
+          }
+        };
+
         let Ok(command) = serde_json::from_str::<WsDriverRequest>(&message) else { continue; };
         debug!(?command, "received");
         match command {
@@ -130,12 +157,19 @@ async fn handle_socket(state: ServerState, mut socket: WebSocket, who: SocketAdd
         }
       },
       Ok(event) = sub.recv() => {
+        info!(?event, "received event");
         let event = match event {
           | InstanceDriverEvent::Report(report) => WsDriverEvent::Report(report),
         };
         let Ok(encoded) = serde_json::to_string_pretty(&event) else { continue; };
-        if let Err(err) = socket.send(Message::Text(encoded)).await {
+        if let Err(err) = tx.send(Message::Text(encoded)).await {
           error!("failed to send message, bailing: {err}");
+          break;
+        }
+      },
+      _ = time::sleep(Duration::from_millis(3000)) => {
+        if let Err(err) = tx.send(Message::Text(serde_json::to_string_pretty(&WsDriverEvent::KeepAlive).unwrap())).await {
+          error!("failed to send keep alive message, bailing: {err}");
           break;
         }
       },

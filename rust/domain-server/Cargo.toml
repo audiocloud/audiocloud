@@ -28,7 +28,7 @@ regex = "1"
 
 [dependencies.tower-http]
 version = "0.4.0"
-features = ["cors"]
+features = ["cors", "fs", "trace"]
 
 [dependencies.tracing-subscriber]
 version = "0.3"
@@ -44,7 +44,7 @@ features = ["chrono"]
 
 [dependencies.axum]
 version = "0.6"
-features = ["json", "ws", "headers"]
+features = ["json", "ws", "headers", "tokio"]
 
 [dependencies.tokio]
 version = "1"
