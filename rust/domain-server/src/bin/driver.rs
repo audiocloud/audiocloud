@@ -12,6 +12,7 @@ use axum::routing::get;
 use axum::{headers, routing::put, Json, Router, TypedHeader};
 use tokio::sync::{broadcast, mpsc};
 use tokio::{select, spawn};
+use tower_http::cors;
 use tracing::{debug, error, info, instrument};
 use tracing_subscriber::EnvFilter;
 
@@ -71,7 +72,8 @@ async fn main() {
   let router = Router::new().route("/ws", get(ws_handler))
                             .route("/config", get(get_config))
                             .route("/parameter/:parameter_id/:channel", put(set_parameter))
-                            .with_state(ServerState { tx_cmd, tx_brd, config });
+                            .with_state(ServerState { tx_cmd, tx_brd, config })
+                            .layer(cors::CorsLayer::very_permissive());
 
   let addr = SocketAddr::from(([0, 0, 0, 0], 3000));
 
