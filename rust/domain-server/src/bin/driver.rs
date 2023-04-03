@@ -19,7 +19,7 @@ use tokio::{select, spawn, time};
 use tower_http::cors;
 use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::{debug, error, info, instrument};
+use tracing::{debug, error, info, instrument, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -122,6 +122,9 @@ async fn handle_socket(state: ServerState, socket: WebSocket, remote: SocketAddr
 
   let (mut tx, mut rx) = socket.split();
 
+  let _ = tx.send(Message::Text(serde_json::to_string(&WsDriverEvent::Config { config: state.config.as_ref().clone(), }).unwrap()))
+            .await;
+
   loop {
     select! {
       message = rx.next() => {
@@ -129,7 +132,7 @@ async fn handle_socket(state: ServerState, socket: WebSocket, remote: SocketAddr
         let message = match message {
           Ok(message) => message,
           Err(err) => {
-            error!(%err, "failed to receive message, bailing");
+            warn!(%err, "failed to receive message, bailing");
             break;
           }
         };
