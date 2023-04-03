@@ -121,7 +121,7 @@ async fn handle_socket(state: ServerState, mut socket: WebSocket, who: SocketAdd
         match command {
           | WsDriverRequest::SetParameter(request) => {
             if let Err(err) = state.tx_cmd.send(InstanceDriverCommand::SetParameters(request)).await {
-              error!("failed to send command, bailing.");
+              error!("failed to send command, bailing: {err}");
               break;
             }
           },
@@ -133,16 +133,17 @@ async fn handle_socket(state: ServerState, mut socket: WebSocket, who: SocketAdd
         };
         let Ok(encoded) = serde_json::to_string_pretty(&event) else { continue; };
         if let Err(err) = socket.send(Message::Text(encoded)).await {
-          error!("failed to send message, bailing.");
+          error!("failed to send message, bailing: {err}");
           break;
         }
       },
       else => {
-        info!("disconnected.");
         break;
       }
     }
   }
+
+  info!("disconnected.");
 }
 
 async fn get_config(State(ServerState { config, .. }): State<ServerState>) -> impl IntoResponse {
