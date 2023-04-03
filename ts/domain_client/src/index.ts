@@ -1,7 +1,6 @@
 import { AxiosInstance } from "axios";
 import WebSocket from "isomorphic-ws";
 import { parseURL, serializeURL } from "whatwg-url";
-import mitt, { Emitter } from "mitt";
 
 import {
   InstanceDriverConfig,
