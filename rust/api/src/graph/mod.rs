@@ -12,7 +12,7 @@ pub type BusId = u64;
 pub type PlayId = u64;
 
 /// Specification of a graph, which can be later be created or modified
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioGraphSpec {
   pub sources: HashMap<SourceId, SourceSpec>,

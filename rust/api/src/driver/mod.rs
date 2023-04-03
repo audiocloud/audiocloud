@@ -381,9 +381,9 @@ pub mod buckets {
     format!("audiocloud.driver.{}.specs", service_id)
   }
 
-  pub const INSTANCE_CONTROL: &str = "audiocloud.instance.control";
-  pub const INSTANCE_STATE: &str = "audiocloud.instance.state";
-  pub const INSTANCE_SPEC: &str = "audiocloud.instance.spec";
+  pub const INSTANCE_CONTROL: &str = "audiocloud_instance_control";
+  pub const INSTANCE_STATE: &str = "audiocloud_instance_state";
+  pub const INSTANCE_SPEC: &str = "audiocloud_instance_spec";
 }
 
 pub mod control_keys {

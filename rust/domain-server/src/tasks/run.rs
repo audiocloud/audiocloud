@@ -2,23 +2,27 @@ use std::collections::HashSet;
 use std::mem;
 
 use anyhow::anyhow;
+use async_nats::jetstream::kv::Operation;
 use async_nats::jetstream::{kv, Context};
 use chrono::Utc;
 use futures::StreamExt;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio_stream::StreamMap;
+use tracing::{instrument, trace};
 
 use api::driver::InstanceDriverEvent;
 use api::graph::{AudioGraphModification, GraphPlaybackEvent};
-use api::{driver, media};
+use api::instance::InstanceSpec;
+use api::{driver, media, Timestamp};
 use async_audio_engine::GraphPlayer;
 
 use crate::tasks::{Result, TaskSpec};
 
+#[derive(Debug, Clone)]
 pub enum Command {
   Terminate,
-  SetSpec(TaskSpec),
+  ChangeEndTime(Timestamp),
   ModifyGraph(Vec<AudioGraphModification>),
 }
 
@@ -32,7 +36,7 @@ enum WatchKey {
 type WatchStream<'a> = StreamMap<WatchKey, kv::Watch<'a>>;
 type NatsResult<T> = std::result::Result<T, async_nats::Error>;
 
-struct TaskService<'a> {
+pub struct TaskService<'a> {
   jetstream:             Context,
   task_id:               String,
   spec:                  TaskSpec,
@@ -92,7 +96,7 @@ impl<'a> TaskService<'a> {
     Ok(())
   }
 
-  async fn run_task(mut self) -> Result {
+  pub async fn run(mut self) -> Result {
     use WatchKey::*;
 
     while Utc::now() < self.spec.to && self.enabled {
@@ -114,15 +118,54 @@ impl<'a> TaskService<'a> {
     Ok(())
   }
 
+  #[instrument(skip(self, event))]
   async fn on_instance_spec_changed(&mut self, instance_id: String, event: NatsResult<kv::Entry>) -> Result {
+    trace!("event started");
+    let Ok(event) = event else { return Ok(()); };
+    match event.operation {
+      | Operation::Put => {
+        trace!("instance spec changed");
+        let Ok(spec) = serde_json::from_slice::<InstanceSpec>(&event.value) else { return Ok(()); };
+
+        // TODO: deal with the updated spec
+      }
+      | Operation::Delete | Operation::Purge => {
+        trace!("instance deleted");
+      }
+    }
+
     Ok(())
   }
 
+  #[instrument(skip(self, event))]
   async fn on_instance_state_changed(&mut self, instance_id: String, event: NatsResult<kv::Entry>) -> Result {
+    trace!("event started");
+    let Ok(event) = event else { return Ok(()); };
+    match event.operation {
+      | Operation::Put => {
+        trace!("instance state changed");
+      }
+      | Operation::Delete | Operation::Purge => {
+        trace!("instance state deleted");
+      }
+    }
+
     Ok(())
   }
 
+  #[instrument(skip(self, event))]
   async fn on_media_state_changed(&mut self, media_url: String, event: NatsResult<kv::Entry>) -> Result {
+    trace!("event started");
+    let Ok(event) = event else { return Ok(()); };
+    match event.operation {
+      | Operation::Put => {
+        trace!("media state changed");
+      }
+      | Operation::Delete | Operation::Purge => {
+        trace!("media state deleted");
+      }
+    }
+
     Ok(())
   }
 
@@ -131,14 +174,19 @@ impl<'a> TaskService<'a> {
       | Command::Terminate => {
         self.enabled = false;
       }
-      | Command::SetSpec(new_spec) => {
-        self.spec = new_spec;
-
-        self.resubscribe_instance_watches().await?;
+      | Command::ChangeEndTime(new_end_time) => {
+        self.spec.to = new_end_time;
       }
-      | Command::ModifyGraph(modifications) => {}
+      | Command::ModifyGraph(modifications) => {
+        self.apply_graph_modifications(modifications).await?;
+      }
     }
 
+    Ok(())
+  }
+
+  #[instrument(err, skip(self))]
+  async fn apply_graph_modifications(&mut self, modifications: Vec<AudioGraphModification>) -> Result {
     Ok(())
   }
 

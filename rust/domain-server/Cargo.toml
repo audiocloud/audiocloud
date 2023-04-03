@@ -40,7 +40,7 @@ features = ["chrono"]
 
 [dependencies.axum]
 version = "0.6"
-features = ["json"]
+features = ["json", "ws", "headers"]
 
 [dependencies.tokio]
 version = "1"

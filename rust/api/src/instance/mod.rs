@@ -50,6 +50,17 @@ pub struct RegisterInstanceRequest {
   pub driver_config: InstanceDriverConfig,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct InstanceSpec {
+  pub id:            String,
+  pub model_id:      String,
+  pub driver_id:     DriverId,
+  pub power_spec:    Option<InstancePowerSpec>,
+  pub play_spec:     Option<InstancePlaySpec>,
+  pub driver_config: InstanceDriverConfig,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstancePowerSpec {
