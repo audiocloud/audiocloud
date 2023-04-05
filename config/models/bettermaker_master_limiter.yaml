@@ -25,9 +25,9 @@ parameters:
     unit: %
     channels: 1
   midSideWidth:
-    min: 0
-    max: 100
-    unit: %
+    min: -8
+    max: 8
+    unit: dB
     channels: 1
   evenColorEnabled:
     step: 1

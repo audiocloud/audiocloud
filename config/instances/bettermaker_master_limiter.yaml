@@ -39,15 +39,15 @@ parameters:
   clippiterAmount:
     - position:
         byte: 17
-      rescale: [ [ 0, 100 ], [ 0, 0xff ] ]
+      rescale: [ [ 0, 100 ], [ 0, 100 ] ]
       clamp:
-        max: 0xff
+        max: 100
   midSideWidth:
     - position:
         byte: 18
-      rescale: [ [ 0, 100 ], [ 0, 0xff ] ]
+      rescale: [ [ -8, 8 ], [ -80, 80 ] ]
       clamp:
-        max: 0xff
+        max: 80
   evenColorEnabled:
     - position:
         bit: [ 40, 2 ]
@@ -103,12 +103,12 @@ reports:
       packing: uint16le
       position:
         bytes: [ 1, 2 ]
-      transform: gainFactorToDb(value / 1024)
+#      transform: gainFactorToDb(value / 1024)
     - page: 1
       packing: uint16le
       position:
         bytes: [ 3, 4 ]
-      transform: gainFactorToDb(value / 1024)
+#      transform: gainFactorToDb(value / 1024)
   clip:
     - page: 1
       position:
@@ -121,20 +121,20 @@ reports:
       packing: int16be
       position:
         bytes: [ 7, 8 ]
-      transform: Math.max(-36, value * 0.1)
+#      transform: Math.max(-36, value * 0.1)
     - page: 1
       packing: int16be
       position:
         bytes: [ 9, 10 ]
-      transform: Math.max(-36, value * 0.1)
+#      transform: Math.max(-36, value * 0.1)
   rmsLevel:
     - page: 1
       packing: int16be
       position:
         bytes: [ 15, 16 ]
-      transform: Math.max(-36, value * 0.1)
+#      transform: Math.max(-36, value * 0.1)
     - page: 1
       packing: int16be
       position:
         bytes: [ 17, 18 ]
-      transform: Math.max(-36, value * 0.1)
+#      transform: Math.max(-36, value * 0.1)
