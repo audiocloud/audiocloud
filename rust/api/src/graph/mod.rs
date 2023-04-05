@@ -12,7 +12,7 @@ pub type BusId = u64;
 pub type PlayId = u64;
 
 /// Specification of a graph, which can be later be created or modified
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioGraphSpec {
   pub sources: HashMap<SourceId, SourceSpec>,
@@ -78,16 +78,17 @@ pub enum NodeId {
   Sink(SinkId),
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceSpec {
+  pub media_id:     String,
   pub start_at:     u64,
   pub source_url:   String,
   pub num_channels: usize,
 }
 
 /// Specification of a software summing bus
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BusSpec {
   pub mid_side_mode: Option<MidSideMode>,
@@ -102,14 +103,14 @@ pub enum MidSideMode {
 }
 
 /// Specification of an insert instance within the graph (e.g. an external hardware, or VST plugin) that can be connected to the graph
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct InsertSpec {
   pub inputs:      Vec<Vec<InputSpec>>,
   pub instance_id: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SinkSpec {
   pub inputs:      Vec<Vec<InputSpec>>,

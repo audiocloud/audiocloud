@@ -4,16 +4,29 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::driver::InstanceDriverEvent;
-use crate::graph::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent};
+use crate::graph::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent, PlayId};
 use crate::Timestamp;
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTaskRequest {
+  #[serde(default)]
+  pub task_id:   Option<String>,
   pub app_id:    String,
   pub from:      Timestamp,
   pub to:        Timestamp,
   pub instances: HashMap<String, InstanceAllocationRequest>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum CreateTaskResponse {
+  Success {
+    app_id: String,
+    task_id: String,
+  },
+  OverlappingTask,
+  NoSuchInstance { instance_id: String },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
@@ -24,6 +37,13 @@ pub enum InstanceAllocationRequest {
 }
 
 pub type SetTaskGraphRequest = AudioGraphSpec;
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SetTaskGraphResponse {
+  Success,
+  Failure,
+}
 
 pub type ModifyTaskGraphRequest = Vec<AudioGraphModification>;
 
@@ -44,4 +64,42 @@ pub struct TaskEvent {
   play_id:         Option<String>,
   instance_events: Vec<InstanceDriverEvent>,
   player_events:   Vec<GraphPlaybackEvent>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum DesiredTaskPlayState {
+  Idle,
+  Play {
+    play_id: PlayId,
+    from:    f64,
+    to:      f64, // TODO: more..
+  },
+}
+
+impl DesiredTaskPlayState {
+  pub fn is_playing(&self) -> bool {
+    matches!(self, Self::Play { .. })
+  }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTaskListRequest {}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GetTaskListResponse {
+  pub tasks: HashMap<String, TaskSummary>,
+}
+
+pub mod buckets {
+  pub const TASK_SPEC: &'static str = "audiocloud_task_spec";
+  pub const TASK_CONTROL: &'static str = "audiocloud_task_control";
+  pub const TASK_STATE: &'static str = "audiocloud_task_state";
+}
+
+pub mod subjects {
+  pub const GET_TASK_LIST: &'static str = "audiocloud_get_task_list";
+  pub const SET_TASK_GRAPH: &'static str = "audiocloud_set_task_graph";
 }

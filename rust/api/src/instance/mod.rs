@@ -27,16 +27,9 @@ impl<T: AsRef<str>> From<(T, usize)> for IdAndChannel {
 pub struct InstanceSummary {
   pub id:          String,
   pub model_id:    String,
-  pub driver_id:   DriverId,
+  pub driver_id:   String,
   pub power_state: InstancePowerStateSummary,
   pub play_state:  InstancePlayStateSummary,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, Eq, PartialEq, Hash)]
-#[serde(rename_all = "camelCase")]
-pub enum DriverId {
-  Local,
-  Remote(String),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
@@ -44,21 +37,28 @@ pub enum DriverId {
 pub struct RegisterInstanceRequest {
   pub id:            String,
   pub model_id:      String,
-  pub driver_id:     DriverId,
+  pub driver_id:     String,
   pub power_spec:    Option<InstancePowerSpec>,
   pub play_spec:     Option<InstancePlaySpec>,
   pub driver_config: InstanceDriverConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceSpec {
   pub id:            String,
   pub model_id:      String,
-  pub driver_id:     DriverId,
+  pub driver_id:     String,
   pub power_spec:    Option<InstancePowerSpec>,
   pub play_spec:     Option<InstancePlaySpec>,
   pub driver_config: InstanceDriverConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct InstanceState {
+  pub power: Option<InstancePowerState>,
+  pub play:  Option<InstancePlayState>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
@@ -149,14 +149,14 @@ impl Default for DesiredInstancePowerState {
 #[serde(rename_all = "camelCase")]
 pub enum InstancePlayState {
   Rewinding,
-  Stopped,
+  Idle,
   Busy,
   Playing { play_id: PlayId, duration: f64 },
 }
 
 impl Default for InstancePlayState {
   fn default() -> Self {
-    Self::Stopped
+    Self::Idle
   }
 }
 
@@ -176,7 +176,7 @@ impl Default for DesiredInstancePlayState {
 impl PartialEq<DesiredInstancePlayState> for InstancePlayState {
   fn eq(&self, other: &DesiredInstancePlayState) -> bool {
     match (self, other) {
-      | (InstancePlayState::Stopped, DesiredInstancePlayState::Stop) => true,
+      | (InstancePlayState::Idle, DesiredInstancePlayState::Stop) => true,
       | (InstancePlayState::Playing { play_id: play_id_a,
                                       duration: duration_a, },
          DesiredInstancePlayState::Play { play_id: play_id_b,

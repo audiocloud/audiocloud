@@ -8,12 +8,14 @@ use api::task::InstanceAllocationRequest;
 use api::Timestamp;
 
 pub mod run;
+pub mod server;
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TaskSpec {
   pub app_id:     String,
+  pub host_id:    String,
   pub from:       Timestamp,
   pub to:         Timestamp,
   pub requests:   HashMap<String, InstanceAllocationRequest>,

@@ -103,12 +103,12 @@ reports:
       packing: uint16le
       position:
         bytes: [ 1, 2 ]
-      transform: gainFactorToDb(value / 256.0)
+      transform: gainFactorToDb(value / 1024)
     - page: 1
       packing: uint16le
       position:
         bytes: [ 3, 4 ]
-      transform: gainFactorToDb(value / 256.0)
+      transform: gainFactorToDb(value / 1024)
   clip:
     - page: 1
       position:
@@ -121,20 +121,20 @@ reports:
       packing: int16be
       position:
         bytes: [ 7, 8 ]
-      transform: gainFactorToDb(value / 256.0)
+      transform: Math.max(-36, value * 0.1)
     - page: 1
       packing: int16be
       position:
         bytes: [ 9, 10 ]
-      transform: gainFactorToDb(value / 256.0)
+      transform: Math.max(-36, value * 0.1)
   rmsLevel:
     - page: 1
       packing: int16be
       position:
         bytes: [ 15, 16 ]
-      transform: gainFactorToDb(value / 256.0)
+      transform: Math.max(-36, value * 0.1)
     - page: 1
       packing: int16be
       position:
         bytes: [ 17, 18 ]
-      transform: gainFactorToDb(value / 256.0)
+      transform: Math.max(-36, value * 0.1)

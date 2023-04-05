@@ -10,6 +10,7 @@
       <sourceFolder url="file://$MODULE_DIR$/rust/cplxfft/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/domain-server/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/api/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rust/nats-processor/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

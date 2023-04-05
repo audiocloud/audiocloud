@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tokio::task::JoinHandle;
 
 pub mod instance_driver;
 pub mod nats_utils;
@@ -7,21 +8,6 @@ pub mod tasks;
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "type", content = "service", rename_all = "camelCase")]
-pub enum ServiceId {
-  Instances(String),
-  Driver(String),
-  Tasks(String),
-  Media(String),
+pub struct ServiceRegistry {
+  driver: JoinHandle<()>,
 }
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "type", content = "id", rename_all = "camelCase")]
-pub enum ServiceRef {
-  Local(ServiceId),
-  Remote(ServiceId),
-}
-
-#[derive(Clone)]
-pub struct ServiceRegistry {}

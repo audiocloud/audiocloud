@@ -1,251 +1,307 @@
-use std::collections::HashSet;
-use std::mem;
+use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
-use anyhow::anyhow;
-use async_nats::jetstream::kv::Operation;
-use async_nats::jetstream::{kv, Context};
 use chrono::Utc;
 use futures::StreamExt;
 use tokio::select;
 use tokio::sync::mpsc;
+use tokio::time::Interval;
 use tokio_stream::StreamMap;
-use tracing::{instrument, trace};
+use tracing::{debug, instrument};
 
-use api::driver::InstanceDriverEvent;
-use api::graph::{AudioGraphModification, GraphPlaybackEvent};
-use api::instance::InstanceSpec;
-use api::{driver, media, Timestamp};
+use api::instance::{InstancePlayState, InstanceSpec, InstanceState};
+use api::media::MediaDownloadState;
+use api::task::DesiredTaskPlayState;
+use api::Timestamp;
 use async_audio_engine::GraphPlayer;
 
+use crate::nats_utils::{watch_bucket_as_json, Buckets, WatchStream};
 use crate::tasks::{Result, TaskSpec};
 
-#[derive(Debug, Clone)]
-pub enum Command {
-  Terminate,
-  ChangeEndTime(Timestamp),
-  ModifyGraph(Vec<AudioGraphModification>),
-}
-
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
-enum WatchKey {
-  InstanceSpec(String),
-  InstanceState(String),
-  MediaState(String),
-}
-
-type WatchStream<'a> = StreamMap<WatchKey, kv::Watch<'a>>;
-type NatsResult<T> = std::result::Result<T, async_nats::Error>;
-
-pub struct TaskService<'a> {
-  jetstream:             Context,
-  task_id:               String,
+pub struct RunDomainTask {
+  id:                    String,
   spec:                  TaskSpec,
-  rx_cmd:                mpsc::Receiver<Command>,
-  enabled:               bool,
-  instance_state_bucket: kv::Store,
-  instance_spec_bucket:  kv::Store,
-  media_state_bucket:    kv::Store,
-
-  // changes to instance state and events like reports
-  events_monitor: WatchStream<'a>,
-
-  // pending instance events to send out as task event
-  instance_events: Vec<InstanceDriverEvent>,
-
-  // pending player events to send out as task event
-  player_events: Vec<GraphPlaybackEvent>,
-
-  // the current player of the graph, if any
-  current_player: Option<GraphPlayer>,
+  timer:                 Interval,
+  tx_external:           mpsc::Sender<ExternalTask>,
+  rx_external:           mpsc::Receiver<ExternalTask>,
+  watch_spec:            WatchStream<TaskSpec>,
+  watch_instance_specs:  StreamMap<String, WatchStream<InstanceSpec>>,
+  watch_instance_states: StreamMap<String, WatchStream<InstanceState>>,
+  watch_download_states: StreamMap<String, WatchStream<MediaDownloadState>>,
+  instances:             HashMap<String, TaskInstance>,
+  media:                 HashMap<String, TaskMedia>,
+  desired_play_state:    DesiredTaskPlayState,
+  player:                Option<GraphPlayer>,
+  buckets:               Buckets,
 }
 
-impl<'a> TaskService<'a> {
-  pub async fn new(jetstream: Context, task_id: String, spec: TaskSpec, rx_cmd: mpsc::Receiver<Command>) -> Result<TaskService<'a>> {
-    let instance_state_bucket = jetstream.get_key_value(driver::buckets::INSTANCE_STATE)
-                                         .await
-                                         .map_err(|err| anyhow!("Error subscribing to instance state k/v bucket: {err}"))?;
+enum ExternalTask {}
 
-    let instance_spec_bucket = jetstream.get_key_value(driver::buckets::INSTANCE_SPEC)
-                                        .await
-                                        .map_err(|err| anyhow!("Error subscribing to instance spec k/v bucket: {err}"))?;
+impl RunDomainTask {
+  pub fn new(id: String, spec: TaskSpec, buckets: Buckets) -> Result<Self> {
+    let mut watch_spec = watch_bucket_as_json::<TaskSpec>(buckets.task_spec.as_ref().clone(), id.clone());
 
-    let media_status_bucket = jetstream.get_key_value(media::buckets::MEDIA_STATE)
-                                       .await
-                                       .map_err(|err| anyhow!("Error subscribing to media status k/v bucket: {err}"))?;
+    let watch_instance_specs = StreamMap::new();
+    let watch_instance_states = StreamMap::new();
+    let watch_download_states = StreamMap::new();
 
-    let mut task_service = Self { jetstream:             { jetstream },
-                                  task_id:               { task_id },
-                                  spec:                  { spec },
-                                  rx_cmd:                { rx_cmd },
-                                  enabled:               { true },
-                                  events_monitor:        { StreamMap::new() },
-                                  instance_events:       { vec![] },
-                                  player_events:         { vec![] },
-                                  current_player:        { None },
-                                  instance_state_bucket: { instance_state_bucket },
-                                  instance_spec_bucket:  { instance_spec_bucket },
-                                  media_state_bucket:    { media_status_bucket }, };
+    let instances = HashMap::new();
+    let media = HashMap::new();
 
-    task_service.initialize().await?;
-    task_service.resubscribe_instance_watches().await?;
+    let player = None;
+    let desired_play_state = DesiredTaskPlayState::Idle;
 
-    Ok(task_service)
+    let (tx_external, rx_external) = mpsc::channel(0xff);
+    let timer = tokio::time::interval(Duration::from_secs(1));
+
+    let mut rv = Self { id,
+                        spec,
+                        timer,
+                        player,
+                        media,
+                        buckets,
+                        instances,
+                        watch_spec,
+                        tx_external,
+                        rx_external,
+                        desired_play_state,
+                        watch_instance_specs,
+                        watch_instance_states,
+                        watch_download_states };
+
+    rv.resubscribe_media();
+    rv.resubscribe_instances();
+
+    Ok(rv)
   }
 
-  async fn initialize(&mut self) -> Result {
-    Ok(())
-  }
-
+  #[instrument(err, skip(self), fields(id = self.id))]
   pub async fn run(mut self) -> Result {
-    use WatchKey::*;
-
-    while Utc::now() < self.spec.to && self.enabled {
+    while Utc::now() < self.spec.to {
       select! {
-        Some((key, event)) = self.events_monitor.next(), if !self.events_monitor.is_empty() => {
-          match key {
-              | InstanceSpec(instance_id) => self.on_instance_spec_changed(instance_id, event).await?,
-              | InstanceState(instance_id) => self.on_instance_state_changed(instance_id, event).await?,
-              | MediaState(media_url) => self.on_media_state_changed(media_url, event).await?,
+        Some((instance_id, (_, maybe_instance_spec_update))) = self.watch_instance_specs.next() => {
+          self.instance_spec_updated(instance_id, maybe_instance_spec_update);
+        },
+        Some((instance_id, (_, maybe_instance_state_update))) = self.watch_instance_states.next() => {
+          self.instance_state_updated(instance_id, maybe_instance_state_update);
+        },
+        Some((media_id, (_, maybe_download_state_update))) = self.watch_download_states.next() => {
+          self.download_state_updated(media_id, maybe_download_state_update);
+        },
+        Some((_, maybe_new_spec)) = self.watch_spec.next() => {
+          if let Some(new_spec) = maybe_new_spec {
+            self.set_spec(new_spec);
+          } else {
+            // the
+            break;
           }
         },
-        Some(cmd) = self.rx_cmd.recv() => {
-          self.execute_command(cmd).await?;
+        Some(external_task) = self.rx_external.recv() => {
+          self.external_task_completed(external_task);
         },
-        else => break
+        _ = self.timer.tick() => {
+          self.timer_tick();
+        }
       }
     }
 
+    debug!("Task finished, cleaning up");
+
+    self.cleanup();
+
     Ok(())
   }
 
-  #[instrument(skip(self, event))]
-  async fn on_instance_spec_changed(&mut self, instance_id: String, event: NatsResult<kv::Entry>) -> Result {
-    trace!("event started");
-    let Ok(event) = event else { return Ok(()); };
-    match event.operation {
-      | Operation::Put => {
-        trace!("instance spec changed");
-        let Ok(spec) = serde_json::from_slice::<InstanceSpec>(&event.value) else { return Ok(()); };
-
-        // TODO: deal with the updated spec
-      }
-      | Operation::Delete | Operation::Purge => {
-        trace!("instance deleted");
-      }
+  fn set_spec(&mut self, new_spec: TaskSpec) {
+    if &self.spec == &new_spec {
+      return;
     }
 
-    Ok(())
+    // TODO: apply the spec change
+
+    self.resubscribe_instances();
+    self.resubscribe_media();
   }
 
-  #[instrument(skip(self, event))]
-  async fn on_instance_state_changed(&mut self, instance_id: String, event: NatsResult<kv::Entry>) -> Result {
-    trace!("event started");
-    let Ok(event) = event else { return Ok(()); };
-    match event.operation {
-      | Operation::Put => {
-        trace!("instance state changed");
-      }
-      | Operation::Delete | Operation::Purge => {
-        trace!("instance state deleted");
-      }
-    }
-
-    Ok(())
-  }
-
-  #[instrument(skip(self, event))]
-  async fn on_media_state_changed(&mut self, media_url: String, event: NatsResult<kv::Entry>) -> Result {
-    trace!("event started");
-    let Ok(event) = event else { return Ok(()); };
-    match event.operation {
-      | Operation::Put => {
-        trace!("media state changed");
-      }
-      | Operation::Delete | Operation::Purge => {
-        trace!("media state deleted");
-      }
-    }
-
-    Ok(())
-  }
-
-  async fn execute_command(&mut self, cmd: Command) -> Result {
-    match cmd {
-      | Command::Terminate => {
-        self.enabled = false;
-      }
-      | Command::ChangeEndTime(new_end_time) => {
-        self.spec.to = new_end_time;
-      }
-      | Command::ModifyGraph(modifications) => {
-        self.apply_graph_modifications(modifications).await?;
-      }
-    }
-
-    Ok(())
-  }
-
-  #[instrument(err, skip(self))]
-  async fn apply_graph_modifications(&mut self, modifications: Vec<AudioGraphModification>) -> Result {
-    Ok(())
-  }
-
-  async fn resubscribe_instance_watches(&mut self) -> Result {
-    use WatchKey::*;
-
-    let to_remove = self.events_monitor
+  fn resubscribe_instances(&mut self) {
+    let to_remove = self.watch_instance_states
                         .keys()
-                        .filter(|key| match key {
-                          | InstanceSpec(id) | InstanceState(id) => !self.spec.instances.contains_key(id),
-                          | MediaState(url) => !self.spec.graph_spec.sources.values().any(|spec| &spec.source_url == url),
-                        })
+                        .filter(|key| !self.spec.instances.contains_key(*key))
                         .cloned()
                         .collect::<HashSet<_>>();
 
-    for key in to_remove {
-      self.events_monitor.remove(&key);
+    for instance_id in &to_remove {
+      self.watch_instance_states.remove(instance_id);
+      self.watch_instance_specs.remove(instance_id);
+      self.instances.remove(instance_id);
     }
 
-    for (id, instance_id) in &self.spec.instances {
-      let key = InstanceState(id.to_owned());
+    let to_remove = self.watch_download_states
+                        .keys()
+                        .filter(|key| !self.spec.graph_spec.sources.values().any(|source| &source.media_id == *key))
+                        .cloned()
+                        .collect::<HashSet<_>>();
 
-      if !self.events_monitor.contains_key(&key) {
-        let stream = self.instance_state_bucket
-                         .watch(instance_id.clone())
-                         .await
-                         .map_err(|err| anyhow!("Failed to watch instance state: {instance_id}: {err}"))?;
+    for media_id in &to_remove {
+      self.watch_download_states.remove(media_id);
+      self.media.remove(media_id);
+    }
 
-        // fuck off rust borrow checker - the streams we are getting here will get dropped when stream map is dropped
-        self.events_monitor.insert(key, unsafe { mem::transmute(stream) });
+    for instance_id in self.spec.instances.values() {
+      self.watch_instance_specs.insert(instance_id.clone(),
+                                       watch_bucket_as_json(self.buckets.instance_spec.as_ref().clone(), instance_id.clone()));
+
+      self.watch_instance_states.insert(instance_id.clone(),
+                                        watch_bucket_as_json(self.buckets.instance_state.as_ref().clone(), instance_id.clone()));
+    }
+  }
+
+  fn resubscribe_media(&mut self) {
+    for source in self.spec.graph_spec.sources.values() {
+      self.watch_download_states.insert(source.media_id.clone(),
+                                        watch_bucket_as_json(self.buckets.media_download_state.as_ref().clone(), source.media_id.clone()));
+    }
+  }
+
+  fn instance_spec_updated(&mut self, instance_id: String, spec: Option<InstanceSpec>) {
+    self.instances.entry(instance_id).or_default().spec = spec;
+
+    // TODO: update play state decision
+  }
+
+  fn instance_state_updated(&mut self, instance_id: String, spec: Option<InstanceState>) {
+    self.instances.entry(instance_id).or_default().state = spec;
+
+    // TODO: update play state decision
+  }
+
+  fn download_state_updated(&mut self, media_id: String, state: Option<MediaDownloadState>) {
+    self.media.entry(media_id).or_default().state = state;
+    self.update_play_state();
+  }
+
+  fn external_task_completed(&mut self, external: ExternalTask) {
+    match external {}
+  }
+
+  fn update_play_state(&mut self) {
+    let should_play = self.desired_play_state.is_playing();
+    let is_playing = self.player.is_some();
+
+    let (missing_instances, unready_instances) = self.get_missing_or_unready_instances();
+    let (missing_media, unready_media) = self.get_missing_or_unready_media();
+    let is_ready = missing_instances.is_empty() && unready_instances.is_empty() && missing_media.is_empty() && unready_media.is_empty();
+
+    if should_play && is_ready {
+      if !is_playing {
+        self.start_player();
       }
-
-      let key = InstanceSpec(id.to_owned());
-      if !self.events_monitor.contains_key(&key) {
-        let stream = self.instance_spec_bucket
-                         .watch(instance_id.clone())
-                         .await
-                         .map_err(|err| anyhow!("Failed to watch instance state: {instance_id}: {err}"))?;
-
-        // fuck off rust borrow checker - the streams we are getting here will get dropped when stream map is dropped
-        self.events_monitor.insert(key, unsafe { mem::transmute(stream) });
+    } else {
+      if is_playing {
+        self.stop_player();
       }
     }
+  }
+
+  fn start_player(&mut self) {}
+
+  fn stop_player(&mut self) {}
+
+  fn get_missing_or_unready_instances(&self) -> (HashSet<String>, HashSet<String>) {
+    let mut missing_instances = HashSet::new();
+    let mut unready_instances = HashSet::new();
+
+    for instance_id in self.spec.instances.values() {
+      let Some(instance) = self.instances.get(instance_id) else {
+        missing_instances.insert(instance_id.clone());
+        continue;
+      };
+
+      let Some(spec) = instance.spec.as_ref() else {
+        missing_instances.insert(instance_id.clone());
+        continue;
+      };
+
+      if spec.play_spec.is_some() {
+        let state = match instance.state.as_ref().and_then(|state| state.play.as_ref()) {
+          | None => {
+            unready_instances.insert(instance_id.clone());
+            continue;
+          }
+          | Some(state) => state,
+        };
+
+        match &self.desired_play_state {
+          | DesiredTaskPlayState::Idle =>
+            if state != &InstancePlayState::Idle {
+              unready_instances.insert(instance_id.clone());
+            },
+          | DesiredTaskPlayState::Play { play_id, .. } => match state {
+            | InstancePlayState::Playing { play_id: instance_play_id, .. } if play_id == instance_play_id => {}
+            | _ => {
+              unready_instances.insert(instance_id.clone());
+            }
+          },
+        }
+      }
+    }
+
+    (missing_instances, unready_instances)
+  }
+
+  fn get_missing_or_unready_media(&self) -> (HashSet<String>, HashSet<String>) {
+    let mut missing_media = HashSet::new();
+    let mut downloading_media = HashSet::new();
 
     for source in self.spec.graph_spec.sources.values() {
-      let source_url = &source.source_url;
-      let key = MediaState(source_url.clone());
+      let media_id = &source.media_id;
+      let media = match self.media.get(media_id) {
+        | None => {
+          missing_media.insert(media_id.to_owned());
+          continue;
+        }
+        | Some(media) => media,
+      };
 
-      if !self.events_monitor.contains_key(&key) {
-        let stream = self.instance_spec_bucket
-                         .watch(source_url.clone())
-                         .await
-                         .map_err(|err| anyhow!("Failed to watch media state: {source_url}: {err}"))?;
-
-        // fuck off rust borrow checker - the streams we are getting here will get dropped when stream map is dropped
-        self.events_monitor.insert(key, unsafe { mem::transmute(stream) });
+      match media.state.as_ref() {
+        | None => {
+          missing_media.insert(media_id.to_owned());
+        }
+        | Some(state) =>
+          if state.done.is_none() {
+            downloading_media.insert(media_id.to_owned());
+          },
       }
     }
 
-    Ok(())
+    (missing_media, downloading_media)
+  }
+
+  fn cleanup(&mut self) {
+    let is_playing = self.player.is_some();
+    if is_playing {
+      self.stop_player();
+    }
+  }
+
+  fn timer_tick(&mut self) {}
+}
+
+#[derive(Default)]
+struct TaskInstance {
+  spec:  Option<InstanceSpec>,
+  state: Option<InstanceState>,
+}
+
+#[derive(Default)]
+struct TaskMedia {
+  state: Option<MediaDownloadState>,
+}
+
+fn late_or_never(ts: Option<Timestamp>, seconds: usize) -> bool {
+  match ts {
+    | None => true,
+    | Some(ts) if Utc::now() - ts > chrono::Duration::seconds(seconds as i64) => true,
+    | _ => false,
   }
 }

@@ -12,7 +12,7 @@ pub mod bin_page_utils;
 pub mod run;
 pub mod scripting;
 pub mod serial;
-pub mod server;
+pub mod service;
 pub mod usb_hid;
 
 pub type Result<T = ()> = anyhow::Result<T>;

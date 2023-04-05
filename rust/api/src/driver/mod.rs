@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -373,16 +373,20 @@ pub enum WsDriverEvent {
   KeepAlive,
 }
 
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub struct DriverServiceSpec {
+  driver_id:    String,
+  instance_ids: HashSet<String>,
+}
+
 // we have up to three buckets for each service
 // 1. service scoped specs bucket that lists the rarely changing spec of the objects it should manage
 // 2. a globally scoped control bucket where we can manipulate desired object states, frequently
 // 3. globally scoped state bucket where we can read the current state of the objects, frequently
 
 pub mod buckets {
-  pub fn instance_specs(service_id: &str) -> String {
-    format!("audiocloud.driver.{}.specs", service_id)
-  }
-
+  pub const DRIVER_SPEC: &str = "audiocloud_driver_spec";
   pub const INSTANCE_CONTROL: &str = "audiocloud_instance_control";
   pub const INSTANCE_STATE: &str = "audiocloud_instance_state";
   pub const INSTANCE_SPEC: &str = "audiocloud_instance_spec";
