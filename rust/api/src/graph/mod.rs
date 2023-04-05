@@ -95,7 +95,7 @@ pub struct BusSpec {
   pub inputs:        Vec<Vec<InputSpec>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Copy)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub enum MidSideMode {
   EncodeToMidSide,
@@ -117,7 +117,7 @@ pub struct SinkSpec {
   pub sample_rate: u32,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Copy, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone, Copy, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayRegion {
   pub start:   u64,
@@ -125,7 +125,7 @@ pub struct PlayRegion {
   pub looping: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone, Copy)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct InputSpec {
   pub source: OutputId,

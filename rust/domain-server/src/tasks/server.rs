@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use async_nats::Client;
 use chrono::Utc;
+use futures::StreamExt;
 use tokio::task::JoinHandle;
 use tokio::time::Interval;
 use tokio::{select, spawn};
@@ -55,7 +56,7 @@ impl TasksServer {
         Some((_, request, reply)) = self.set_task_graph.next() => {
           let _ = reply.send(self.set_task_graph(request));
         },
-        _ = self.timer.next_tick() => {
+        _ = self.timer.tick() => {
           self.update_tasks();
         }
       }
@@ -91,7 +92,7 @@ impl TasksServer {
     }
   }
 
-  fn cleanup_tasks(&mut self) {
+  fn cleanup_stale_tasks(&mut self) {
     self.tasks.retain(|_, task| match task.spec.as_ref() {
                 | None => false,
                 | Some(spec) => spec.to > Utc::now(),

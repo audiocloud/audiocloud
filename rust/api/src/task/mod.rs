@@ -29,7 +29,7 @@ pub enum CreateTaskResponse {
   NoSuchInstance { instance_id: String },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum InstanceAllocationRequest {
   Fixed { instance_id: String },

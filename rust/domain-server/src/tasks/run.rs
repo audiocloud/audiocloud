@@ -38,7 +38,7 @@ pub struct RunDomainTask {
 enum ExternalTask {}
 
 impl RunDomainTask {
-  pub fn new(id: String, spec: TaskSpec, buckets: Buckets) -> Result<Self> {
+  pub fn new(id: String, spec: TaskSpec, buckets: Buckets) -> RunDomainTask {
     let mut watch_spec = watch_bucket_as_json::<TaskSpec>(buckets.task_spec.as_ref().clone(), id.clone());
 
     let watch_instance_specs = StreamMap::new();
@@ -72,7 +72,7 @@ impl RunDomainTask {
     rv.resubscribe_media();
     rv.resubscribe_instances();
 
-    Ok(rv)
+    rv
   }
 
   #[instrument(err, skip(self), fields(id = self.id))]

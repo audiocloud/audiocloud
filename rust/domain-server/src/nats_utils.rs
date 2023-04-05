@@ -5,15 +5,18 @@ use std::time::Duration;
 use async_nats::jetstream::{kv, Context};
 use async_nats::Client;
 use async_stream::stream;
+use bytes::Bytes;
 use futures::{pin_mut, Stream, StreamExt, TryFutureExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use tokio::spawn;
 use tokio::sync::oneshot;
+use tokio::time::timeout;
 use tracing::warn;
 
 use api::{driver, media, task};
 
-pub type WatchStream<T> = Pin<Box<dyn Stream<Item = (String, Option<T>)>>>;
+pub type WatchStream<T> = Pin<Box<dyn Stream<Item = (String, Option<T>)> + Send>>;
 
 pub fn watch_bucket_as_json<T: DeserializeOwned + Send + 'static>(store: kv::Store, key: String) -> WatchStream<T> {
   Box::pin(stream! {
@@ -58,6 +61,7 @@ pub fn json_err(err: serde_json::Error) -> anyhow::Error {
   anyhow::anyhow!("JSON error {err}")
 }
 
+#[derive(Clone)]
 pub struct Buckets {
   pub driver_spec:          Arc<kv::Store>,
   pub instance_state:       Arc<kv::Store>,
@@ -103,25 +107,27 @@ fn default_bucket_config(name: impl ToString, ttl: Duration) -> kv::Config {
                ..kv::Config::default() }
 }
 
-pub type RequestStream<Req, Res> = Pin<Box<dyn Stream<Item = (String, Req, oneshot::Sender<Res>)>>>;
+pub type RequestStream<Req, Res> = Pin<Box<dyn Stream<Item = (String, Req, oneshot::Sender<Res>)> + Send>>;
 
-pub fn serve_request_json<Req: DeserializeOwned, Res: Serialize>(client: Client, name: String) -> RequestStream<Req, Res> {
+pub fn serve_request_json<Req: DeserializeOwned + Send + 'static, Res: Serialize + Send + 'static>(client: Client,
+                                                                                                   name: String)
+                                                                                                   -> RequestStream<Req, Res> {
   Box::pin(stream! {
     let Ok(stream) = client.subscribe(name).await else { return; };
 
     pin_mut!(stream);
 
-    while let Some(request) = stream.next() {
-      let Some(reply) = request.reply.clone() else { continue; };
-      let Ok(req) = serde_json::from_slice::<Req>(&request.payload) else { continue; };
+    while let Some(message) = stream.next().await {
+      let Some(reply) = message.reply.clone() else { continue; };
+      let Ok(req) = serde_json::from_slice::<Req>(&message.payload) else { continue; };
 
       let (tx, rx) = oneshot::channel();
       let client = client.clone();
 
       spawn(async move {
-        let Ok(res) = timeout(rx, Duration::from_secs(10)).await else { warn!("Request timed out"); return; };
+        let Ok(Ok(res)) = timeout(Duration::from_secs(10), rx).await else { warn!("Request timed out"); return; };
         let Ok(res) = serde_json::to_string(&res) else { warn!("Response failed to serialize"); return; };
-        let Ok(_) + client.publish(reply, Bytes::from(res)).await else { warn!("Failed to publish response"); return;};
+        let Ok(_) = client.publish(reply, Bytes::from(res)).await else { warn!("Failed to publish response"); return;};
       });
 
       yield (message.subject, req, tx);
