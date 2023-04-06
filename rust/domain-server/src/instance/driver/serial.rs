@@ -11,15 +11,15 @@ use regex::Regex;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
 use tracing::debug;
 
-use api::driver::{
-  InstanceDriverEvent, InstanceDriverReportEvent, SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher,
-};
+use api::instance_driver::config::serial::{SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher};
+use api::instance_driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
 use api::instance::IdAndChannel;
 
-use crate::instance_driver::bin_page_utils::remap_and_rescale_value;
-use crate::instance_driver::scripting::{Script, ScriptingEngine};
+use crate::instance::bin_page_utils::remap_and_rescale_value;
+use crate::instance::driver::Driver;
+use crate::instance::scripting::{Script, ScriptingEngine};
 
-use super::{Driver, Result};
+use super::Result;
 
 pub struct SerialDriver {
   instance_id:          String,
@@ -146,9 +146,9 @@ impl Driver for SerialDriver {
       let Some(parameter_config) = parameter_configs.get(channel) else { continue; };
 
       let Ok(value) = remap_and_rescale_value(value,
-                                          parameter_config.remap.as_ref(),
-                                          parameter_config.rescale.as_ref(),
-                                          parameter_config.clamp.as_ref()) else { continue; };
+                                              parameter_config.remap.as_ref(),
+                                              parameter_config.rescale.as_ref(),
+                                              parameter_config.clamp.as_ref()) else { continue; };
 
       let entry_id = IdAndChannel::from((parameter_id.as_str(), channel));
 
@@ -158,7 +158,7 @@ impl Driver for SerialDriver {
         JsValue::Rational(value)
       };
 
-      let Some(transform) = self.parameter_to_strings.get(&entry_id) else { continue };
+      let Some(transform) = self.parameter_to_strings.get(&entry_id) else { continue; };
       let value = self.scripting.execute(transform, value);
       let value = self.scripting.convert_to_string(value)
                   + parameter_config.line_terminator

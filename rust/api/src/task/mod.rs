@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::driver::InstanceDriverEvent;
-use crate::graph::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent, PlayId};
 use crate::Timestamp;
+
+pub mod spec;
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -21,10 +21,7 @@ pub struct CreateTaskRequest {
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum CreateTaskResponse {
-  Success {
-    app_id: String,
-    task_id: String,
-  },
+  Success { app_id: String, task_id: String },
   OverlappingTask,
   NoSuchInstance { instance_id: String },
 }
@@ -94,9 +91,12 @@ pub struct GetTaskListResponse {
 }
 
 pub mod buckets {
-  pub const TASK_SPEC: &'static str = "audiocloud_task_spec";
-  pub const TASK_CONTROL: &'static str = "audiocloud_task_control";
-  pub const TASK_STATE: &'static str = "audiocloud_task_state";
+  use crate::task::spec::TaskSpec;
+  use crate::BucketName;
+
+  pub const TASK_SPEC: BucketName<TaskSpec> = BucketName::new("audiocloud_task_spec");
+  pub const TASK_CONTROL: BucketName<()> = BucketName::new("audiocloud_task_control");
+  pub const TASK_STATE: BucketName<()> = BucketName::new("audiocloud_task_state");
 }
 
 pub mod subjects {

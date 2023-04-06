@@ -18,6 +18,8 @@ use api::graph::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
+pub mod input_node;
+
 #[derive(Copy, Clone, Debug, Default)]
 pub struct PlayHead {
   pub sample_rate: u32,

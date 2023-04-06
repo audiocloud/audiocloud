@@ -4,7 +4,7 @@ use anyhow::bail;
 use byteorder::{ReadBytesExt, WriteBytesExt, BE, LE};
 use tracing::trace;
 
-use api::driver::{BinaryPosition, Clamp, Remap, Rescale, ValuePacking};
+use api::instance::driver::config::{BinaryPosition, Clamp, Remap, Rescale, ValuePacking};
 
 use super::Result;
 
@@ -195,6 +195,8 @@ pub fn remap_and_rescale_value(mut value: f64, remap: Option<&Remap>, rescale: O
 
 #[cfg(test)]
 mod test {
+  use api::instance::driver::config::{BinaryPosition, Clamp, Remap, Rescale};
+
   use super::*;
 
   #[test]

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tokio::task::JoinHandle;
 
-pub mod instance_driver;
+pub mod instance;
 pub mod nats_utils;
 pub mod request_tracker;
 pub mod tasks;

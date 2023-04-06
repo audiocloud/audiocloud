@@ -13,7 +13,9 @@ unsafe impl Send for ScriptingEngine {}
 
 #[derive(Debug, Clone)]
 pub struct Script(Gc<CodeBlock>);
+
 unsafe impl Send for Script {}
+
 impl Deref for Script {
   type Target = Gc<CodeBlock>;
 

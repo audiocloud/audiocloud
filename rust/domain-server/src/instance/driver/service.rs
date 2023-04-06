@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::time::Duration;
-use async_nats::Client;
 
 use futures::StreamExt;
 use tokio::sync::mpsc;
@@ -10,13 +9,15 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
 use tracing::warn;
 
-use api::driver::{InstanceDriverConfig, InstanceDriverEvent};
-use api::instance::InstanceSpec;
+use api::instance::driver::config::InstanceDriverConfig;
+use api::instance::driver::events::InstanceDriverEvent;
+use api::instance::spec::InstanceSpec;
 
-use crate::instance_driver::run::{run_driver_server, InstanceDriverCommand};
-use crate::instance_driver::serial::SerialDriver;
-use crate::instance_driver::usb_hid::UsbHidDriver;
-use crate::nats_utils::{watch_bucket_as_json, Buckets, WatchStream};
+use crate::nats_utils::{Nats, WatchStream};
+
+use super::run::{run_driver_server, InstanceDriverCommand};
+use super::serial::SerialDriver;
+use super::usb_hid::UsbHidDriver;
 
 pub struct DriverService {
   host_id:              String,
@@ -26,8 +27,8 @@ pub struct DriverService {
 }
 
 impl DriverService {
-  pub fn new(buckets: &Buckets, host_id: String) -> Self {
-    let watch_instance_specs = watch_bucket_as_json(buckets.instance_spec.as_ref().clone(), "*".to_owned());
+  pub fn new(buckets: &Nats, host_id: String) -> Self {
+    let watch_instance_specs = buckets.instance_spec.subscribe_all();
     let driver_events = StreamMap::new();
     let drivers = HashMap::new();
 

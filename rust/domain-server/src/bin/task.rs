@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::default::Default;
 
 use chrono::Utc;
-use tokio::sync::mpsc;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use api::graph::AudioGraphSpec;
-use domain_server::nats_utils::Buckets;
+use domain_server::nats_utils::Nats;
 use domain_server::tasks;
 use domain_server::tasks::TaskSpec;
 
@@ -22,7 +21,7 @@ async fn main() -> tasks::Result {
   let client = async_nats::connect("127.0.0.1:4222").await?;
   let jetstream = async_nats::jetstream::new(client);
 
-  let buckets = Buckets::new(&jetstream).await.expect("failed to create buckets");
+  let buckets = Nats::new(&jetstream).await.expect("failed to create buckets");
 
   let mut le_instnaces = HashMap::new();
   le_instnaces.insert("one".to_owned(), "pultec_1".to_owned());

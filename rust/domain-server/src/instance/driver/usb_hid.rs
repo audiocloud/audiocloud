@@ -9,14 +9,16 @@ use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
 use tracing::{debug, info, instrument, warn};
 
-use api::driver::{InstanceDriverEvent, InstanceDriverReportEvent, UsbHidDriverConfig, UsbHidReportConfig};
+use api::instance_driver::config::{UsbHidDriverConfig, UsbHidReportConfig};
+use api::instance_driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
 use api::instance::IdAndChannel;
 
-use crate::instance_driver::bin_page_utils::{write_binary_within_page, write_packed_value};
-use crate::instance_driver::scripting::{Script, ScriptingEngine};
+use crate::instance::bin_page_utils::{write_binary_within_page, write_packed_value};
+use crate::instance::driver::Driver;
+use crate::instance::scripting::{Script, ScriptingEngine};
 
 use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
-use super::{Driver, Result};
+use super::Result;
 
 pub struct UsbHidDriver {
   instance_id:             String,

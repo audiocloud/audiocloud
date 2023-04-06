@@ -9,13 +9,15 @@ use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
-use api::instance::{InstancePlayState, InstanceSpec, InstanceState};
-use api::media::MediaDownloadState;
+use api::instance::spec::InstanceSpec;
+use api::instance::state::InstanceState;
+use api::instance::InstancePlayState;
+use api::media::state::MediaDownloadState;
 use api::task::DesiredTaskPlayState;
 use api::Timestamp;
 use async_audio_engine::GraphPlayer;
 
-use crate::nats_utils::{watch_bucket_as_json, Buckets, WatchStream};
+use crate::nats_utils::{watch_bucket_as_json, Nats, WatchStream};
 use crate::tasks::{Result, TaskSpec};
 
 pub struct RunDomainTask {
@@ -32,14 +34,14 @@ pub struct RunDomainTask {
   media:                 HashMap<String, TaskMedia>,
   desired_play_state:    DesiredTaskPlayState,
   player:                Option<GraphPlayer>,
-  buckets:               Buckets,
+  buckets: Nats,
 }
 
 enum ExternalTask {}
 
 impl RunDomainTask {
-  pub fn new(id: String, spec: TaskSpec, buckets: Buckets) -> RunDomainTask {
-    let mut watch_spec = watch_bucket_as_json::<TaskSpec>(buckets.task_spec.as_ref().clone(), id.clone());
+  pub fn new(id: String, spec: TaskSpec, buckets: Nats) -> RunDomainTask {
+    let mut watch_spec = buckets.task_spec.subscribe(task_spec(id));
 
     let watch_instance_specs = StreamMap::new();
     let watch_instance_states = StreamMap::new();

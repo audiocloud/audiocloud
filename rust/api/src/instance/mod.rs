@@ -1,13 +1,27 @@
-use std::str::FromStr;
-
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::driver::InstanceDriverConfig;
 use crate::graph::PlayId;
 use crate::Timestamp;
 
+pub mod control;
+pub mod driver;
 pub mod model;
+pub mod request;
+pub mod spec;
+pub mod state;
+
+pub mod buckets {
+  use crate::instance::control::{InstancePlayControl, InstancePowerControl};
+  use crate::instance::spec::InstanceSpec;
+  use crate::instance::state::InstanceState;
+  use crate::BucketName;
+
+  pub const INSTANCE_POWER_CONTROL: BucketName<InstancePowerControl> = BucketName::new("audiocloud_instance_power_control");
+  pub const INSTANCE_PLAY_CONTROL: BucketName<InstancePlayControl> = BucketName::new("audiocloud_instance_play_control");
+  pub const INSTANCE_STATE: BucketName<InstanceState> = BucketName::new("audiocloud_instance_state");
+  pub const INSTANCE_SPEC: BucketName<InstanceSpec> = BucketName::new("audiocloud_instance_spec");
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct IdAndChannel {
@@ -30,59 +44,6 @@ pub struct InstanceSummary {
   pub driver_id:   String,
   pub power_state: InstancePowerStateSummary,
   pub play_state:  InstancePlayStateSummary,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct RegisterInstanceRequest {
-  pub id:            String,
-  pub model_id:      String,
-  pub driver_id:     String,
-  pub power_spec:    Option<InstancePowerSpec>,
-  pub play_spec:     Option<InstancePlaySpec>,
-  pub driver_config: InstanceDriverConfig,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct InstanceSpec {
-  pub id:            String,
-  pub model_id:      String,
-  pub driver_id:     String,
-  pub power_spec:    Option<InstancePowerSpec>,
-  pub play_spec:     Option<InstancePlaySpec>,
-  pub driver_config: InstanceDriverConfig,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct InstanceState {
-  pub power: Option<InstancePowerState>,
-  pub play:  Option<InstancePlayState>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct InstancePowerSpec {
-  // instance id
-  pub power_controller: String,
-  pub channel:          u32,
-  pub warm_up_ms:       u64,
-  pub cool_down_ms:     u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct InstancePlaySpec {
-  pub duration_ms: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
-#[serde(rename_all = "camelCase", tag = "type", content = "update")]
-pub enum UpdateInstanceRequest {
-  SetPowerState(InstancePowerState),
-  SetPlayState(InstancePlayState),
-  PushReports(PushInstanceReports),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]

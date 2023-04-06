@@ -8,12 +8,13 @@ use tokio::task::JoinHandle;
 use tokio::time::Interval;
 use tokio::{select, spawn};
 
+use api::task::spec::TaskSpec;
 use api::task::subjects::{GET_TASK_LIST, SET_TASK_GRAPH};
 use api::task::{GetTaskListRequest, GetTaskListResponse, SetTaskGraphRequest, SetTaskGraphResponse, TaskSummary};
 
-use crate::nats_utils::{serve_request_json, watch_bucket_as_json, Buckets, RequestStream, WatchStream};
+use crate::nats_utils::{serve_request_json, watch_bucket_as_json, Nats, RequestStream, WatchStream};
 use crate::tasks::run::RunDomainTask;
-use crate::tasks::{Result, TaskSpec};
+use crate::tasks::Result;
 
 pub struct TasksServer {
   host_id:        String,
@@ -22,11 +23,11 @@ pub struct TasksServer {
   watch_specs:    WatchStream<TaskSpec>,
   tasks:          HashMap<String, Task>,
   timer:          Interval,
-  buckets:        Buckets,
+  buckets: Nats,
 }
 
 impl TasksServer {
-  pub fn new(client: Client, host_id: String, buckets: Buckets) -> Self {
+  pub fn new(client: Client, host_id: String, buckets: Nats) -> Self {
     let watch_specs = watch_bucket_as_json(buckets.task_spec.as_ref().clone(), "*".to_owned());
     let timer = tokio::time::interval(Duration::from_secs(1));
 

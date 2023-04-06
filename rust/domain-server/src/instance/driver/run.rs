@@ -4,11 +4,14 @@ use tokio::select;
 use tokio::sync::mpsc;
 use tokio::task::block_in_place;
 use tokio::time::sleep;
-use tracing::{debug, info, instrument, trace, warn};
+use tracing::{debug, info, instrument, warn};
 
-use api::driver::{InstanceDriverEvent, SetInstanceParameterRequest};
+use api::instance::driver::events::InstanceDriverEvent;
+use api::instance::driver::requests::SetInstanceParameterRequest;
 
-use super::{Driver, Result};
+use crate::instance::driver::Driver;
+
+use super::Result;
 
 #[derive(Debug)]
 pub enum InstanceDriverCommand {
