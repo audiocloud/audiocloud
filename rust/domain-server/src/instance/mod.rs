@@ -1,7 +1,3 @@
-use std::fmt::Debug;
-use serde::de::DeserializeOwned;
-
-use api::instance_driver::events::InstanceDriverEvent;
 use api::instance::request::RegisterOrUpdateInstanceRequest;
 
 use crate::ServiceRegistry;

@@ -11,13 +11,14 @@ use regex::Regex;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
 use tracing::debug;
 
-use api::instance_driver::config::serial::{SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher};
-use api::instance_driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
+use api::instance::driver::config::serial::{SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher};
+use api::instance::driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
 use api::instance::IdAndChannel;
 
 use crate::instance::bin_page_utils::remap_and_rescale_value;
+use crate::instance::driver::bin_page_utils::remap_and_rescale_value;
+use crate::instance::driver::scripting::{Script, ScriptingEngine};
 use crate::instance::driver::Driver;
-use crate::instance::scripting::{Script, ScriptingEngine};
 
 use super::Result;
 
@@ -267,9 +268,10 @@ fn handle_line_with_pattern(instance_id: &str,
   for (report_id, report_configs) in &config.reports {
     for (channel, report_config) in report_configs.iter().enumerate() {
       match &report_config.matcher {
-        | SerialReportMatcher::StringPrefix { prefix } =>
+        | SerialReportMatcher::StringPrefix { prefix, skip, take } =>
           if line.starts_with(prefix.as_str()) {
-            let value = line[prefix.len()..].trim().parse::<f64>()?;
+            // TODO: take
+            let value = line[(prefix.len() + skip.unwrap_or_default())..].trim().parse::<f64>()?;
             return success(report_id, report_config, channel, value);
           },
         | SerialReportMatcher::Matches { regex } =>

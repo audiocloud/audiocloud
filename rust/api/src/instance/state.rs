@@ -1,4 +1,5 @@
-use schemars::JsonSchema;
+use schemars::schema::RootSchema;
+use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 
 use crate::instance::{InstancePlayState, InstancePowerState};
@@ -13,4 +14,8 @@ pub struct InstanceState {
 
 pub fn instance_state(instance_id: impl ToString) -> BucketKey<InstanceState> {
   BucketKey::new(instance_id)
+}
+
+pub fn schema() -> RootSchema {
+  schema_for!(InstanceState)
 }

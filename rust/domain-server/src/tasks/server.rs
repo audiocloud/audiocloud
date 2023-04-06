@@ -12,7 +12,7 @@ use api::task::spec::TaskSpec;
 use api::task::subjects::{GET_TASK_LIST, SET_TASK_GRAPH};
 use api::task::{GetTaskListRequest, GetTaskListResponse, SetTaskGraphRequest, SetTaskGraphResponse, TaskSummary};
 
-use crate::nats_utils::{serve_request_json, watch_bucket_as_json, Nats, RequestStream, WatchStream};
+use crate::nats::{serve_request_json, watch_bucket_as_json, Nats, RequestStream, WatchStream};
 use crate::tasks::run::RunDomainTask;
 use crate::tasks::Result;
 

@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use crate::instance::driver::events::InstanceDriverEvent;
+use crate::task::spec::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent, PlayId};
 use crate::Timestamp;
 
 pub mod spec;

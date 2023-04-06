@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use schemars::JsonSchema;
-use schemars::_serde_json::{json, Value};
+use schemars::_serde_json::Value;
+use schemars::schema::RootSchema;
+use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -46,8 +47,8 @@ pub struct ParameterModel {
   pub unit:           Option<String>,
   #[serde(default = "default_parameter_model_channels")]
   pub channels:       usize,
-  #[serde(default = "default_metadata")]
-  pub metadata:       Value,
+  #[serde(default)]
+  pub metadata:       HashMap<String, Value>,
 }
 
 fn default_parameter_model_min() -> f64 {
@@ -60,10 +61,6 @@ fn default_parameter_model_max() -> f64 {
 
 fn default_parameter_model_channels() -> usize {
   2
-}
-
-fn default_metadata() -> Value {
-  json!({})
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -79,8 +76,8 @@ pub struct ReportModel {
   pub unit:     Option<String>,
   #[serde(default = "default_report_model_channels")]
   pub channels: usize,
-  #[serde(default = "default_metadata")]
-  pub metadata: Value,
+  #[serde(default)]
+  pub metadata: HashMap<String, Value>,
 }
 
 fn default_report_model_min() -> f64 {
@@ -93,4 +90,8 @@ fn default_report_model_max() -> f64 {
 
 fn default_report_model_channels() -> usize {
   1
+}
+
+pub fn schema() -> RootSchema {
+  schema_for!(InstanceModel)
 }

@@ -13,7 +13,7 @@ use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::spec::InstanceSpec;
 
-use crate::nats_utils::{Nats, WatchStream};
+use crate::nats::{Nats, WatchStream};
 
 use super::run::{run_driver_server, InstanceDriverCommand};
 use super::serial::SerialDriver;
@@ -28,7 +28,7 @@ pub struct DriverService {
 
 impl DriverService {
   pub fn new(buckets: &Nats, host_id: String) -> Self {
-    let watch_instance_specs = buckets.instance_spec.subscribe_all();
+    let watch_instance_specs = buckets.instance_spec.watch_all();
     let driver_events = StreamMap::new();
     let drivers = HashMap::new();
 
@@ -64,7 +64,7 @@ impl DriverService {
 
   fn add_driver_if_changed(&mut self, instance_id: String, new_spec: InstanceSpec) {
     if let Some(driver) = self.drivers.get(&instance_id) {
-      if &driver.spec.driver_config != &new_spec.driver_config {
+      if &driver.spec.driver != &new_spec.driver {
         self.remove_driver(&instance_id);
         self.add_driver(instance_id, new_spec);
       }
@@ -77,7 +77,7 @@ impl DriverService {
     let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
     let (tx_evt, rx_evt) = mpsc::channel(0xff);
 
-    let handle = match &spec.driver_config {
+    let handle = match &spec.driver {
       | InstanceDriverConfig::USBHID(usb_hid) =>
         spawn(run_driver_server::<UsbHidDriver>(instance_id.clone(), usb_hid.clone(), rx_cmd, tx_evt)),
       | InstanceDriverConfig::Serial(serial) =>

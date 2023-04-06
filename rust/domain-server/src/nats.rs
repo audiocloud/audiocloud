@@ -3,6 +3,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
+use anyhow::bail;
 use async_nats::jetstream::{kv, Context};
 use async_nats::Client;
 use async_stream::stream;
@@ -102,7 +103,7 @@ impl Nats {
 
     Ok(Self { client:               client.clone(),
               jetstream:            async_nats::jetstream::new(client),
-              driver_spec:          Bucket::new(js, &instance_driver::buckets::DRIVER_SPEC, forever).await?,
+              driver_spec:          Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever).await?,
               instance_state:       Bucket::new(js, &instance::buckets::INSTANCE_STATE, forever).await?,
               instance_spec:        Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever).await?,
               instance_power_ctrl:  Bucket::new(js, &instance::buckets::INSTANCE_POWER_CONTROL, forever).await?,
@@ -129,14 +130,14 @@ impl Nats {
     serve_request_json(self.client.clone(), request)
   }
 
-  pub async fn publish_event<Evt>(&self, subject: &Events<Evt>, event: Evt) -> anyhow::Result<()> {
+  pub async fn publish_event<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<()> {
     let event = serde_json::to_vec(&event).map_err(json_err)?;
-
+    self.client.publish(subject.subject, Bytes::from(event)).await.map_err(nats_err)?;
     Ok(())
   }
 
-  pub async fn publish_event_no_wait<Evt>(&self, subject: &Events<Evt>, event: Evt) -> anyhow::Result<JoinHandle<anyhow::Result<()>>> {
-    let subject = subject.subject.clone();
+  pub async fn publish_event_no_wait<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<JoinHandle<anyhow::Result<()>>> {
+    let subject = subject.subject;
     let event = serde_json::to_vec(&event).map_err(json_err)?;
     let client = self.client.clone();
 
@@ -145,6 +146,17 @@ impl Nats {
 
          Ok::<_, anyhow::Error>(())
        }))
+  }
+
+  pub async fn request<Req, Res>(&self, subject: Request<Req, Res>, request: Req) -> anyhow::Result<Res>
+    where Req: Serialize + Send + 'static,
+          Res: DeserializeOwned + Send + 'static
+  {
+    let request = serde_json::to_vec(&request).map_err(json_err)?;
+    let response = self.client.request(subject.subject, Bytes::from(request)).await.map_err(nats_err)?;
+    let response = serde_json::from_slice(&response.data).map_err(json_err)?;
+
+    Ok(response)
   }
 }
 
@@ -214,11 +226,46 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
               _marker: PhantomData, })
   }
 
-  pub fn subscribe(&self, key: BucketKey<T>) -> WatchStream<T> {
+  pub fn watch(&self, key: BucketKey<T>) -> WatchStream<T> {
     watch_bucket_as_json(self.store.as_ref().clone(), key)
   }
 
-  pub fn subscribe_all(&self) -> WatchStream<T> {
+  pub fn watch_all(&self) -> WatchStream<T> {
     watch_bucket_as_json(self.store.as_ref().clone(), BucketKey::all())
+  }
+
+  pub async fn modify(&self, key: BucketKey<T>, modification: impl Fn(&mut T) -> ()) -> anyhow::Result<()>
+    where T: Default
+  {
+    let mut store = self.store.as_ref().clone();
+
+    for attempts in 1..=10 {
+      let entry = store.entry(&key.key).await.map_err(nats_err)?;
+
+      let (mut value, revision) = match entry {
+        | None => (T::default(), -1),
+        | Some(entry) => (serde_json::from_slice(&entry.value)?, entry.revision),
+      };
+
+      modification(&mut value);
+
+      let bytes = Bytes::from(serde_json::to_vec(&value)?);
+
+      if revision < 0 {
+        if let Ok(_) = store.put(&key.key, bytes).await.map_err(nats_err) {
+          break;
+        }
+      } else {
+        if let Ok(_) = store.update(&key.key, bytes, revision).await.map_err(nats_err) {
+          break;
+        }
+      }
+
+      if attempts == 10 {
+        bail!("Failed to modify bucket entry after 10 attempts");
+      }
+    }
+
+    Ok(())
   }
 }

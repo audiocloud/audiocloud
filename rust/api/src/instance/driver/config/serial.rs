@@ -103,21 +103,40 @@ pub struct SerialRequestTimer {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SerialReportMatcher {
-  StringPrefix { prefix: String },
-  Matches { regex: String },
+  StringPrefix {
+    prefix: String,
+    #[serde(default)]
+    skip:   Option<usize>,
+    #[serde(default)]
+    take:   Option<usize>,
+  },
+  Matches {
+    regex: String,
+  },
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SerialReportValueInterpretation {
   ParseFloat,
-  ParseDateTimeToSeconds { format: String },
-  ParseInteger { base: u8 },
-  Custom { function: String },
+  ParseDateTimeToSeconds {
+    format: String,
+  },
+  ParseInteger {
+    #[serde(default = "default_integer_base")]
+    base: u8,
+  },
+  Custom {
+    function: String,
+  },
 }
 
 impl Default for SerialReportValueInterpretation {
   fn default() -> Self {
     Self::ParseFloat
   }
+}
+
+fn default_integer_base() -> u8 {
+  10
 }

@@ -63,10 +63,6 @@ pub enum Remap {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct OscParameterConfig {}
-
-#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub enum ValuePacking {
   #[serde(rename = "uint8")]
   UInt8,

@@ -3,7 +3,7 @@ use schemars::{schema_for, JsonSchema};
 use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
-use crate::instance_driver::events::InstanceDriverReportEvent;
+use crate::instance::driver::events::InstanceDriverReportEvent;
 
 use super::config::InstanceDriverConfig;
 use super::requests::SetInstanceParameterRequest;

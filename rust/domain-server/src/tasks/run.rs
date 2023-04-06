@@ -17,7 +17,7 @@ use api::task::DesiredTaskPlayState;
 use api::Timestamp;
 use async_audio_engine::GraphPlayer;
 
-use crate::nats_utils::{watch_bucket_as_json, Nats, WatchStream};
+use crate::nats::{watch_bucket_as_json, Nats, WatchStream};
 use crate::tasks::{Result, TaskSpec};
 
 pub struct RunDomainTask {
@@ -41,7 +41,7 @@ enum ExternalTask {}
 
 impl RunDomainTask {
   pub fn new(id: String, spec: TaskSpec, buckets: Nats) -> RunDomainTask {
-    let mut watch_spec = buckets.task_spec.subscribe(task_spec(id));
+    let mut watch_spec = buckets.task_spec.watch(task_spec(id));
 
     let watch_instance_specs = StreamMap::new();
     let watch_instance_states = StreamMap::new();
@@ -224,7 +224,7 @@ impl RunDomainTask {
         continue;
       };
 
-      if spec.play_spec.is_some() {
+      if spec.media.is_some() {
         let state = match instance.state.as_ref().and_then(|state| state.play.as_ref()) {
           | None => {
             unready_instances.insert(instance_id.clone());

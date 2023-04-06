@@ -1,7 +1,9 @@
+use schemars::schema::RootSchema;
 use schemars::JsonSchema;
+use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
-use crate::graph::PlayId;
+use crate::task::spec::PlayId;
 use crate::Timestamp;
 
 pub mod control;
@@ -115,6 +117,15 @@ pub enum InstancePlayState {
   Playing { play_id: PlayId, duration: f64 },
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum InstancePlayStateTransition {
+  SetRewinding,
+  SetIdle,
+  SetBusy,
+  SetPlaying,
+}
+
 impl Default for InstancePlayState {
   fn default() -> Self {
     Self::Idle
@@ -145,4 +156,13 @@ impl PartialEq<DesiredInstancePlayState> for InstancePlayState {
       | _ => false,
     }
   }
+}
+
+pub fn schema() -> RootSchema {
+  merge_schemas([driver::schema(),
+                 spec::schema(),
+                 model::schema(),
+                 request::schema(),
+                 state::schema(),
+                 control::schema()].into_iter())
 }

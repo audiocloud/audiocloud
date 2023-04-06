@@ -1,8 +1,10 @@
-use schemars::JsonSchema;
+use schemars::schema::RootSchema;
+use schemars::{schema_for, JsonSchema};
+use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
-use crate::instance_driver::config::InstanceDriverConfig;
-use crate::instance::spec::{InstancePlaySpec, InstancePowerSpec};
+use crate::instance::driver::config::InstanceDriverConfig;
+use crate::instance::spec::{InstanceMediaSpec, InstancePowerSpec};
 use crate::Request;
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
@@ -12,7 +14,7 @@ pub struct RegisterOrUpdateInstanceRequest {
   pub model_id:      String,
   pub driver_id:     String,
   pub power_spec:    Option<InstancePowerSpec>,
-  pub play_spec:     Option<InstancePlaySpec>,
+  pub play_spec:     Option<InstanceMediaSpec>,
   pub driver_config: InstanceDriverConfig,
 }
 
@@ -24,4 +26,9 @@ pub enum RegisterOrUpdateInstanceResponse {
 
 pub fn register_or_update_instance_request() -> Request<RegisterOrUpdateInstanceRequest, RegisterOrUpdateInstanceResponse> {
   Request::new("audiocloud_instance_register_or_update")
+}
+
+pub fn schema() -> RootSchema {
+  merge_schemas([schema_for!(RegisterOrUpdateInstanceRequest),
+                 schema_for!(RegisterOrUpdateInstanceResponse)].into_iter())
 }

@@ -6,7 +6,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use api::graph::AudioGraphSpec;
-use domain_server::nats_utils::Nats;
+use domain_server::nats::Nats;
 use domain_server::tasks;
 use domain_server::tasks::TaskSpec;
 

@@ -43,6 +43,9 @@ impl ScriptingEngine {
     context.eval("function dbToGainFactor(db) { return Math.pow(10, db / 20); }")
            .map_err(|e| anyhow!("failed to register gainFactorToDb: {e:?}"))?;
 
+    context.eval("function lpad(_value, count, padding = ' ') { var value = _value.toString(); while (value.length < count) { value = padding + value; } return value; }")
+      .map_err(|e| anyhow!("failed to register gainFactorToDb: {e:?}"))?;
+
     Ok(Self { context })
   }
 

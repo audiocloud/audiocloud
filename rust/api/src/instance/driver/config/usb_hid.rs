@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::instance_driver::config::serial::SerialRequestTimer;
-
 use super::{BinaryPosition, Clamp, Remap, Rescale, ValuePacking};
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -73,19 +71,17 @@ pub struct UsbHidParameterConfig {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UsbHidReportConfig {
-  pub position:       BinaryPosition,
+  pub position:  BinaryPosition,
   #[serde(default = "page_zero")]
-  pub page:           u8,
+  pub page:      u8,
   #[serde(default)]
-  pub packing:        ValuePacking,
+  pub packing:   ValuePacking,
   #[serde(default)]
-  pub transform:      Option<String>,
+  pub transform: Option<String>,
   #[serde(default)]
-  pub rescale:        Option<Rescale>,
+  pub rescale:   Option<Rescale>,
   #[serde(default)]
-  pub remap:          Option<Remap>,
-  #[serde(default)]
-  pub request_timers: Vec<SerialRequestTimer>,
+  pub remap:     Option<Remap>,
 }
 
 fn page_zero() -> u8 {

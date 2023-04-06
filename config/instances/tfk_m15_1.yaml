@@ -1,0 +1,86 @@
+id: tfk_m15_1
+hostId: distopik-pi
+model:
+  parameters:
+    private: true
+    power:
+      min: 0
+      max: 1
+      step: 1
+  reports:
+    position:
+      unit: seconds
+      min: 0
+      max: 3600
+      step: 1
+    playState:
+      min: 0
+      max: 2
+      step: 1
+power:
+  powerController: tfk_m15_1
+  powerOn:
+    parameter: power
+    value: 1
+  powerOff:
+    parameter: power
+    value: 0
+  warmUpMs: 10000
+  coolDownMs: 5000
+  idleMs: 300000
+media:
+  durationMs: 2400000
+  reportTriggers:
+    - report: playState
+      equals: 0
+      then: setIdle
+    - report: playState
+      equals: 2
+      then: setPlaying
+    - report: playState
+      lessThan: 1000
+      then: setBusy
+  parameterTriggers:
+    stop:
+      parameter: playState
+      value: 0
+    play:
+      parameter: playState
+      value: 1
+    rewind:
+      parameter: playState
+      value: 2
+driver:
+  type: serial
+  serialNumber: 066CFF565257867767192848
+  readResponseAfterEverySend: true
+  request_timers:
+    - intervalMs: 500
+      line: RGST0000
+    - intervalMs: 500
+      line: RGSM0000
+  parameters:
+    power:
+      transform: "`SGPW${({0: '0000', 1: '1000'}[value]}`"
+      clamp:
+        min: 0
+        max: 1
+    playState:
+      transform: "`SGST${{0: 'STOP', 1: 'RCRD', 2: '2STR'}[value]}`"
+      clamp:
+        min: 0
+        max: 2
+  reports:
+    playState:
+      matcher:
+        type: stringPrefix
+        prefix: "RGST"
+        skip: 4
+      value:
+        type: parseInteger
+    position:
+      matcher:
+        type: stringPrefix
+        prefix: "RGST"
+      value:
+        type: parseInteger

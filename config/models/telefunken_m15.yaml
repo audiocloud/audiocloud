@@ -1,0 +1,7 @@
+reports:
+  position:
+    unit: seconds
+    min: 0
+    max: 3600
+  playState:
+parameters: { }

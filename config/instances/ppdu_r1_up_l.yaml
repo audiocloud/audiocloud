@@ -1,0 +1,26 @@
+hostId: macmini
+model:
+  parameters:
+    power:
+      min: 0
+      max: 1
+      step: 1
+      channels: 4
+driver:
+  type: HTTP
+  host: 10.1.254.236
+  port: 80
+  parameters:
+    power:
+      path: /netio.json
+      value:
+        type: toInteger
+      body: |
+        {
+          "Outputs": [
+            {
+              "ID": {{channel}},
+              "Action": {{value}}
+            }
+          ]
+        }
