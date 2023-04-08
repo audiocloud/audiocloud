@@ -42,11 +42,15 @@ enum InstanceCommand {
     path: PathBuf,
   },
   List {
+    /// Output format
     #[clap(short, long, default_value = "yaml")]
-    format: OutputFormat,
+    format:  OutputFormat,
+    /// Only show the instance id, not the spec body
+    #[clap(long)]
+    only_id: bool,
     /// Filter by name
     #[clap(default_value = "*")]
-    filter: String,
+    filter:  String,
   },
 }
 
@@ -60,7 +64,7 @@ impl FromStr for OutputFormat {
   type Err = anyhow::Error;
 
   fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-    match s {
+    match s.to_lowercase().as_str() {
       | "yaml" => Ok(OutputFormat::Yaml),
       | "json" => Ok(OutputFormat::Json),
       | _ => Err(anyhow!("Invalid output format")),
@@ -87,13 +91,18 @@ async fn main() -> anyhow::Result<()> {
 async fn instance_command(nats: Nats, cmd: InstanceCommand) -> Result {
   match cmd {
     | InstanceCommand::Put { id, path } => put_instance(nats, id, path).await,
-    | InstanceCommand::List { format, filter } => list_instances(nats, filter, format).await,
+    | InstanceCommand::List { format, only_id, filter } => list_instances(nats, filter, format, only_id).await,
   }
 }
 
-async fn list_instances(nats: Nats, filter: String, format: OutputFormat) -> Result {
+async fn list_instances(nats: Nats, filter: String, format: OutputFormat, only_id: bool) -> Result {
   let list = nats.instance_spec.scan(&filter).await?;
   for (id, spec) in list {
+    if only_id {
+      println!("{id}");
+      continue;
+    }
+
     match format {
       | OutputFormat::Yaml => {
         println!("# instance {id}\n{}---", serde_yaml::to_string(&spec)?);
