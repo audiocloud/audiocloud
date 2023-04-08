@@ -56,7 +56,7 @@ impl Driver for UsbHidDriver {
     Ok(HID_API.clone())
   }
 
-  #[instrument(err, skip(shared, instance_id))]
+  #[instrument(err, skip(config, shared, instance_id))]
   fn new(instance_id: &str, shared: &mut Self::Shared, config: UsbHidDriverConfig) -> Result<Self> {
     let mut shared = shared.lock().expect("HID API lock failed");
     shared.refresh_devices()?;
