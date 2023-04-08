@@ -14,13 +14,14 @@ driver:
       url: |
         `${baseUrl}/netio.json`
       body: |
-        JSON.toString({
+        JSON.stringify({
             "Outputs": [
                 {
-                    "ID": channel,
+                    "ID": (channel + 1).toFixed(),
                     "Action": value.toFixed()
                 }
             ]
         })
       headers:
         Content-Type: application/json
+

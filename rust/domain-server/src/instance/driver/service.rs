@@ -20,6 +20,7 @@ use crate::nats::{Nats, WatchStream};
 use super::run::{run_driver_server, InstanceDriverCommand};
 use super::serial::SerialDriver;
 use super::usb_hid::UsbHidDriver;
+use super::Result;
 
 pub struct DriverService {
   nats:                 Nats,
@@ -42,7 +43,7 @@ impl DriverService {
            driver_events }
   }
 
-  pub async fn run(mut self) {
+  pub async fn run(mut self) -> Result {
     loop {
       select! {
         Some((instance_id, maybe_new_spec)) = self.watch_instance_specs.next() => {
@@ -61,9 +62,12 @@ impl DriverService {
         },
         _ = tokio::time::sleep(Duration::from_secs(1)) => {
           self.redeploy_failed_drivers();
-        }
+        },
+        else => break
       }
     }
+
+    Ok(())
   }
 
   fn add_driver_if_changed(&mut self, instance_id: String, new_spec: InstanceSpec) {

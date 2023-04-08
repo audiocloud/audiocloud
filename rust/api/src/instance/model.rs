@@ -16,6 +16,7 @@ pub struct InstanceModel {
   pub audio_inputs:  usize,
   #[serde(default = "default_audio_io_count")]
   pub audio_outputs: usize,
+  #[serde(default)]
   pub supports:      HashSet<InstanceFeature>,
 }
 

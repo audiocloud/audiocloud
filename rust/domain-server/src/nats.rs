@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -16,6 +17,7 @@ use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tracing::warn;
+use wildmatch::WildMatch;
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::spec::DriverServiceSpec;
@@ -264,6 +266,32 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
               _marker: PhantomData, })
   }
 
+  pub async fn scan(&self, filter: &str) -> anyhow::Result<HashMap<String, T>> {
+    let matcher = WildMatch::new(filter);
+    let mut rv = HashMap::new();
+    let mut keys = self.store.keys().await.map_err(nats_err)?;
+    while let Some(key) = keys.next().await {
+      let Ok(key) = key else { continue; };
+      if matcher.matches(&key) {
+        let entry = self.store.entry(&key).await.map_err(nats_err)?;
+        if let Some(entry) = entry {
+          rv.insert(key, serde_json::from_slice(&entry.value).map_err(json_err)?);
+        }
+      }
+    }
+
+    Ok(rv)
+  }
+
+  pub async fn put(&self, key: BucketKey<T>, value: T) -> anyhow::Result<()>
+    where T: Serialize
+  {
+    let value = serde_json::to_vec(&value).map_err(json_err)?;
+    self.store.put(&key.key, Bytes::from(value)).await.map_err(nats_err)?;
+
+    Ok(())
+  }
+
   pub fn watch(&self, key: BucketKey<T>) -> WatchStream<T> {
     watch_bucket_as_json(self.store.as_ref().clone(), key)
   }
@@ -277,7 +305,7 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
           T: DeserializeOwned,
           T: Serialize
   {
-    let mut store = self.store.as_ref().clone();
+    let store = self.store.as_ref().clone();
 
     for attempts in 1..=10 {
       let entry = store.entry(&key.key).await.map_err(nats_err)?;
