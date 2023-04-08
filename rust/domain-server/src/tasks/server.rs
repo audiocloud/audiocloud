@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use async_nats::Client;
 use chrono::Utc;
 use futures::StreamExt;
 use tokio::task::JoinHandle;
@@ -9,10 +8,10 @@ use tokio::time::Interval;
 use tokio::{select, spawn};
 
 use api::task::spec::TaskSpec;
-use api::task::subjects::{GET_TASK_LIST, SET_TASK_GRAPH};
+use api::task::subjects::{get_task_list, set_task_graph};
 use api::task::{GetTaskListRequest, GetTaskListResponse, SetTaskGraphRequest, SetTaskGraphResponse, TaskSummary};
 
-use crate::nats::{serve_request_json, watch_bucket_as_json, Nats, RequestStream, WatchStream};
+use crate::nats::{Nats, RequestStream, WatchStream};
 use crate::tasks::run::RunDomainTask;
 use crate::tasks::Result;
 
@@ -23,16 +22,16 @@ pub struct TasksServer {
   watch_specs:    WatchStream<TaskSpec>,
   tasks:          HashMap<String, Task>,
   timer:          Interval,
-  buckets: Nats,
+  nats:           Nats,
 }
 
 impl TasksServer {
-  pub fn new(client: Client, host_id: String, buckets: Nats) -> Self {
-    let watch_specs = watch_bucket_as_json(buckets.task_spec.as_ref().clone(), "*".to_owned());
+  pub fn new(nats: Nats, host_id: String) -> Self {
+    let watch_specs = nats.task_spec.watch_all();
     let timer = tokio::time::interval(Duration::from_secs(1));
 
-    let get_task_list = serve_request_json(client.clone(), GET_TASK_LIST.to_owned());
-    let set_task_graph = serve_request_json(client.clone(), SET_TASK_GRAPH.to_owned());
+    let get_task_list = nats.serve_requests(get_task_list());
+    let set_task_graph = nats.serve_requests(set_task_graph());
 
     let tasks = HashMap::new();
 
@@ -42,7 +41,7 @@ impl TasksServer {
            watch_specs,
            tasks,
            timer,
-           buckets }
+           nats }
   }
 
   pub async fn run(mut self) -> Result {
@@ -87,7 +86,7 @@ impl TasksServer {
       }
 
       if task.handle.as_ref().map(|task| task.is_finished()).unwrap_or(true) {
-        let mut domain_task = RunDomainTask::new(task_id.clone(), spec.clone(), self.buckets.clone());
+        let mut domain_task = RunDomainTask::new(task_id.clone(), spec.clone(), self.nats.clone());
         task.handle = Some(spawn(async move { domain_task.run().await }));
       }
     }

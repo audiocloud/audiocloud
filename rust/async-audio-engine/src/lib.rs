@@ -12,9 +12,9 @@ use futures::stream::StreamExt;
 use itertools::Itertools;
 use rtrb::{Consumer, Producer};
 use tokio::sync::RwLock;
-use tokio::time::{timeout_at, Instant};
+use tokio::time::{Instant, timeout_at};
 
-use api::graph::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
+use api::task::spec::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
 
 pub type Result<T = ()> = anyhow::Result<T>;
 

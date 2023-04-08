@@ -1,47 +1,63 @@
-type: SPI
-version: D2
-device: /dev/PIVO
-parameterPages:
-  - page: 0
-    size: 12
-  - page: 1
-    size: 12
-  - page: 2
-    size: 12
-  - page: 3
-    size: 12
-  - page: 4
-    size: 12
-  - page: 5
-    size: 12
-parameters:
-  inputGain:
-    - page: 3
-      bitRange: [ [ 72, 79 ] ]
-      transform: firstBitNegatedRotSwitch(value)
-      remap:
-        type: linear
-        values: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
+id: n1084_1
+host: localhost
+model:
+  parameters:
+    inputGain:
+      type: float
+      unit: dB
+      allowedValues: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
+      metadata:
+        off: -1000
+    highPassFilter:
+      type: float
+      unit: Hz
+      allowedValues: [ -1000, 22, 45, 70, 160, 360 ]
+      metadata:
+        off: -1000
+driver:
+  type: SPI
+  version: PIVO
+  parameterPages:
+    - page: 0
+      size: 12
     - page: 1
-      bitRange: [ [ 72, 79 ] ]
-      remap:
-        type: linear
-        values: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
-      transform: firstBitNegatedRotSwitch(value)
-  highPassFilter:
+      size: 12
+    - page: 2
+      size: 12
     - page: 3
-      bitRange:
-        - [ 56, 61 ]
-        - [ 62, 51 ]
-      remap:
-        type: linear
-        values: [ -1000, 22, 45, 70, 160, 360 ]
-      transform: rotSwitch(value)
-    - page: 1
-      bitRange:
-        - [ 56, 61 ]
-        - [ 62, 51 ]
-      remap:
-        type: linear
-        values: [ -1000, 22, 45, 70, 160, 360 ]
-      transform: rotSwitch(value)
+      size: 12
+    - page: 4
+      size: 12
+    - page: 5
+      size: 12
+  parameters:
+    inputGain:
+      - page: 3
+        bitRange: [ [ 72, 79 ] ]
+        transform: firstBitNegatedRotSwitch(value)
+        remap:
+          type: linear
+          values: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
+      - page: 1
+        bitRange: [ [ 72, 79 ] ]
+        remap:
+          type: linear
+          values: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
+        transform: firstBitNegatedRotSwitch(value)
+    highPassFilter:
+      - page: 3
+        bitRange:
+          - [ 56, 61 ]
+          - [ 62, 51 ]
+        remap:
+          type: linear
+          values: [ -1000, 22, 45, 70, 160, 360 ]
+        transform: rotSwitch(value)
+      - page: 1
+        bitRange:
+          - [ 56, 61 ]
+          - [ 62, 51 ]
+        remap:
+          type: linear
+          values: [ -1000, 22, 45, 70, 160, 360 ]
+        transform: rotSwitch(value)

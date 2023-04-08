@@ -3,8 +3,10 @@ use schemars::{schema_for, JsonSchema};
 use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
+pub mod http;
 pub mod osc;
 pub mod serial;
+pub mod spi;
 pub mod usb_hid;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -16,6 +18,10 @@ pub enum InstanceDriverConfig {
   Serial(serial::SerialDriverConfig),
   #[serde(rename = "OSC")]
   OSC(osc::OscDriverConfig),
+  #[serde(rename = "HTTP")]
+  HTTP(http::HttpDriverConfig),
+  #[serde(rename = "SPI")]
+  SPI(spi::SpiDriverConfig),
 }
 
 fn read_interval_ms_default() -> i32 {

@@ -1,5 +1,5 @@
 id: btmkr_ml_1
-hostId: better_pi
+host: better-pi
 power:
   powerController: ppdu_r1_up_l
   powerOn:

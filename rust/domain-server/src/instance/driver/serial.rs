@@ -15,7 +15,6 @@ use api::instance::driver::config::serial::{SerialDriverConfig, SerialFlowContro
 use api::instance::driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
 use api::instance::IdAndChannel;
 
-use crate::instance::bin_page_utils::remap_and_rescale_value;
 use crate::instance::driver::bin_page_utils::remap_and_rescale_value;
 use crate::instance::driver::scripting::{Script, ScriptingEngine};
 use crate::instance::driver::Driver;

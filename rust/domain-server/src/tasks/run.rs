@@ -9,16 +9,18 @@ use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
-use api::instance::spec::InstanceSpec;
-use api::instance::state::InstanceState;
+use api::instance::spec::{instance_spec, InstanceSpec};
+use api::instance::state::{instance_state, InstanceState};
 use api::instance::InstancePlayState;
-use api::media::state::MediaDownloadState;
+use api::media::state::{media_download_state, MediaDownloadState};
+use api::task::buckets::task_spec;
+use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
 use api::Timestamp;
 use async_audio_engine::GraphPlayer;
 
-use crate::nats::{watch_bucket_as_json, Nats, WatchStream};
-use crate::tasks::{Result, TaskSpec};
+use crate::nats::{Nats, WatchStream};
+use crate::tasks::Result;
 
 pub struct RunDomainTask {
   id:                    String,
@@ -34,14 +36,14 @@ pub struct RunDomainTask {
   media:                 HashMap<String, TaskMedia>,
   desired_play_state:    DesiredTaskPlayState,
   player:                Option<GraphPlayer>,
-  buckets: Nats,
+  nats:                  Nats,
 }
 
 enum ExternalTask {}
 
 impl RunDomainTask {
-  pub fn new(id: String, spec: TaskSpec, buckets: Nats) -> RunDomainTask {
-    let mut watch_spec = buckets.task_spec.watch(task_spec(id));
+  pub fn new(id: String, spec: TaskSpec, nats: Nats) -> RunDomainTask {
+    let mut watch_spec = nats.task_spec.watch(task_spec(&id));
 
     let watch_instance_specs = StreamMap::new();
     let watch_instance_states = StreamMap::new();
@@ -61,7 +63,7 @@ impl RunDomainTask {
                         timer,
                         player,
                         media,
-                        buckets,
+                        nats,
                         instances,
                         watch_spec,
                         tx_external,
@@ -119,8 +121,6 @@ impl RunDomainTask {
       return;
     }
 
-    // TODO: apply the spec change
-
     self.resubscribe_instances();
     self.resubscribe_media();
   }
@@ -138,6 +138,16 @@ impl RunDomainTask {
       self.instances.remove(instance_id);
     }
 
+    for instance_id in self.spec.instances.values() {
+      self.watch_instance_specs
+          .insert(instance_id.clone(), self.nats.instance_spec.watch(instance_spec(&instance_id)));
+
+      self.watch_instance_states
+          .insert(instance_id.clone(), self.nats.instance_state.watch(instance_state(&instance_id)));
+    }
+  }
+
+  fn resubscribe_media(&mut self) {
     let to_remove = self.watch_download_states
                         .keys()
                         .filter(|key| !self.spec.graph_spec.sources.values().any(|source| &source.media_id == *key))
@@ -149,19 +159,13 @@ impl RunDomainTask {
       self.media.remove(media_id);
     }
 
-    for instance_id in self.spec.instances.values() {
-      self.watch_instance_specs.insert(instance_id.clone(),
-                                       watch_bucket_as_json(self.buckets.instance_spec.as_ref().clone(), instance_id.clone()));
-
-      self.watch_instance_states.insert(instance_id.clone(),
-                                        watch_bucket_as_json(self.buckets.instance_state.as_ref().clone(), instance_id.clone()));
-    }
-  }
-
-  fn resubscribe_media(&mut self) {
     for source in self.spec.graph_spec.sources.values() {
+      if self.watch_download_states.contains_key(&source.media_id) {
+        continue;
+      }
+
       self.watch_download_states.insert(source.media_id.clone(),
-                                        watch_bucket_as_json(self.buckets.media_download_state.as_ref().clone(), source.media_id.clone()));
+                                        self.nats.media_download_state.watch(media_download_state(&source.media_id)));
     }
   }
 

@@ -94,14 +94,25 @@ pub struct GetTaskListResponse {
 
 pub mod buckets {
   use crate::task::spec::TaskSpec;
-  use crate::BucketName;
+  use crate::{BucketKey, BucketName};
 
   pub const TASK_SPEC: BucketName<TaskSpec> = BucketName::new("audiocloud_task_spec");
   pub const TASK_CONTROL: BucketName<()> = BucketName::new("audiocloud_task_control");
   pub const TASK_STATE: BucketName<()> = BucketName::new("audiocloud_task_state");
+
+  pub fn task_spec(task_id: impl ToString) -> BucketKey<TaskSpec> {
+    BucketKey::new(task_id)
+  }
 }
 
 pub mod subjects {
-  pub const GET_TASK_LIST: &'static str = "audiocloud_get_task_list";
-  pub const SET_TASK_GRAPH: &'static str = "audiocloud_set_task_graph";
+  use crate::task::{GetTaskListRequest, GetTaskListResponse, SetTaskGraphRequest, SetTaskGraphResponse};
+  use crate::Request;
+
+  pub fn get_task_list() -> Request<GetTaskListRequest, GetTaskListResponse> {
+    Request::new("audiocloud_get_task_list")
+  }
+  pub fn set_task_graph() -> Request<SetTaskGraphRequest, SetTaskGraphResponse> {
+    Request::new("audiocloud_set_task_graph")
+  }
 }

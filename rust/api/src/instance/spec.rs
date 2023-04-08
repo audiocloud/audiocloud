@@ -10,11 +10,11 @@ use crate::BucketKey;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceSpec {
-  pub model:   InstanceModel,
-  pub host_id: String,
-  pub power:   Option<InstancePowerSpec>,
-  pub media:   Option<InstanceMediaSpec>,
-  pub driver:  InstanceDriverConfig,
+  pub model:  InstanceModel,
+  pub host:   String,
+  pub power:  Option<InstancePowerSpec>,
+  pub media:  Option<InstanceMediaSpec>,
+  pub driver: InstanceDriverConfig,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
@@ -41,6 +41,8 @@ impl InstancePowerSpec {
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMediaSpec {
   pub duration_ms:     u64,
+  #[serde(default = "default_position_report")]
+  pub position_report: String,
   pub report_triggers: Vec<PlayStateReportTrigger>,
   pub play:            ParameterCommand,
   pub stop:            ParameterCommand,
@@ -105,6 +107,10 @@ impl PlayStateReportTrigger {
     }
     false
   }
+}
+
+fn default_position_report() -> String {
+  "position".to_owned()
 }
 
 pub fn instance_spec(instance_id: impl ToString) -> BucketKey<InstanceSpec> {

@@ -1,4 +1,4 @@
-hostId: macmini
+host: macmini
 model:
   parameters:
     power:
@@ -8,19 +8,19 @@ model:
       channels: 4
 driver:
   type: HTTP
-  host: 10.1.254.236
-  port: 80
+  baseUrl: http://10.1.254.236
   parameters:
     power:
-      path: /netio.json
-      value:
-        type: toInteger
+      url: |
+        `${baseUrl}/netio.json`
       body: |
-        {
-          "Outputs": [
-            {
-              "ID": {{channel}},
-              "Action": {{value}}
-            }
-          ]
-        }
+        JSON.toString({
+            "Outputs": [
+                {
+                    "ID": channel,
+                    "Action": value.toFixed()
+                }
+            ]
+        })
+      headers:
+        Content-Type: application/json

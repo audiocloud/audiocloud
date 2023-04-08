@@ -1,5 +1,5 @@
 id: tfk_m15_1
-hostId: distopik-pi
+host: distopik-pi
 model:
   parameters:
     private: true
@@ -30,6 +30,7 @@ power:
   idleMs: 300000
 media:
   durationMs: 2400000
+  positionReport: position
   reportTriggers:
     - report: playState
       equals: 0
@@ -61,12 +62,12 @@ driver:
       line: RGSM0000
   parameters:
     power:
-      transform: "`SGPW${({0: '0000', 1: '1000'}[value]}`"
+      transform: "`SGPW${(['0000', '1000'][value]}`"
       clamp:
         min: 0
         max: 1
     playState:
-      transform: "`SGST${{0: 'STOP', 1: 'RCRD', 2: '2STR'}[value]}`"
+      transform: "`SGST${['STOP', 'RCRD', '2STR'][value]}`"
       clamp:
         min: 0
         max: 2

@@ -5,10 +5,9 @@ use chrono::Utc;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use api::graph::AudioGraphSpec;
+use api::task::spec::{AudioGraphSpec, TaskSpec};
 use domain_server::nats::Nats;
 use domain_server::tasks;
-use domain_server::tasks::TaskSpec;
 
 const LOG_DEFAULTS: &'static str = "info,task=trace,domain_server=trace,tower_http=debug";
 
@@ -18,10 +17,8 @@ async fn main() -> tasks::Result {
                                 .with(tracing_subscriber::fmt::layer())
                                 .init();
 
-  let client = async_nats::connect("127.0.0.1:4222").await?;
-  let jetstream = async_nats::jetstream::new(client);
-
-  let buckets = Nats::new(&jetstream).await.expect("failed to create buckets");
+  let buckets = Nats::new(async_nats::connect("127.0.0.1:4222").await?).await
+                                                                       .expect("failed to create buckets");
 
   let mut le_instnaces = HashMap::new();
   le_instnaces.insert("one".to_owned(), "pultec_1".to_owned());

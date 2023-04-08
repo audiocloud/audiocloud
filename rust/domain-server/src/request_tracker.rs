@@ -48,7 +48,10 @@ impl<Desired, Actual> RequestTracker<Desired, Actual> where Actual: Clone
   }
 }
 
-impl<Desired, Actual> RequestTracker<Desired, Actual> {
+impl<Desired, Actual> RequestTracker<Desired, Actual>
+  where Desired: PartialEq,
+        Actual: PartialEq
+{
   pub fn new(actual: Actual, desired: Desired) -> Self {
     Self { desired:           Timestamped::now(desired),
            actual:            Timestamped::now(actual),
@@ -63,16 +66,24 @@ impl<Desired, Actual> RequestTracker<Desired, Actual> {
     self.next_request_at = now + Duration::milliseconds(self.retry_interval_ms as i64);
   }
 
-  pub fn set_desired(&mut self, desired: Desired) {
+  pub fn set_desired(&mut self, desired: Desired) -> bool {
     if self.desired.value != desired {
       self.desired = Timestamped::now(desired);
       self.last_request_at = None;
       self.next_request_at = Utc::now();
+      true
+    } else {
+      false
     }
   }
 
-  pub fn set_actual(&mut self, actual: Actual) {
-    self.actual = Timestamped::now(actual);
+  pub fn set_actual(&mut self, actual: Actual) -> bool {
+    if self.actual.value != actual {
+      self.actual = Timestamped::now(actual);
+      true
+    } else {
+      false
+    }
   }
 
   pub fn set_retry_interval(&mut self, interval_ms: u32) {
@@ -85,8 +96,8 @@ impl<Desired, Actual> RequestTracker<Desired, Actual> {
 }
 
 impl<Desired, Actual> Default for RequestTracker<Desired, Actual>
-  where Desired: Default,
-        Actual: Default
+  where Desired: Default + PartialEq,
+        Actual: Default + PartialEq
 {
   fn default() -> Self {
     Self::new(Default::default(), Default::default())

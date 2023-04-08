@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use schemars::schema::RootSchema;
 use schemars::{schema_for, JsonSchema};
 use schemars_zod::merge_schemas;
@@ -19,6 +21,22 @@ pub enum SetInstanceParameterResponse {
   Success,
   ParameterNotFound,
   ChannelNotFound,
+}
+
+impl Display for SetInstanceParameterResponse {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    match self {
+      | SetInstanceParameterResponse::Success => {
+        write!(f, "Success")
+      }
+      | SetInstanceParameterResponse::ParameterNotFound => {
+        write!(f, "Parameter not found")
+      }
+      | SetInstanceParameterResponse::ChannelNotFound => {
+        write!(f, "Channel not found")
+      }
+    }
+  }
 }
 
 pub fn set_instance_parameters_request(instance_id: impl AsRef<str>)

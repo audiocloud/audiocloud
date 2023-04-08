@@ -10,9 +10,11 @@ use tokio_stream::StreamMap;
 use tracing::warn;
 
 use api::instance::driver::config::InstanceDriverConfig;
-use api::instance::driver::events::InstanceDriverEvent;
+use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::spec::InstanceSpec;
+use api::Events;
 
+use crate::instance::driver::http::HttpDriver;
 use crate::nats::{Nats, WatchStream};
 
 use super::run::{run_driver_server, InstanceDriverCommand};
@@ -20,19 +22,21 @@ use super::serial::SerialDriver;
 use super::usb_hid::UsbHidDriver;
 
 pub struct DriverService {
-  host_id:              String,
+  nats:                 Nats,
+  host:                 String,
   drivers:              HashMap<String, DriverServer>,
   watch_instance_specs: WatchStream<InstanceSpec>,
   driver_events:        StreamMap<String, ReceiverStream<InstanceDriverEvent>>,
 }
 
 impl DriverService {
-  pub fn new(buckets: &Nats, host_id: String) -> Self {
-    let watch_instance_specs = buckets.instance_spec.watch_all();
+  pub fn new(nats: Nats, host: String) -> Self {
+    let watch_instance_specs = nats.instance_spec.watch_all();
     let driver_events = StreamMap::new();
     let drivers = HashMap::new();
 
-    Self { host_id,
+    Self { nats,
+           host,
            drivers,
            watch_instance_specs,
            driver_events }
@@ -43,7 +47,7 @@ impl DriverService {
       select! {
         Some((instance_id, maybe_new_spec)) = self.watch_instance_specs.next() => {
           if let Some(new_spec) = maybe_new_spec {
-            if &new_spec.driver_id == &self.host_id {
+            if &new_spec.host == &self.host {
               self.add_driver_if_changed(instance_id, new_spec);
             } else {
               self.remove_driver(&instance_id);
@@ -86,10 +90,20 @@ impl DriverService {
         warn!("OSC driver not implemented yet");
         return;
       }
+      | InstanceDriverConfig::HTTP(http) => spawn(run_driver_server::<HttpDriver>(instance_id.clone(), http.clone(), rx_cmd, tx_evt)),
+      | InstanceDriverConfig::SPI(spi) => {
+        warn!("SPI driver not implemented yet");
+        return;
+      }
     };
 
+    let events_subject = instance_driver_events(&instance_id);
+
     self.driver_events.insert(instance_id.clone(), ReceiverStream::new(rx_evt));
-    self.drivers.insert(instance_id.clone(), DriverServer { spec, tx_cmd, handle });
+    self.drivers.insert(instance_id.clone(), DriverServer { spec,
+                                                            tx_cmd,
+                                                            handle,
+                                                            events_subject });
   }
 
   fn redeploy_failed_drivers(&mut self) {
@@ -108,9 +122,7 @@ impl DriverService {
     }
   }
 
-  fn handle_driver_event(&mut self, instance_id: String, event: InstanceDriverEvent) {
-    // TODO: emit events on NATS subject for events
-  }
+  fn handle_driver_event(&mut self, instance_id: String, event: InstanceDriverEvent) {}
 
   fn remove_driver(&mut self, instance_id: &str) {
     if let Some(driver) = self.drivers.remove(instance_id) {
@@ -120,7 +132,8 @@ impl DriverService {
 }
 
 pub struct DriverServer {
-  spec:   InstanceSpec,
-  tx_cmd: mpsc::Sender<InstanceDriverCommand>,
-  handle: JoinHandle<super::Result>,
+  spec:           InstanceSpec,
+  tx_cmd:         mpsc::Sender<InstanceDriverCommand>,
+  handle:         JoinHandle<super::Result>,
+  events_subject: Events<InstanceDriverEvent>,
 }

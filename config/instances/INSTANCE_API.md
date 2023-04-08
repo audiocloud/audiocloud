@@ -10,12 +10,12 @@ Convert from gain factor to dB.
 
 Convert from dB to gain factor.
 
-## Instance State
+### `lpad`
 
-### `setPosition`
+arguments:
 
-Sets the position of the instance media, in seconds. Any positive number except NaN and +Infinity are accepted.
+- `str` - the value to pad (stringifying it if it is not a string already)
+- `n` - the length to pad to
+- `c` - the character or string to pad with, defaults to ' ' (a space)
 
-### `setPlayState`
-
-Sets the play state of the instance. Accepts `playing`, `rewinding`, `preparingToStop`, `stopped`, `preparingToPlay`.
+Pad a string on the left to a length of n characters

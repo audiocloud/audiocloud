@@ -3,12 +3,12 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::bail;
+use anyhow::{anyhow, bail};
 use async_nats::jetstream::{kv, Context};
 use async_nats::Client;
 use async_stream::stream;
 use bytes::Bytes;
-use futures::{pin_mut, Stream, StreamExt};
+use futures::{pin_mut, FutureExt, Stream, StreamExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::spawn;
@@ -24,7 +24,7 @@ use api::instance::state::InstanceState;
 use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::task::spec::TaskSpec;
-use api::{instance, instance_driver, media, task, BucketKey, BucketName, Events, Request};
+use api::{instance, media, task, BucketKey, BucketName, Events, Request};
 
 pub type WatchStream<T> = Pin<Box<dyn Stream<Item = (String, Option<T>)> + Send>>;
 
@@ -68,11 +68,19 @@ pub fn watch_bucket_as_json<T>(store: kv::Store, control: BucketKey<T>) -> Watch
 }
 
 pub fn nats_err(err: async_nats::Error) -> anyhow::Error {
-  anyhow::anyhow!("NATS error {err}")
+  anyhow!("NATS error {err}")
+}
+
+pub fn nats_request_err(err: async_nats::RequestError) -> anyhow::Error {
+  anyhow!("NATS request error {err}")
+}
+
+pub fn nats_publish_err(err: async_nats::PublishError) -> anyhow::Error {
+  anyhow!("NATS publish error {err}")
 }
 
 pub fn json_err(err: serde_json::Error) -> anyhow::Error {
-  anyhow::anyhow!("JSON error {err}")
+  anyhow!("JSON error {err}")
 }
 
 #[derive(Clone)]
@@ -130,19 +138,26 @@ impl Nats {
     serve_request_json(self.client.clone(), request)
   }
 
-  pub async fn publish_event<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<()> {
+  pub async fn publish_event<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<()>
+    where Evt: Serialize
+  {
     let event = serde_json::to_vec(&event).map_err(json_err)?;
-    self.client.publish(subject.subject, Bytes::from(event)).await.map_err(nats_err)?;
+    self.client
+        .publish(subject.subject, Bytes::from(event))
+        .await
+        .map_err(nats_publish_err)?;
     Ok(())
   }
 
-  pub async fn publish_event_no_wait<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<JoinHandle<anyhow::Result<()>>> {
+  pub async fn publish_event_no_wait<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<JoinHandle<anyhow::Result<()>>>
+    where Evt: Serialize
+  {
     let subject = subject.subject;
     let event = serde_json::to_vec(&event).map_err(json_err)?;
     let client = self.client.clone();
 
     Ok(spawn(async move {
-         client.publish(subject, Bytes::from(event)).await.map_err(nats_err)?;
+         client.publish(subject, Bytes::from(event)).await.map_err(nats_publish_err)?;
 
          Ok::<_, anyhow::Error>(())
        }))
@@ -153,10 +168,31 @@ impl Nats {
           Res: DeserializeOwned + Send + 'static
   {
     let request = serde_json::to_vec(&request).map_err(json_err)?;
-    let response = self.client.request(subject.subject, Bytes::from(request)).await.map_err(nats_err)?;
-    let response = serde_json::from_slice(&response.data).map_err(json_err)?;
+    let response = self.client
+                       .request(subject.subject, Bytes::from(request))
+                       .await
+                       .map_err(nats_request_err)?;
+    let response = serde_json::from_slice(&response.payload).map_err(json_err)?;
 
     Ok(response)
+  }
+
+  pub async fn request_and_forget<Req, Res, F>(&self, subject: Request<Req, Res>, request: Req, func: F) -> JoinHandle<()>
+    where Req: Serialize + Send + 'static,
+          Res: DeserializeOwned + Send + 'static,
+          F: FnOnce(anyhow::Result<Res>) -> () + Send + 'static
+  {
+    let client = self.client.clone();
+    spawn(async move {
+            let request = serde_json::to_vec(&request).map_err(json_err)?;
+            let response = client.request(subject.subject, Bytes::from(request))
+                                 .await
+                                 .map_err(nats_request_err)?;
+            let response: Res = serde_json::from_slice(&response.payload).map_err(json_err)?;
+            Ok::<_, anyhow::Error>(response)
+          }.map(|res| {
+             func(res);
+           }))
   }
 }
 
@@ -203,6 +239,8 @@ pub fn subscribe_to_events_json<Evt>(client: Client, events: Events<Evt>) -> Eve
   Box::pin(stream! {
     let Ok(stream) = client.subscribe(events.subject.clone()).await else { return; };
 
+    pin_mut!(stream);
+
     while let Some(message) = stream.next().await {
       let Ok(event) = serde_json::from_slice::<Evt>(&message.payload) else { continue; };
 
@@ -235,7 +273,9 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
   }
 
   pub async fn modify(&self, key: BucketKey<T>, modification: impl Fn(&mut T) -> ()) -> anyhow::Result<()>
-    where T: Default
+    where T: Default,
+          T: DeserializeOwned,
+          T: Serialize
   {
     let mut store = self.store.as_ref().clone();
 
@@ -243,22 +283,23 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
       let entry = store.entry(&key.key).await.map_err(nats_err)?;
 
       let (mut value, revision) = match entry {
-        | None => (T::default(), -1),
-        | Some(entry) => (serde_json::from_slice(&entry.value)?, entry.revision),
+        | None => (T::default(), None),
+        | Some(entry) => (serde_json::from_slice(&entry.value)?, Some(entry.revision)),
       };
 
       modification(&mut value);
 
       let bytes = Bytes::from(serde_json::to_vec(&value)?);
 
-      if revision < 0 {
-        if let Ok(_) = store.put(&key.key, bytes).await.map_err(nats_err) {
-          break;
-        }
-      } else {
-        if let Ok(_) = store.update(&key.key, bytes, revision).await.map_err(nats_err) {
-          break;
-        }
+      match revision {
+        | None =>
+          if let Ok(_) = store.put(&key.key, bytes).await.map_err(nats_err) {
+            break;
+          },
+        | Some(revision) =>
+          if let Ok(_) = store.update(&key.key, bytes, revision).await.map_err(nats_err) {
+            break;
+          },
       }
 
       if attempts == 10 {

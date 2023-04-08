@@ -3,9 +3,12 @@ use std::time::Instant;
 
 use serde::de::DeserializeOwned;
 
+use api::instance::driver::events::InstanceDriverEvent;
+
 use crate::instance;
 
 pub mod bin_page_utils;
+pub mod http;
 pub mod run;
 pub mod scripting;
 pub mod serial;

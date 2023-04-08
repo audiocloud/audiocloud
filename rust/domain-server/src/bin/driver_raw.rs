@@ -22,12 +22,12 @@ use tracing::{debug, error, info, instrument, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use api::instance_driver::config::InstanceDriverConfig;
-use api::instance_driver::events::InstanceDriverEvent;
-use api::instance_driver::requests::SetInstanceParameterRequest;
-use api::instance_driver::ws::{WsDriverEvent, WsDriverRequest};
-use domain_server::instance::run::{run_driver_server, InstanceDriverCommand};
-use domain_server::instance::usb_hid::UsbHidDriver;
+use api::instance::driver::config::InstanceDriverConfig;
+use api::instance::driver::events::InstanceDriverEvent;
+use api::instance::driver::requests::SetInstanceParameterRequest;
+use api::instance::driver::ws::{WsDriverEvent, WsDriverRequest};
+use domain_server::instance::driver::run::{run_driver_server, InstanceDriverCommand};
+use domain_server::instance::driver::usb_hid::UsbHidDriver;
 
 #[derive(Clone)]
 struct ServerState {
@@ -58,6 +58,12 @@ async fn main() {
     }
     | InstanceDriverConfig::OSC(_) => {
       todo!("OSC driver not supported");
+    }
+    | InstanceDriverConfig::HTTP(_) => {
+      todo!("HTTP driver not supported");
+    }
+    | InstanceDriverConfig::SPI(_) => {
+      todo!("SPI driver not supported");
     }
   };
 
@@ -165,6 +171,7 @@ async fn handle_socket(state: ServerState, socket: WebSocket, remote: SocketAddr
         info!(?event, "received event");
         let event = match event {
           | InstanceDriverEvent::Report(report) => WsDriverEvent::Report(report),
+          | InstanceDriverEvent::Connected { .. } => continue,
         };
         let Ok(encoded) = serde_json::to_string_pretty(&event) else { continue; };
         if let Err(err) = tx.send(Message::Text(encoded)).await {

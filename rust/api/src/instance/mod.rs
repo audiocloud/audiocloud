@@ -79,6 +79,12 @@ pub enum InstancePowerState {
   WarmingUp,
 }
 
+impl InstancePowerState {
+  pub fn is_in_progress(&self) -> bool {
+    matches!(self, Self::CoolingDown | Self::WarmingUp)
+  }
+}
+
 impl Default for InstancePowerState {
   fn default() -> Self {
     Self::Off
