@@ -179,7 +179,7 @@ impl Nats {
     Ok(response)
   }
 
-  pub async fn request_and_forget<Req, Res, F>(&self, subject: Request<Req, Res>, request: Req, func: F) -> JoinHandle<()>
+  pub fn request_and_forget<Req, Res, F>(&self, subject: Request<Req, Res>, request: Req, func: F) -> JoinHandle<()>
     where Req: Serialize + Send + 'static,
           Res: DeserializeOwned + Send + 'static,
           F: FnOnce(anyhow::Result<Res>) -> () + Send + 'static

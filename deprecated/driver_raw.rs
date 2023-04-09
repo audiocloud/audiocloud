@@ -26,7 +26,7 @@ use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::SetInstanceParameterRequest;
 use api::instance::driver::ws::{WsDriverEvent, WsDriverRequest};
-use domain_server::instance::driver::run::{run_driver_server, InstanceDriverCommand};
+use domain_server::instance::driver::run_driver::{run_driver_server, InstanceDriverCommand};
 use domain_server::instance::driver::usb_hid::UsbHidDriver;
 
 #[derive(Clone)]

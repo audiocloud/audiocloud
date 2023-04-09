@@ -11,7 +11,7 @@ use tracing::error;
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
-use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameterRequest, SetInstanceParameterResponse};
+use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse};
 use api::instance::spec::InstanceSpec;
 use api::instance::{
   DesiredInstancePlayState, DesiredInstancePowerState, InstancePlayState, InstancePlayStateTransition, InstancePowerState,
@@ -227,7 +227,7 @@ impl Instance {
         let command = power_spec.get_command(desired);
         self.power_request.update_requested_now();
 
-        let command = vec![SetInstanceParameterRequest { parameter: command.parameter.clone(),
+        let command = vec![SetInstanceParameter { parameter: command.parameter.clone(),
                                                          channel:   command.channel,
                                                          value:     command.value, }];
 
@@ -278,7 +278,7 @@ impl Instance {
         let command = media_spec.get_command(desired, (remaining as f64) / 1000.0);
         self.play_request.update_requested_now();
 
-        let command = vec![SetInstanceParameterRequest { parameter: command.parameter.clone(),
+        let command = vec![SetInstanceParameter { parameter: command.parameter.clone(),
                                                          channel:   command.channel,
                                                          value:     command.value, }];
 

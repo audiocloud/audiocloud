@@ -9,10 +9,16 @@ use crate::Request;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct SetInstanceParameterRequest {
+pub struct SetInstanceParameter {
   pub parameter: String,
   pub channel:   usize,
   pub value:     f64,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SetInstanceParametersRequest {
+  pub changes: Vec<SetInstanceParameter>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -21,6 +27,7 @@ pub enum SetInstanceParameterResponse {
   Success,
   ParameterNotFound,
   ChannelNotFound,
+  NotConnected,
 }
 
 impl Display for SetInstanceParameterResponse {
@@ -35,15 +42,17 @@ impl Display for SetInstanceParameterResponse {
       | SetInstanceParameterResponse::ChannelNotFound => {
         write!(f, "Channel not found")
       }
+      | SetInstanceParameterResponse::NotConnected => {
+        write!(f, "Not connected")
+      }
     }
   }
 }
 
-pub fn set_instance_parameters_request(instance_id: impl AsRef<str>)
-                                       -> Request<Vec<SetInstanceParameterRequest>, SetInstanceParameterResponse> {
+pub fn set_instance_parameters_request(instance_id: impl AsRef<str>) -> Request<Vec<SetInstanceParameter>, SetInstanceParameterResponse> {
   Request::new(format!("audiocloud_driver_{}_set_parameters", instance_id.as_ref()))
 }
 
 pub fn schema() -> RootSchema {
-  merge_schemas([schema_for!(SetInstanceParameterRequest), schema_for!(SetInstanceParameterResponse)].into_iter())
+  merge_schemas([schema_for!(SetInstanceParameter), schema_for!(SetInstanceParameterResponse)].into_iter())
 }

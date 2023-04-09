@@ -1,48 +1,47 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write;
+use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
-use boa_engine::JsValue;
 use byteorder::ReadBytesExt;
 use chrono::Utc;
+use governor::{Quota, RateLimiter};
+use nonzero_ext::nonzero;
 use regex::Regex;
+use serde_json::json;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
-use tracing::debug;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tokio::sync::{mpsc, oneshot};
+use tracing::{debug, warn};
 
 use api::instance::driver::config::serial::{SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher};
 use api::instance::driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
+use api::instance::driver::requests::{SetInstanceParameter, SetInstanceParameterResponse, SetInstanceParametersRequest};
 use api::instance::IdAndChannel;
 
 use crate::instance::driver::bin_page_utils::remap_and_rescale_value;
-use crate::instance::driver::scripting::{Script, ScriptingEngine};
-use crate::instance::driver::Driver;
+use crate::instance::driver::run_driver::InstanceDriverCommand;
+use crate::instance::driver::scripting::ScriptingEngine;
 
 use super::Result;
 
 pub struct SerialDriver {
-  instance_id:          String,
-  config:               SerialDriverConfig,
-  port:                 Box<dyn SerialPort>,
-  changes:              HashMap<(String, usize), f64>,
-  scripting:            ScriptingEngine,
-  fatal_error:          bool,
-  parameter_transforms: HashMap<IdAndChannel, Script>,
-  parameter_to_strings: HashMap<IdAndChannel, Script>,
-  line_handler:         Option<Script>,
-  regex_cache:          HashMap<String, Regex>,
+  instance_id: String,
+  config:      SerialDriverConfig,
+  port:        Box<dyn SerialPort>,
+  changes:     HashMap<(String, usize), f64>,
+  notify_done: Vec<oneshot::Sender<SetInstanceParameterResponse>>,
+  scripting:   ScriptingEngine,
+  fatal_error: bool,
+  regex_cache: HashMap<String, Regex>,
 }
 
-impl Driver for SerialDriver {
-  type Config = SerialDriverConfig;
-  type Shared = ();
+type Config = SerialDriverConfig;
 
-  fn create_shared() -> Result<Self::Shared> {
-    Ok(())
-  }
-
-  fn new(instance_id: &str, _shared: &mut Self::Shared, config: Self::Config) -> Result<Self> {
+impl SerialDriver {
+  fn new(instance_id: &str, config: Config, scripting: ScriptingEngine) -> Result<Self> {
     let available = available_ports()?;
 
     for port in available {
@@ -64,31 +63,7 @@ impl Driver for SerialDriver {
       if matches {
         debug!(instance_id, port = port.port_name, "Found matching serial port");
 
-        let mut scripting = ScriptingEngine::new()?;
-
         let mut regex_cache = HashMap::new();
-
-        let line_handler = config.line_handler
-                                 .as_ref()
-                                 .map(|line_handler| scripting.compile(line_handler))
-                                 .transpose()?;
-
-        let mut parameter_transforms = HashMap::new();
-        let mut parameter_to_strings = HashMap::new();
-
-        for (parameter_id, parameter_configs) in &config.parameters {
-          for (channel, parameter_config) in parameter_configs.iter().enumerate() {
-            if let Some(transform) = parameter_config.transform.as_ref() {
-              let script = scripting.compile(transform)?;
-              parameter_transforms.insert(IdAndChannel::from((parameter_id, channel)), script);
-            }
-
-            if let Some(to_string) = parameter_config.to_string.as_ref() {
-              let script = scripting.compile(to_string)?;
-              parameter_to_strings.insert(IdAndChannel::from((parameter_id, channel)), script);
-            }
-          }
-        }
 
         for (report_id, report_configs) in &config.reports {
           for (channel, report_config) in report_configs.iter().enumerate() {
@@ -116,15 +91,15 @@ impl Driver for SerialDriver {
 
         let instance_id = instance_id.to_owned();
 
+        let notify_done = vec![];
+
         return Ok(SerialDriver { port,
                                  config,
                                  changes,
+                                 notify_done,
                                  scripting,
                                  fatal_error,
                                  instance_id,
-                                 parameter_transforms,
-                                 parameter_to_strings,
-                                 line_handler,
                                  regex_cache });
       }
     }
@@ -132,13 +107,21 @@ impl Driver for SerialDriver {
     Err(anyhow!("No matching serial port found"))
   }
 
-  fn set_parameter(&mut self, _shared: &mut Self::Shared, parameter: &str, channel: usize, value: f64) -> Result<()> {
-    self.changes.insert((parameter.to_string(), channel), value);
+  fn set_parameters(&mut self,
+                    parameters: SetInstanceParametersRequest,
+                    notify: oneshot::Sender<SetInstanceParameterResponse>)
+                    -> Result<()> {
+    for parameter in parameters.changes {
+      let SetInstanceParameter { parameter, channel, value } = parameter;
+      self.changes.insert((parameter, channel), value);
+    }
+
+    self.notify_done.push(notify);
 
     Ok(())
   }
 
-  fn poll(&mut self, _shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
+  fn poll(&mut self, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
     let mut events = vec![];
 
     for ((parameter_id, channel), value) in self.changes.drain() {
@@ -152,15 +135,15 @@ impl Driver for SerialDriver {
 
       let entry_id = IdAndChannel::from((parameter_id.as_str(), channel));
 
-      let value = if let Some(transform) = self.parameter_transforms.get(&entry_id) {
-        self.scripting.execute(transform, JsValue::Rational(value))
+      let value = if let Some(transform) = &parameter_config.transform {
+        self.scripting
+            .execute_sync(transform.clone(), json!({ "value": value }))
+            .to_string()
       } else {
-        JsValue::Rational(value)
+        value.to_string()
       };
 
-      let Some(transform) = self.parameter_to_strings.get(&entry_id) else { continue; };
-      let value = self.scripting.execute(transform, value);
-      let value = self.scripting.convert_to_string(value)
+      let value = value
                   + parameter_config.line_terminator
                                     .clone()
                                     .unwrap_or_else(|| self.config.send_line_terminator.clone())
@@ -179,16 +162,14 @@ impl Driver for SerialDriver {
     // read one line if we can
     if deadline - Instant::now() > Duration::from_millis(1) {
       if let Ok(line) = read_line(&mut self.port, &self.config, Instant::now() + Duration::from_millis(1)) {
-        if let Ok(Some(event)) = handle_line(&self.instance_id,
-                                             line,
-                                             &self.config,
-                                             &mut self.scripting,
-                                             &self.regex_cache,
-                                             self.line_handler.as_ref())
-        {
+        if let Ok(Some(event)) = handle_line(&self.instance_id, line, &self.config, self.scripting.clone(), &self.regex_cache) {
           events.push(event);
         }
       }
+    }
+
+    for notify in self.notify_done.drain(..) {
+      let _ = notify.send(SetInstanceParameterResponse::Success);
     }
 
     Ok(events)
@@ -215,9 +196,8 @@ fn read_line(port: &mut Box<dyn SerialPort>, config: &SerialDriverConfig, deadli
 fn handle_line(instance_id: &str,
                line: String,
                config: &SerialDriverConfig,
-               scripting: &mut ScriptingEngine,
-               regex_cache: &HashMap<String, Regex>,
-               line_handler_script: Option<&Script>)
+               scripting: ScriptingEngine,
+               regex_cache: &HashMap<String, Regex>)
                -> Result<Option<InstanceDriverEvent>> {
   for comment in &config.comments_start_with {
     if line.starts_with(comment.as_str()) {
@@ -231,7 +211,7 @@ fn handle_line(instance_id: &str,
     }
   }
 
-  match line_handler_script {
+  match &config.line_handler {
     | Some(line_handler) => handle_line_with_script(instance_id, line, config, scripting, line_handler),
     | None => handle_line_with_pattern(instance_id, line, config, regex_cache),
   }
@@ -240,8 +220,8 @@ fn handle_line(instance_id: &str,
 fn handle_line_with_script(instance_id: &str,
                            line: String,
                            config: &SerialDriverConfig,
-                           scripting: &mut ScriptingEngine,
-                           script: &Script)
+                           scripting: ScriptingEngine,
+                           script: &str)
                            -> Result<Option<InstanceDriverEvent>> {
   todo!()
 }
@@ -286,4 +266,76 @@ fn handle_line_with_pattern(instance_id: &str,
   }
 
   Ok(None)
+}
+
+pub async fn run_serial_driver(instance_id: String,
+                               config: SerialDriverConfig,
+                               rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
+                               tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                               scripting_engine: ScriptingEngine)
+                               -> Result {
+  let handle = async_thread::spawn(move || run_serial_driver_sync(instance_id, config, rx_cmd, tx_evt, scripting_engine));
+  match handle.join().await {
+    | Ok(Ok(r)) => Ok(r),
+    | Ok(Err(err)) => Err(err),
+    | Err(_) => Err(anyhow!("Serial driver panicked")),
+  }
+}
+
+fn run_serial_driver_sync(instance_id: String,
+                          config: SerialDriverConfig,
+                          mut rx_cmd: Receiver<InstanceDriverCommand>,
+                          tx_evt: Sender<InstanceDriverEvent>,
+                          scripting_engine: ScriptingEngine)
+                          -> Result {
+  let mut driver: Option<SerialDriver> = None;
+  let respawn_governor = RateLimiter::direct(Quota::per_minute(nonzero!(5u32)));
+
+  loop {
+    let driver_ready = driver.as_ref().map(|driver| driver.can_continue()).unwrap_or(false);
+    let start = Instant::now();
+
+    if let Ok(cmd) = rx_cmd.try_recv() {
+      match cmd {
+        | InstanceDriverCommand::SetParameters(parameters, tx_one) =>
+          if let Some(driver) = driver.as_mut() {
+            driver.set_parameters(parameters, tx_one)?;
+          } else {
+            let _ = tx_one.send(SetInstanceParameterResponse::NotConnected);
+          },
+        | InstanceDriverCommand::Terminate => return Ok(()),
+      }
+    }
+
+    if !driver_ready && respawn_governor.check().is_ok() {
+      drop(driver.take());
+
+      driver = match SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone()) {
+        | Ok(driver) => Some(driver),
+        | Err(err) => {
+          warn!(?err, "Failed to create serial driver: {err}");
+          None
+        }
+      };
+    }
+
+    if driver_ready {
+      if let Some(driver) = driver.as_mut() {
+        match driver.poll(Instant::now() + Duration::from_millis(25)) {
+          | Ok(events) =>
+            for event in events {
+              let _ = tx_evt.try_send(event);
+            },
+          | Err(err) => {
+            warn!(?err, "Failed to poll serial driver: {err}");
+          }
+        }
+      }
+    }
+
+    let elapsed = start.elapsed();
+    if elapsed < Duration::from_millis(25) {
+      sleep(Duration::from_millis(25) - elapsed);
+    }
+  }
 }

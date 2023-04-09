@@ -6,12 +6,12 @@ use serde::{Deserialize, Serialize};
 use crate::instance::driver::events::InstanceDriverReportEvent;
 
 use super::config::InstanceDriverConfig;
-use super::requests::SetInstanceParameterRequest;
+use super::requests::SetInstanceParameter;
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WsDriverRequest {
-  SetParameter(SetInstanceParameterRequest),
+  SetParameter(SetInstanceParameter),
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]

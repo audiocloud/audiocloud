@@ -1,21 +1,27 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
+use std::thread::sleep;
+use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
-use boa_engine::JsValue;
 use chrono::Utc;
+use governor::{Quota, RateLimiter};
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
-use tracing::{debug, info, instrument, warn};
+use nonzero_ext::nonzero;
+use serde_json::json;
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::{Receiver, Sender};
+use tracing::{debug, info, instrument, trace, warn};
 
 use api::instance::driver::config::usb_hid::{UsbHidDriverConfig, UsbHidReportConfig};
 use api::instance::driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
+use api::instance::driver::requests::SetInstanceParameterResponse;
 use api::instance::IdAndChannel;
 
 use crate::instance::driver::bin_page_utils::{write_binary_within_page, write_packed_value};
-use crate::instance::driver::scripting::{Script, ScriptingEngine};
-use crate::instance::driver::Driver;
+use crate::instance::driver::run_driver::InstanceDriverCommand;
+use crate::instance::driver::scripting::ScriptingEngine;
 
 use super::bin_page_utils::{read_binary_within_page, read_packed_value, remap_and_rescale_value};
 use super::Result;
@@ -26,8 +32,6 @@ pub struct UsbHidDriver {
   config:                  UsbHidDriverConfig,
   parameter_pages:         HashMap<u8, ParameterPage>,
   report_pages:            HashMap<u8, ReportPage>,
-  parameter_transforms:    HashMap<IdAndChannel, Script>,
-  report_transforms:       HashMap<IdAndChannel, Script>,
   scripting:               ScriptingEngine,
   encountered_fatal_error: bool,
 }
@@ -48,17 +52,10 @@ lazy_static! {
   static ref HID_API: Arc<Mutex<HidApi>> = Arc::new(Mutex::new(HidApi::new().expect("HID API init failed")));
 }
 
-impl Driver for UsbHidDriver {
-  type Config = UsbHidDriverConfig;
-  type Shared = Arc<Mutex<HidApi>>;
-
-  fn create_shared() -> Result<Self::Shared> {
-    Ok(HID_API.clone())
-  }
-
-  #[instrument(err, skip(config, shared, instance_id))]
-  fn new(instance_id: &str, shared: &mut Self::Shared, config: UsbHidDriverConfig) -> Result<Self> {
-    let mut shared = shared.lock().expect("HID API lock failed");
+impl UsbHidDriver {
+  #[instrument(err, skip(config, scripting, instance_id))]
+  fn new(instance_id: &str, config: UsbHidDriverConfig, scripting: ScriptingEngine) -> Result<Self> {
+    let mut shared = HID_API.lock().expect("HID API lock failed");
     shared.refresh_devices()?;
 
     for dev in shared.device_list() {
@@ -69,8 +66,6 @@ impl Driver for UsbHidDriver {
                   .map(|p| Some(p.as_str()) == dev.serial_number())
                   .unwrap_or(true)
       {
-        let mut scripting = ScriptingEngine::new()?;
-
         let device = dev.open_device(&*shared)?;
 
         let parameter_pages = config.parameter_pages
@@ -83,27 +78,6 @@ impl Driver for UsbHidDriver {
                                                        waiting_for_report_page: page.copy_from_report_page, })
                                     })
                                     .collect();
-
-        let mut parameter_transforms = HashMap::new();
-        let mut report_transforms = HashMap::new();
-
-        for (parameter_id, parameter_configs) in &config.parameters {
-          for (channel, parameter_config) in parameter_configs.iter().enumerate() {
-            if let Some(transform) = parameter_config.transform.as_ref() {
-              let script = scripting.compile(transform)?;
-              parameter_transforms.insert(IdAndChannel::from((parameter_id, channel)), script);
-            }
-          }
-        }
-
-        for (report_id, report_configs) in &config.reports {
-          for (channel, report_config) in report_configs.iter().enumerate() {
-            if let Some(transform) = report_config.transform.as_ref() {
-              let script = scripting.compile(transform)?;
-              report_transforms.insert(IdAndChannel::from((report_id, channel)), script);
-            }
-          }
-        }
 
         let report_pages = config.report_pages
                                  .iter()
@@ -127,8 +101,6 @@ impl Driver for UsbHidDriver {
                          parameter_pages,
                          report_pages,
                          config,
-                         parameter_transforms,
-                         report_transforms,
                          encountered_fatal_error,
                          scripting });
       }
@@ -137,8 +109,8 @@ impl Driver for UsbHidDriver {
     Err(anyhow!("No matching HID device found"))
   }
 
-  #[instrument(err, skip(self, _shared))]
-  fn set_parameter(&mut self, _shared: &mut Self::Shared, parameter_id: &str, channel: usize, value: f64) -> Result<()> {
+  #[instrument(err, skip(self))]
+  fn set_parameter(&mut self, parameter_id: &str, channel: usize, value: f64) -> Result<()> {
     if let Some(parameter_configs) = self.config.parameters.get(parameter_id) {
       if let Some(parameter_config) = parameter_configs.get(channel) {
         if let Some(page) = self.parameter_pages.get_mut(&parameter_config.page) {
@@ -149,15 +121,16 @@ impl Driver for UsbHidDriver {
                                               parameter_config.rescale.as_ref(),
                                               parameter_config.clamp.as_ref())?;
 
-          info!(remap_rescale = value, "remapped and rescaled to");
+          trace!(remap_rescale = value, "remapped and rescaled to");
 
-          let value = match self.parameter_transforms.get(&parameter_channel_id) {
-            | Some(script) => self.scripting.execute(script, JsValue::Rational(value)),
-            | None => JsValue::Rational(value),
+          let env = || json!({"value": value, "channel": channel, "parameter": parameter_id.clone(), "instance": self.instance_id.clone()});
+
+          let value = match &parameter_config.transform {
+            | None => value,
+            | Some(script) => self.scripting.execute_sync(script.clone(), env()).as_f64().unwrap_or(value),
           };
 
-          let value = self.scripting.convert_to_f64(value);
-          info!(transformed = value, "transformed to");
+          trace!(transformed = value, "transformed to");
 
           let value = write_packed_value(value, &parameter_config.packing);
           info!(packed = value.into_iter().map(|v| v.to_string()).collect::<Vec<_>>().join(", "),
@@ -180,8 +153,8 @@ impl Driver for UsbHidDriver {
     Ok(())
   }
 
-  #[instrument(err, skip(self, _shared, deadline))]
-  fn poll(&mut self, _shared: &mut Self::Shared, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
+  #[instrument(err, skip(self, deadline))]
+  fn poll(&mut self, deadline: Instant) -> Result<Vec<InstanceDriverEvent>> {
     self.send_dirty_pages()?;
 
     // read the device
@@ -264,12 +237,13 @@ impl UsbHidDriver {
         let value = read_binary_within_page(rep_page.data.as_slice(), &report_config.position);
         let value = read_packed_value(&value, &report_config.packing);
 
-        let value = match self.report_transforms.get(&report_channel_id) {
-          | Some(script) => self.scripting.execute(script, JsValue::Rational(value)),
-          | None => JsValue::Rational(value),
+        let env = || json!({"value": value, "channel": channel, "report": report_id.clone(), "instance": self.instance_id.clone()});
+
+        let value = match &report_config.transform {
+          | Some(script) => self.scripting.execute_sync(script.clone(), env()).as_f64().unwrap_or(value),
+          | None => value,
         };
 
-        let value = self.scripting.convert_to_f64(value);
         let value = remap_and_rescale_value(value, report_config.remap.as_ref(), report_config.rescale.as_ref(), None)?;
 
         events.push(InstanceDriverEvent::Report(InstanceDriverReportEvent { instance_id: self.instance_id.clone(),
@@ -304,5 +278,82 @@ impl UsbHidDriver {
     }
 
     Ok(())
+  }
+}
+
+pub async fn run_usb_driver(instance_id: String,
+                            config: UsbHidDriverConfig,
+                            rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
+                            tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                            scripting_engine: ScriptingEngine)
+                            -> Result {
+  let usb_thread = async_thread::spawn(move || run_usb_driver_sync(instance_id, config, rx_cmd, tx_evt, scripting_engine));
+  match usb_thread.join().await {
+    | Ok(Ok(r)) => Ok(r),
+    | Ok(Err(err)) => Err(err),
+    | Err(err) => Err(anyhow!("HID USB thread panicked: {:?}", err)),
+  }
+}
+
+#[instrument(err, skip(config, rx_cmd, tx_evt, scripting_engine))]
+fn run_usb_driver_sync(instance_id: String,
+                       config: UsbHidDriverConfig,
+                       mut rx_cmd: Receiver<InstanceDriverCommand>,
+                       tx_evt: Sender<InstanceDriverEvent>,
+                       scripting_engine: ScriptingEngine)
+                       -> Result {
+  let mut instance: Option<UsbHidDriver> = None;
+  let respawn_governor = RateLimiter::direct(Quota::per_minute(nonzero!(5u32)));
+
+  loop {
+    let instance_ready = instance.as_ref().map(|i| i.can_continue()).unwrap_or(false);
+    let start = Instant::now();
+
+    if let Ok(cmd) = rx_cmd.try_recv() {
+      match cmd {
+        | InstanceDriverCommand::SetParameters(params, completed) =>
+          if let Some(instance) = instance.as_mut() {
+            for p in params.changes {
+              if let Err(err) = instance.set_parameter(&p.parameter, p.channel, p.value) {
+                warn!(?err, "Error while setting parameter: {err}");
+              }
+            }
+          } else {
+            let _ = completed.send(SetInstanceParameterResponse::NotConnected);
+          },
+        | InstanceDriverCommand::Terminate => return Ok(()),
+      }
+    }
+
+    if !instance_ready && respawn_governor.check().is_ok() {
+      drop(instance.take());
+
+      instance = match UsbHidDriver::new(&instance_id, config.clone(), scripting_engine.clone()) {
+        | Ok(instance) => Some(instance),
+        | Err(err) => {
+          warn!(?err, "Failed to create USB HID driver instance: {err}");
+          None
+        }
+      };
+    }
+
+    if instance_ready {
+      if let Some(instance) = instance.as_mut() {
+        match instance.poll(Instant::now() + Duration::from_millis(20)) {
+          | Ok(events) =>
+            for event in events {
+              let _ = tx_evt.send(event);
+            },
+          | Err(err) => {
+            warn!(?err, "Error while polling USB HID driver instance: {err}");
+          }
+        }
+      }
+    }
+
+    let elapsed = start.elapsed();
+    if elapsed < Duration::from_millis(20) {
+      sleep(Duration::from_millis(20) - elapsed);
+    }
   }
 }

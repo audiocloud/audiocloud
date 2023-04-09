@@ -17,6 +17,7 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+use domain_server::instance::driver::scripting::new_scripting_engine;
 use domain_server::nats::Nats;
 use domain_server::service::Service;
 use domain_server::Result;
@@ -75,10 +76,13 @@ async fn main() -> Result {
 
   let (tx_internal, mut rx_internal) = mpsc::channel(0xff);
 
+  let (scripting_engine, scripting_handle) = new_scripting_engine();
+
   let create_instance_drivers = || {
     if args.enable_instance_drivers {
       let tx_internal = tx_internal.clone();
-      let service = domain_server::instance::driver::service::DriverService::new(nats.clone(), args.host_name.clone());
+      let service =
+        domain_server::instance::driver::server::DriverService::new(nats.clone(), scripting_engine.clone(), args.host_name.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance driver service exited: {res:?}");
                            let _ = tx_internal.send(InstanceDriversFinished).await;

@@ -7,19 +7,15 @@ use tokio::task::JoinHandle;
 use tokio::{select, spawn};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
-use tracing::warn;
 
-use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::spec::InstanceSpec;
 use api::Events;
 
-use crate::instance::driver::http::HttpDriver;
+use crate::instance::driver::scripting::ScriptingEngine;
 use crate::nats::{Nats, WatchStream};
 
-use super::run::{run_driver_server, InstanceDriverCommand};
-use super::serial::SerialDriver;
-use super::usb_hid::UsbHidDriver;
+use super::run_driver::{run_driver_server, InstanceDriverCommand};
 use super::Result;
 
 pub struct DriverService {
@@ -28,10 +24,11 @@ pub struct DriverService {
   drivers:              HashMap<String, DriverServer>,
   watch_instance_specs: WatchStream<InstanceSpec>,
   driver_events:        StreamMap<String, ReceiverStream<InstanceDriverEvent>>,
+  scripting_engine:     ScriptingEngine,
 }
 
 impl DriverService {
-  pub fn new(nats: Nats, host: String) -> Self {
+  pub fn new(nats: Nats, scripting_engine: ScriptingEngine, host: String) -> Self {
     let watch_instance_specs = nats.instance_spec.watch_all();
     let driver_events = StreamMap::new();
     let drivers = HashMap::new();
@@ -40,7 +37,8 @@ impl DriverService {
            host,
            drivers,
            watch_instance_specs,
-           driver_events }
+           driver_events,
+           scripting_engine }
   }
 
   pub async fn run(mut self) -> Result {
@@ -85,21 +83,11 @@ impl DriverService {
     let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
     let (tx_evt, rx_evt) = mpsc::channel(0xff);
 
-    let handle = match &spec.driver {
-      | InstanceDriverConfig::USBHID(usb_hid) =>
-        spawn(run_driver_server::<UsbHidDriver>(instance_id.clone(), usb_hid.clone(), rx_cmd, tx_evt)),
-      | InstanceDriverConfig::Serial(serial) =>
-        spawn(run_driver_server::<SerialDriver>(instance_id.clone(), serial.clone(), rx_cmd, tx_evt)),
-      | InstanceDriverConfig::OSC(osc) => {
-        warn!("OSC driver not implemented yet");
-        return;
-      }
-      | InstanceDriverConfig::HTTP(http) => spawn(run_driver_server::<HttpDriver>(instance_id.clone(), http.clone(), rx_cmd, tx_evt)),
-      | InstanceDriverConfig::SPI(spi) => {
-        warn!("SPI driver not implemented yet");
-        return;
-      }
-    };
+    let handle = spawn(run_driver_server(instance_id.clone(),
+                                         spec.driver.clone(),
+                                         self.scripting_engine.clone(),
+                                         rx_cmd,
+                                         tx_evt));
 
     let events_subject = instance_driver_events(&instance_id);
 
