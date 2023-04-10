@@ -311,8 +311,12 @@ fn run_serial_driver_sync(instance_id: String,
       drop(driver.take());
 
       driver = match SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone()) {
-        | Ok(driver) => Some(driver),
+        | Ok(driver) => {
+          let _ = tx_evt.try_send(InstanceDriverEvent::Connected { connected: true });
+          Some(driver)
+        }
         | Err(err) => {
+          let _ = tx_evt.try_send(InstanceDriverEvent::Connected { connected: false });
           warn!(?err, "Failed to create serial driver: {err}");
           None
         }

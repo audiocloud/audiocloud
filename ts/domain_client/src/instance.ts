@@ -114,7 +114,7 @@ export type SerialRequestTimer = z.infer<ReturnType<typeof SerialRequestTimer>>;
 export const SetInstanceParameter = memoizeOne(() => z.object({channel: z.number().int(), parameter: z.string(), value: z.number(), }));
 export type SetInstanceParameter = z.infer<ReturnType<typeof SetInstanceParameter>>;
 
-export const SetInstanceParameterResponse = memoizeOne(() => z.enum(["success", "parameterNotFound", "channelNotFound", "notConnected", ]));
+export const SetInstanceParameterResponse = memoizeOne(() => z.enum(["success", "parameterNotFound", "channelNotFound", "notConnected", "rpcFailure", ]));
 export type SetInstanceParameterResponse = z.infer<ReturnType<typeof SetInstanceParameterResponse>>;
 
 export const UsbHidParameterConfig = memoizeOne(() => z.object({clamp: z.union([z.lazy(Clamp), z.null(), ]), packing: z.lazy(ValuePacking), page: z.number().int(), position: z.lazy(BinaryPosition), remap: z.union([z.lazy(Remap), z.null(), ]), rescale: z.union([z.lazy(Rescale), z.null(), ]), transform: z.union([z.string(), z.null(), ]), }));

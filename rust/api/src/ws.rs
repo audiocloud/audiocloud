@@ -37,27 +37,24 @@ pub enum WsCommand {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WsEvent {
-  SetInstancePowerControl {
-    success:    bool,
-    request_id: String,
-  },
-  SetInstancePlayControl {
-    success:    bool,
-    request_id: String,
-  },
+  #[serde(rename_all = "camelCase")]
+  SetInstancePowerControl { success: bool, request_id: String },
+  #[serde(rename_all = "camelCase")]
+  SetInstancePlayControl { success: bool, request_id: String },
+  #[serde(rename_all = "camelCase")]
   SetInstanceParameters {
     response:   SetInstanceParameterResponse,
     request_id: String,
   },
-  InstanceDriverEvent(InstanceDriverEvent),
-  SubscribeToInstanceReports {
-    success:    bool,
-    request_id: String,
+  #[serde(rename_all = "camelCase")]
+  InstanceDriverEvent {
+    instance_id: String,
+    event:       InstanceDriverEvent,
   },
-  UnsubscribeFromInstanceReports {
-    success:    bool,
-    request_id: String,
-  },
+  #[serde(rename_all = "camelCase")]
+  SubscribeToInstanceEvents { success: bool, request_id: String },
+  #[serde(rename_all = "camelCase")]
+  UnsubscribeFromInstanceEvents { success: bool, request_id: String },
 }
 
 pub fn schema() -> RootSchema {

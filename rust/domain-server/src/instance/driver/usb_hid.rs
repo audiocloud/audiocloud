@@ -114,8 +114,6 @@ impl UsbHidDriver {
     if let Some(parameter_configs) = self.config.parameters.get(parameter_id) {
       if let Some(parameter_config) = parameter_configs.get(channel) {
         if let Some(page) = self.parameter_pages.get_mut(&parameter_config.page) {
-          let parameter_channel_id = IdAndChannel::from((parameter_id, channel));
-
           let value = remap_and_rescale_value(value,
                                               parameter_config.remap.as_ref(),
                                               parameter_config.rescale.as_ref(),
@@ -329,8 +327,12 @@ fn run_usb_driver_sync(instance_id: String,
       drop(instance.take());
 
       instance = match UsbHidDriver::new(&instance_id, config.clone(), scripting_engine.clone()) {
-        | Ok(instance) => Some(instance),
+        | Ok(instance) => {
+          let _ = tx_evt.try_send(InstanceDriverEvent::Connected { connected: true });
+          Some(instance)
+        }
         | Err(err) => {
+          let _ = tx_evt.try_send(InstanceDriverEvent::Connected { connected: false });
           warn!(?err, "Failed to create USB HID driver instance: {err}");
           None
         }

@@ -1,16 +1,17 @@
 import WebSocket from "isomorphic-ws";
-import { parseURL, serializeURL } from "whatwg-url";
+import {parseURL, serializeURL} from "whatwg-url";
 
-import { InstanceDriverConfig, WsDriverEvent, WsDriverRequest } from "./types";
-import { clearIntervalAsync, setIntervalAsync } from "set-interval-async";
-
-export * from "./types";
+import {SetInstanceParameter} from "./instance";
+import {clearIntervalAsync, setIntervalAsync} from "set-interval-async";
+import {WsEvent} from "./ws";
+import {nanoid} from "nanoid";
+import {match} from "ts-pattern";
 
 // noinspection JSUnusedGlobalSymbols
 export function createWebSocketClient(
   baseUrl: string,
   handler: ReceiveEvents,
-  config: { refreshInterval: number } = { refreshInterval: 30 }
+  config: { refreshInterval: number } = {refreshInterval: 30}
 ): SendEvents {
   const url = parseURL(baseUrl);
   if (!url) {
@@ -33,31 +34,53 @@ export function createWebSocketClient(
     connected = false;
     handler.connectionChanged(connected);
   };
+
   ws.onmessage = (message: any) => {
-    const parsed = WsDriverEvent.parse(JSON.parse(message.data));
-    switch (parsed.type) {
-      case "report":
-        handler.report(parsed.reportId, parsed.channel, parsed.value);
-        break;
-      case "config":
-        handler.config(parsed.config);
-        break;
-      case "keepAlive":
-        handler.keepAlive();
-        break;
-    }
+    const parsed = WsEvent().parse(JSON.parse(message.data));
+    match(parsed)
+      .with({type: "instanceDriverEvent"}, ({instanceId, event}) => {
+        match(event)
+          .with({type: "report"}, ({reportId, channel, value}) => {
+            handler.instanceReport(instanceId, reportId, channel, value);
+          })
+          .with({type: "connected"}, ({connected}) => {
+            handler.instanceConnectionChanged(instanceId, connected);
+          })
+          .exhaustive();
+      })
+      .with({type: "setInstancePowerControl"}, ({requestId, success}) => {
+        console.log('instance power request', requestId, success ? 'success' : 'failure')
+      })
+      .with({type: "setInstancePlayControl"}, ({requestId, success}) => {
+        console.log('instance play request', requestId, success ? 'success' : 'failure')
+      })
+      .with({type: "setInstanceParameters"}, ({requestId, response}) => {
+        console.log('instance play request', requestId, response)
+      })
+      .with({type: "subscribeToInstanceEvents"}, ({requestId, success}) => {
+        console.log('instance subscribe to events request', requestId, success ? 'success' : 'failure')
+      })
+      .with({type: "unsubscribeFromInstanceEvents"}, ({requestId, success}) => {
+        console.log('instance unsubscribe to events request', requestId, success ? 'success' : 'failure')
+      })
+      .exhaustive();
   };
 
   const timer = setIntervalAsync(async () => {
     if (connected) {
-      for (const [[parameter, channel], value] of toSend.entries()) {
-        let request: WsDriverRequest = {
-          type: "setParameter",
-          parameter,
-          channel,
-          value,
-        };
+      const request = {
+        requestId: nanoid(),
+        command: {
+          type: 'setInstanceParameters',
+          changes: [] as Array<SetInstanceParameter>
+        },
+      }
 
+      for (const [[parameter, channel], value] of toSend.entries()) {
+        request.command.changes.push({parameter, channel, value})
+      }
+
+      if (request.command.changes.length > 0) {
         ws.send(JSON.stringify(request));
       }
     }
@@ -71,21 +94,49 @@ export function createWebSocketClient(
     setParameter(name: string, channel: number, value: number) {
       toSend.set([name, channel], value);
     },
+    subscribeToInstanceEvents(instanceId: string) {
+      if (connected) {
+        ws.send(JSON.stringify({
+          requestId: nanoid(),
+          command: {
+            type: 'subscribeToInstanceEvents',
+            instanceId
+          }
+        }));
+      } else {
+        throw new Error("Not connected")
+      }
+    },
+    unsubscribeFromInstanceEvents(instanceId: string) {
+      if (connected) {
+        ws.send(JSON.stringify({
+          requestId: nanoid(),
+          command: {
+            type: 'unsubscribeFromInstanceEvents',
+            instanceId
+          }
+        }));
+      } else {
+        throw new Error("Not connected")
+      }
+    }
   };
 }
 
 export interface ReceiveEvents {
   connectionChanged(connected: boolean): any;
 
-  report(name: string, channel: number, value: number): void;
+  instanceReport(instance: String, name: string, channel: number, value: number): void;
 
-  config(config: InstanceDriverConfig): void;
-
-  keepAlive(): void;
+  instanceConnectionChanged(instanceId: String, connected: boolean): void;
 }
 
 export interface SendEvents {
   close(): void;
 
   setParameter(name: string, channel: number, value: number): void;
+
+  subscribeToInstanceEvents(instanceId: string): void;
+
+  unsubscribeFromInstanceEvents(instanceId: string): void;
 }

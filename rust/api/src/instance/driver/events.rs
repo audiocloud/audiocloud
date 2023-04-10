@@ -23,11 +23,7 @@ pub struct InstanceDriverReportEvent {
 }
 
 pub fn instance_driver_events(instance_id: impl AsRef<str>) -> Events<InstanceDriverEvent> {
-  Events::new(format!("audiocloud_instance_{}_events", instance_id.as_ref()))
-}
-
-pub fn all_instance_driver_events() -> Events<InstanceDriverEvent> {
-  Events::new("audiocloud_instance_*_events")
+  Events::new(format!("audiocloud_instance.{}.events", instance_id.as_ref()))
 }
 
 pub fn schema() -> RootSchema {

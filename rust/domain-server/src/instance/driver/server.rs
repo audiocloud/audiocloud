@@ -7,6 +7,7 @@ use tokio::task::JoinHandle;
 use tokio::{select, spawn};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
+use tracing::error;
 
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::spec::InstanceSpec;
@@ -56,7 +57,7 @@ impl DriverService {
           }
         },
         Some((instance_id, event)) = self.driver_events.next() => {
-          self.handle_driver_event(instance_id, event);
+          self.handle_driver_event(instance_id, event).await;
         },
         _ = tokio::time::sleep(Duration::from_secs(1)) => {
           self.redeploy_failed_drivers();
@@ -114,7 +115,11 @@ impl DriverService {
     }
   }
 
-  fn handle_driver_event(&mut self, instance_id: String, event: InstanceDriverEvent) {}
+  async fn handle_driver_event(&mut self, instance_id: String, event: InstanceDriverEvent) {
+    if let Err(err) = self.nats.publish_event(instance_driver_events(instance_id), event).await {
+      error!(?err, "Failed to publish driver event: {err}");
+    }
+  }
 
   fn remove_driver(&mut self, instance_id: &str) {
     if let Some(driver) = self.drivers.remove(instance_id) {

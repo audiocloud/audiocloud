@@ -49,8 +49,8 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
 
   loop {
     select! {
-      Some((_, (_, event))) = instance_events.next(), if !instance_events.is_empty() => {
-        let _ = tx_internal.send(WsEvent::InstanceDriverEvent(event)).await;
+      Some((instance_id, (_, event))) = instance_events.next(), if !instance_events.is_empty() => {
+        let _ = tx_internal.send(WsEvent::InstanceDriverEvent { instance_id, event }).await;
       },
       Some(event) = rx_internal.recv() => {
         let Ok(event) = serde_json::to_string(&event) else { continue; };
@@ -126,13 +126,13 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
               false
             };
 
-            let _ = tx_internal.send(WsEvent::SubscribeToInstanceReports { request_id, success })
+            let _ = tx_internal.send(WsEvent::SubscribeToInstanceEvents { request_id, success })
                        .await;
           },
           | WsCommand::UnsubscribeFromInstanceEvents {instance_id} => {
             let success = instance_events.remove(&instance_id).is_some();
 
-            let _ = tx_internal.send(WsEvent::UnsubscribeFromInstanceReports { request_id, success })
+            let _ = tx_internal.send(WsEvent::UnsubscribeFromInstanceEvents { request_id, success })
                        .await;
           }
         }
