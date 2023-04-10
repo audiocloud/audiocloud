@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -17,7 +18,7 @@ use tokio::spawn;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
-use tracing::warn;
+use tracing::{debug, trace, warn};
 use wildmatch::WildMatch;
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
@@ -144,8 +145,10 @@ impl Nats {
   }
 
   pub async fn publish_event<Evt>(&self, subject: Events<Evt>, event: Evt) -> anyhow::Result<()>
-    where Evt: Serialize
+    where Evt: Serialize + Debug
   {
+    trace!(?event, "Publishing {}", subject.subject);
+
     let event = serde_json::to_vec(&event).map_err(json_err)?;
     self.client
         .publish(subject.subject, Bytes::from(event))
@@ -287,8 +290,10 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
   }
 
   pub async fn put(&self, key: BucketKey<T>, value: T) -> anyhow::Result<()>
-    where T: Serialize
+    where T: Serialize + Debug
   {
+    debug!(?value, "Update {}[{}]", self.store.name, key.key);
+
     let value = serde_json::to_vec(&value).map_err(json_err)?;
     self.store.put(&key.key, Bytes::from(value)).await.map_err(nats_err)?;
 

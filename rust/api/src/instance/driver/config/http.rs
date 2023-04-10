@@ -7,14 +7,16 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct HttpDriverConfig {
   pub base_url:   String,
+  #[serde(default)]
   pub parameters: HashMap<String, HttpDriverParameter>,
+  #[serde(default)]
   pub reports:    HashMap<String, HttpDriverReport>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpDriverParameter {
-  pub path:    String,
+  pub url:     String,
   #[serde(default)]
   pub method:  HttpMethod,
   #[serde(default)]

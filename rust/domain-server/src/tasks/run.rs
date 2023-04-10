@@ -9,13 +9,13 @@ use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
-use api::instance::{InstancePlayState, InstancePowerState};
 use api::instance::spec::{instance_spec, InstanceSpec};
 use api::instance::state::{instance_play_state, instance_power_state};
+use api::instance::{InstancePlayState, InstancePowerState};
 use api::media::state::{media_download_state, MediaDownloadState};
 use api::task::buckets::task_spec;
-use api::task::DesiredTaskPlayState;
 use api::task::spec::TaskSpec;
+use api::task::DesiredTaskPlayState;
 use async_audio_engine::GraphPlayer;
 
 use crate::nats::{Nats, WatchStream};

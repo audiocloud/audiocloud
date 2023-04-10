@@ -22,6 +22,7 @@ pub enum InstanceDriverConfig {
   HTTP(http::HttpDriverConfig),
   #[serde(rename = "SPI")]
   SPI(spi::SpiDriverConfig),
+  Mock,
 }
 
 fn read_interval_ms_default() -> i32 {

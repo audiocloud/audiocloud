@@ -46,7 +46,7 @@ pub async fn run_http_driver(instance_id: String,
             })
           };
 
-          let url = scripting_engine.execute(parameter_config.path.clone(), env()).await.to_string();
+          let url = scripting_engine.execute(parameter_config.url.clone(), env()).await.to_string();
 
           let url = match Url::parse(&url) {
             | Ok(url) => url,

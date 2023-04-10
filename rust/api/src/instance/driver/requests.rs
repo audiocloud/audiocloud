@@ -55,7 +55,7 @@ impl Display for SetInstanceParameterResponse {
 }
 
 pub fn set_instance_parameters_request(instance_id: impl AsRef<str>) -> Request<Vec<SetInstanceParameter>, SetInstanceParameterResponse> {
-  Request::new(format!("audiocloud_driver_{}_set_parameters", instance_id.as_ref()))
+  Request::new(format!("audiocloud_driver.{}.set_parameters", instance_id.as_ref()))
 }
 
 pub fn schema() -> RootSchema {

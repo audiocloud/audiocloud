@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use tokio::time::Interval;
 use tokio::{select, time};
 use tokio_stream::{StreamExt, StreamMap};
-use tracing::error;
+use tracing::{error, info, instrument};
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
@@ -16,6 +16,7 @@ use api::instance::spec::InstanceSpec;
 use api::instance::{
   DesiredInstancePlayState, DesiredInstancePowerState, InstancePlayState, InstancePlayStateTransition, InstancePowerState,
 };
+use api::BucketKey;
 
 use crate::nats::{EventStream, Nats, WatchStream};
 use crate::request_tracker::RequestTracker;
@@ -88,7 +89,7 @@ impl InstanceService {
       | InternalUpdate::InstancePowerSetSuccess { instance_id, desired } => {
         let entry = self.instances.entry(instance_id.clone()).or_default();
 
-        if entry.instance_parameter_response_success(&instance_id, desired) {
+        if entry.power_set_success(&instance_id, desired) {
           entry.update(&instance_id, &self.nats, &self.tx_internal).await;
         }
       }
@@ -103,19 +104,35 @@ impl InstanceService {
       | None => {
         self.media_instance_events.remove(&instance_id);
       }
-      | Some(spec) =>
+      | Some(spec) => {
         if spec.media.is_some() && !self.media_instance_events.contains_key(&instance_id) {
           self.media_instance_events.insert(instance_id.clone(),
                                             self.nats.subscribe_to_events(instance_driver_events(&instance_id)));
-        },
+        }
+
+        if spec.power.is_some() {
+          if let Ok(Some(actual_power)) = self.nats.instance_power_state.get(BucketKey::new(&instance_id)).await {
+            entry.persisted_power_state = Some(actual_power);
+          }
+        }
+
+        if spec.media.is_some() {
+          if let Ok(Some(actual_play)) = self.nats.instance_play_state.get(BucketKey::new(&instance_id)).await {
+            entry.persisted_play_state = Some(actual_play);
+          }
+        }
+      }
     }
 
     entry.update(&instance_id, &self.nats, &self.tx_internal).await;
   }
 
+  #[instrument(skip(self))]
   async fn update_instance_power_control(&mut self, instance_id: String, maybe_instance_power_control: Option<InstancePowerControl>) {
     let entry = self.instances.entry(instance_id.clone()).or_default();
     entry.power_control = maybe_instance_power_control;
+
+    info!("updating power control");
 
     if let Some(power_control) = &entry.power_control {
       if entry.power_request.set_desired(power_control.desired) {
@@ -179,12 +196,14 @@ impl InstanceService {
 
 #[derive(Default)]
 struct Instance {
-  spec:          Option<InstanceSpec>,
-  power_control: Option<InstancePowerControl>,
-  play_control:  Option<InstancePlayControl>,
-  power_request: RequestTracker<DesiredInstancePowerState, InstancePowerState>,
-  play_request:  RequestTracker<DesiredInstancePlayState, InstancePlayState>,
-  position_ms:   u64,
+  spec:                  Option<InstanceSpec>,
+  power_control:         Option<InstancePowerControl>,
+  play_control:          Option<InstancePlayControl>,
+  persisted_power_state: Option<InstancePowerState>,
+  persisted_play_state:  Option<InstancePlayState>,
+  power_request:         RequestTracker<DesiredInstancePowerState, InstancePowerState>,
+  play_request:          RequestTracker<DesiredInstancePlayState, InstancePlayState>,
+  position_ms:           u64,
 }
 
 impl Instance {
@@ -228,8 +247,8 @@ impl Instance {
         self.power_request.update_requested_now();
 
         let command = vec![SetInstanceParameter { parameter: command.parameter.clone(),
-                                                         channel:   command.channel,
-                                                         value:     command.value, }];
+                                                  channel:   command.channel,
+                                                  value:     command.value, }];
 
         let subject = set_instance_parameters_request(&power_spec.power_controller);
         let desired = self.power_request.get_desired();
@@ -252,10 +271,17 @@ impl Instance {
       self.power_request.update_requested_now();
     }
 
+    let actual = self.power_request.get_actual();
+    if self.persisted_power_state.as_ref() != Some(&actual) {
+      if let Ok(_) = nats.instance_power_state.put(BucketKey::new(id), actual).await {
+        self.persisted_power_state = Some(actual);
+      }
+    }
+
     self.power_request.is_fulfilled()
   }
 
-  fn instance_parameter_response_success(&mut self, _instance_id: &str, desired: DesiredInstancePowerState) -> bool {
+  fn power_set_success(&mut self, _instance_id: &str, desired: DesiredInstancePowerState) -> bool {
     self.power_request.set_actual(match desired {
                         | DesiredInstancePowerState::Off => InstancePowerState::CoolingDown,
                         | DesiredInstancePowerState::On => InstancePowerState::WarmingUp,
@@ -279,8 +305,8 @@ impl Instance {
         self.play_request.update_requested_now();
 
         let command = vec![SetInstanceParameter { parameter: command.parameter.clone(),
-                                                         channel:   command.channel,
-                                                         value:     command.value, }];
+                                                  channel:   command.channel,
+                                                  value:     command.value, }];
 
         let subject = set_instance_parameters_request(id);
         let instance_id = id.to_owned();
@@ -296,6 +322,13 @@ impl Instance {
             });
 
         self.play_request.update_requested_now();
+      }
+    }
+
+    let actual = self.play_request.get_actual();
+    if self.persisted_play_state.as_ref() != Some(&actual) {
+      if let Ok(_) = nats.instance_play_state.put(BucketKey::new(id), actual).await {
+        self.persisted_play_state = Some(actual);
       }
     }
 

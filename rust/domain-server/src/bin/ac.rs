@@ -10,6 +10,7 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
+use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::spec::InstanceSpec;
 use api::instance::{DesiredInstancePlayState, DesiredInstancePowerState};
 use api::task::spec::PlayId;
@@ -41,9 +42,15 @@ enum InstanceCommand {
   /// Put an instance spec into the store
   Put {
     /// Instance Id
-    id:   String,
+    id:     String,
     /// File to import
-    path: PathBuf,
+    path:   PathBuf,
+    /// Override the host in the spec with this value
+    #[clap(long)]
+    host:   Option<String>,
+    /// If this is specified, the instance will not use the specified driver but a mocked driver which always works
+    #[clap(long)]
+    mocked: bool,
   },
   /// Describe instance and its state in detail
   Describe {
@@ -147,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
 #[instrument(err, skip(nats))]
 async fn instance_command(nats: Nats, cmd: InstanceCommand) -> Result {
   match cmd {
-    | InstanceCommand::Put { id, path } => put_instance(nats, id, path).await,
+    | InstanceCommand::Put { id, path, host, mocked } => put_instance(nats, id, path, host, mocked).await,
     | InstanceCommand::List { format, only_id, filter } => list_instances(nats, filter, format, only_id).await,
     | InstanceCommand::Describe { include_spec, id } => describe_instance(nats, id, include_spec).await,
     | InstanceCommand::Power { id, command } => set_instance_power(nats, id, command).await,
@@ -200,7 +207,7 @@ async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result
   };
 
   let power_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
-  let play_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
+  let play_state = nats.instance_play_state.get(BucketKey::new(&id)).await?;
   let power = nats.instance_power_ctrl.get(BucketKey::new(&id)).await?;
   let play = nats.instance_play_ctrl.get(BucketKey::new(&id)).await?;
 
@@ -244,8 +251,14 @@ async fn list_instances(nats: Nats, filter: String, format: OutputFormat, only_i
 }
 
 #[instrument(err, skip(nats))]
-async fn put_instance(nats: Nats, id: String, path: PathBuf) -> Result {
-  let spec = serde_yaml::from_reader::<_, InstanceSpec>(File::open(&path)?)?;
+async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String>, mocked: bool) -> Result {
+  let mut spec = serde_yaml::from_reader::<_, InstanceSpec>(File::open(&path)?)?;
+  if let Some(host) = host {
+    spec.host = host;
+  }
+  if mocked {
+    spec.driver = InstanceDriverConfig::Mock;
+  }
 
   nats.instance_spec.put(BucketKey::new(id), spec).await?;
 

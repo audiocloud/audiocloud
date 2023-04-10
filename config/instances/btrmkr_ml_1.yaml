@@ -1,6 +1,7 @@
 host: better-pi
 power:
   powerController: ppdu_r1_up_l
+  driverNeedsPower: true
   powerOn:
     parameter: power
     channel: 3

@@ -17,6 +17,7 @@ pub mod time {
   }
 }
 
+#[derive(Clone)]
 pub struct Request<Req, Res> {
   pub phantom_req: PhantomData<Req>,
   pub phantom_res: PhantomData<Res>,
@@ -31,6 +32,7 @@ impl<Req, Res> Request<Req, Res> {
   }
 }
 
+#[derive(Clone)]
 pub struct Events<Evt> {
   pub phantom_evt: PhantomData<Evt>,
   pub subject:     String,
@@ -43,6 +45,7 @@ impl<Evt> Events<Evt> {
   }
 }
 
+#[derive(Clone)]
 pub struct BucketKey<Ctrl> {
   pub phantom_ctrl: PhantomData<Ctrl>,
   pub key:          String,

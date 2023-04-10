@@ -20,12 +20,14 @@ pub struct InstanceSpec {
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstancePowerSpec {
-  pub power_controller: String,
-  pub power_on:         ParameterCommand,
-  pub power_off:        ParameterCommand,
-  pub warm_up_ms:       u64,
-  pub cool_down_ms:     u64,
-  pub idle_ms:          u64,
+  pub power_controller:   String,
+  pub power_on:           ParameterCommand,
+  pub power_off:          ParameterCommand,
+  pub warm_up_ms:         u64,
+  pub cool_down_ms:       u64,
+  pub idle_ms:            u64,
+  /// if true, the instance will not be reachable by a driver until it is powered on.
+  pub driver_needs_power: bool,
 }
 
 impl InstancePowerSpec {

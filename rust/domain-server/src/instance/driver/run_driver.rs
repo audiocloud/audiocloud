@@ -7,6 +7,7 @@ use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::{SetInstanceParameterResponse, SetInstanceParametersRequest};
 
 use crate::instance::driver::http::run_http_driver;
+use crate::instance::driver::mock::run_mock_driver;
 use crate::instance::driver::scripting::ScriptingEngine;
 use crate::instance::driver::serial::run_serial_driver;
 use crate::instance::driver::usb_hid::run_usb_driver;
@@ -38,6 +39,9 @@ pub async fn run_driver_server(instance_id: String,
       run_http_driver(instance_id, http, rx_cmd, tx_evt, scripting_engine).await?;
     }
     | InstanceDriverConfig::SPI(_) => {}
+    | InstanceDriverConfig::Mock => {
+      run_mock_driver(instance_id, rx_cmd, tx_evt, scripting_engine).await?;
+    }
   }
 
   bail!("Driver server exited unexpectedly")
