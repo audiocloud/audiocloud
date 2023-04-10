@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail};
+use async_nats::jetstream::kv::Operation;
 use async_nats::jetstream::{kv, Context};
 use async_nats::Client;
 use async_stream::stream;
@@ -297,10 +298,19 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
   pub async fn get(&self, key: BucketKey<T>) -> anyhow::Result<Option<T>> {
     let entry = self.store.entry(&key.key).await.map_err(nats_err)?;
     if let Some(entry) = entry {
-      Ok(Some(serde_json::from_slice(&entry.value).map_err(json_err)?))
+      match entry.operation {
+        | Operation::Put => Ok(Some(serde_json::from_slice(&entry.value).map_err(json_err)?)),
+        | Operation::Delete | Operation::Purge => Ok(None),
+      }
     } else {
       Ok(None)
     }
+  }
+
+  pub async fn delete(&self, key: BucketKey<T>) -> anyhow::Result<()> {
+    self.store.delete(&key.key).await.map_err(nats_err)?;
+
+    Ok(())
   }
 
   pub fn watch(&self, key: BucketKey<T>) -> WatchStream<T> {

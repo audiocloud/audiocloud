@@ -85,6 +85,8 @@ enum InstanceCommand {
 
 #[derive(Debug, Subcommand)]
 enum InstancePowerCommand {
+  /// Remove power control from the instance
+  Delete,
   /// Power on the instance
   On {
     /// How long to latch the play state
@@ -97,6 +99,8 @@ enum InstancePowerCommand {
 
 #[derive(Debug, Subcommand)]
 enum InstancePlayCommand {
+  /// Remove play control from the instance
+  Delete,
   /// Start the instance
   Play {
     /// How long to latch the play state
@@ -159,6 +163,10 @@ async fn set_instance_play(nats: Nats, id: String, play: InstancePlayCommand) ->
                                                                                + Duration::milliseconds((duration * 1000.0) as i64), },
     | InstancePlayCommand::Stop => InstancePlayControl { desired: DesiredInstancePlayState::Stop,
                                                          until:   Utc::now(), },
+    | InstancePlayCommand::Delete => {
+      nats.instance_play_ctrl.delete(BucketKey::new(id)).await?;
+      return Ok(());
+    }
   };
 
   nats.instance_play_ctrl.put(BucketKey::new(id), play).await?;
@@ -173,6 +181,10 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
                                                                                + Duration::milliseconds((duration * 1000.0) as i64), },
     | InstancePowerCommand::Off => InstancePowerControl { desired: DesiredInstancePowerState::Off,
                                                           until:   Utc::now(), },
+    | InstancePowerCommand::Delete => {
+      nats.instance_power_ctrl.delete(BucketKey::new(id)).await?;
+      return Ok(());
+    }
   };
 
   nats.instance_power_ctrl.put(BucketKey::new(id), power).await?;
@@ -182,10 +194,11 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
 
 async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result {
   let spec = if include_spec {
-    nats.instance_spec.get(BucketKey::new(&id)).await?;
+    nats.instance_spec.get(BucketKey::new(&id)).await?
   } else {
     None
   };
+
   let power_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
   let play_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
   let power = nats.instance_power_ctrl.get(BucketKey::new(&id)).await?;
