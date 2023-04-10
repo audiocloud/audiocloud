@@ -292,6 +292,15 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
     Ok(())
   }
 
+  pub async fn get(&self, key: BucketKey<T>) -> anyhow::Result<Option<T>> {
+    let entry = self.store.entry(&key.key).await.map_err(nats_err)?;
+    if let Some(entry) = entry {
+      Ok(Some(serde_json::from_slice(&entry.value).map_err(json_err)?))
+    } else {
+      Ok(None)
+    }
+  }
+
   pub fn watch(&self, key: BucketKey<T>) -> WatchStream<T> {
     watch_bucket_as_json(self.store.as_ref().clone(), key)
   }
