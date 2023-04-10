@@ -1,7 +1,7 @@
 import WebSocket from "isomorphic-ws";
 import {parseURL, serializeURL} from "whatwg-url";
 
-import {SetInstanceParameter} from "./instance";
+import {InstancePlayState, InstancePowerState, SetInstanceParameter} from "./instance";
 import {clearIntervalAsync, setIntervalAsync} from "set-interval-async";
 import {WsEvent} from "./ws";
 import {nanoid} from "nanoid";
@@ -46,23 +46,48 @@ export function createWebSocketClient(
           .with({type: "connected"}, ({connected}) => {
             handler.instanceConnectionChanged(instanceId, connected);
           })
+          .with({type: "powerStateChanged"}, ({state}) => {
+            handler.instancePowerStateChanged(instanceId, state);
+          })
+          .with({type: "playStateChanged"}, ({state}) => {
+            handler.instancePlayStateChanged(instanceId, state);
+          })
           .exhaustive();
       })
       .with({type: "setInstancePowerControl"}, ({requestId, success}) => {
-        console.log('instance power request', requestId, success ? 'success' : 'failure')
+        console.log(
+          "instance power request",
+          requestId,
+          success ? "success" : "failure"
+        );
       })
       .with({type: "setInstancePlayControl"}, ({requestId, success}) => {
-        console.log('instance play request', requestId, success ? 'success' : 'failure')
+        console.log(
+          "instance play request",
+          requestId,
+          success ? "success" : "failure"
+        );
       })
       .with({type: "setInstanceParameters"}, ({requestId, response}) => {
-        console.log('instance play request', requestId, response)
+        console.log("instance play request", requestId, response);
       })
       .with({type: "subscribeToInstanceEvents"}, ({requestId, success}) => {
-        console.log('instance subscribe to events request', requestId, success ? 'success' : 'failure')
+        console.log(
+          "instance subscribe to events request",
+          requestId,
+          success ? "success" : "failure"
+        );
       })
-      .with({type: "unsubscribeFromInstanceEvents"}, ({requestId, success}) => {
-        console.log('instance unsubscribe to events request', requestId, success ? 'success' : 'failure')
-      })
+      .with(
+        {type: "unsubscribeFromInstanceEvents"},
+        ({requestId, success}) => {
+          console.log(
+            "instance unsubscribe to events request",
+            requestId,
+            success ? "success" : "failure"
+          );
+        }
+      )
       .exhaustive();
   };
 
@@ -71,13 +96,13 @@ export function createWebSocketClient(
       const request = {
         requestId: nanoid(),
         command: {
-          type: 'setInstanceParameters',
-          changes: [] as Array<SetInstanceParameter>
+          type: "setInstanceParameters",
+          changes: [] as Array<SetInstanceParameter>,
         },
-      }
+      };
 
       for (const [[parameter, channel], value] of toSend.entries()) {
-        request.command.changes.push({parameter, channel, value})
+        request.command.changes.push({parameter, channel, value});
       }
 
       if (request.command.changes.length > 0) {
@@ -96,39 +121,52 @@ export function createWebSocketClient(
     },
     subscribeToInstanceEvents(instanceId: string) {
       if (connected) {
-        ws.send(JSON.stringify({
-          requestId: nanoid(),
-          command: {
-            type: 'subscribeToInstanceEvents',
-            instanceId
-          }
-        }));
+        ws.send(
+          JSON.stringify({
+            requestId: nanoid(),
+            command: {
+              type: "subscribeToInstanceEvents",
+              instanceId,
+            },
+          })
+        );
       } else {
-        throw new Error("Not connected")
+        throw new Error("Not connected");
       }
     },
     unsubscribeFromInstanceEvents(instanceId: string) {
       if (connected) {
-        ws.send(JSON.stringify({
-          requestId: nanoid(),
-          command: {
-            type: 'unsubscribeFromInstanceEvents',
-            instanceId
-          }
-        }));
+        ws.send(
+          JSON.stringify({
+            requestId: nanoid(),
+            command: {
+              type: "unsubscribeFromInstanceEvents",
+              instanceId,
+            },
+          })
+        );
       } else {
-        throw new Error("Not connected")
+        throw new Error("Not connected");
       }
-    }
+    },
   };
 }
 
 export interface ReceiveEvents {
   connectionChanged(connected: boolean): any;
 
-  instanceReport(instance: String, name: string, channel: number, value: number): void;
+  instanceReport(
+    instance: String,
+    name: string,
+    channel: number,
+    value: number
+  ): void;
 
   instanceConnectionChanged(instanceId: String, connected: boolean): void;
+
+  instancePlayStateChanged(instanceId: String, state: InstancePlayState): void;
+
+  instancePowerStateChanged(instanceId: String, state: InstancePowerState): void;
 }
 
 export interface SendEvents {

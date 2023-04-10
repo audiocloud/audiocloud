@@ -181,12 +181,13 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
 }
 
 async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result {
-  let spec = nats.instance_spec.get(BucketKey::new(&id)).await?;
-  let state = if include_spec {
-    nats.instance_state.get(BucketKey::new(&id)).await?
+  let spec = if include_spec {
+    nats.instance_spec.get(BucketKey::new(&id)).await?;
   } else {
     None
   };
+  let power_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
+  let play_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
   let power = nats.instance_power_ctrl.get(BucketKey::new(&id)).await?;
   let play = nats.instance_play_ctrl.get(BucketKey::new(&id)).await?;
 
@@ -194,9 +195,12 @@ async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result
   if include_spec {
     println!(" * Spec: {}", serde_json::to_string_pretty(&spec).unwrap());
   }
-  println!(" * State: {}", serde_json::to_string_pretty(&state).unwrap());
+
   println!(" * Power: {}", serde_json::to_string_pretty(&power).unwrap());
+  println!(" * Power State: {}", serde_json::to_string_pretty(&power_state).unwrap());
+
   println!(" * Play: {}", serde_json::to_string_pretty(&play).unwrap());
+  println!(" * Play State: {}", serde_json::to_string_pretty(&play_state).unwrap());
 
   Ok(())
 }

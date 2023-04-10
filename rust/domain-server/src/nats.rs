@@ -22,7 +22,7 @@ use wildmatch::WildMatch;
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::spec::DriverServiceSpec;
 use api::instance::spec::InstanceSpec;
-use api::instance::state::InstanceState;
+use api::instance::{InstancePlayState, InstancePowerState};
 use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::task::spec::TaskSpec;
@@ -90,7 +90,8 @@ pub struct Nats {
   pub client:               Client,
   pub jetstream:            Context,
   pub driver_spec:          Bucket<DriverServiceSpec>,
-  pub instance_state:       Bucket<InstanceState>,
+  pub instance_power_state: Bucket<InstancePowerState>,
+  pub instance_play_state:  Bucket<InstancePlayState>,
   pub instance_spec:        Bucket<InstanceSpec>,
   pub instance_power_ctrl:  Bucket<InstancePowerControl>,
   pub instance_play_ctrl:   Bucket<InstancePlayControl>,
@@ -114,7 +115,8 @@ impl Nats {
     Ok(Self { client:               client.clone(),
               jetstream:            async_nats::jetstream::new(client),
               driver_spec:          Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever).await?,
-              instance_state:       Bucket::new(js, &instance::buckets::INSTANCE_STATE, forever).await?,
+              instance_power_state: Bucket::new(js, &instance::buckets::INSTANCE_POWER_STATE, forever).await?,
+              instance_play_state:  Bucket::new(js, &instance::buckets::INSTANCE_PLAY_STATE, forever).await?,
               instance_spec:        Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever).await?,
               instance_power_ctrl:  Bucket::new(js, &instance::buckets::INSTANCE_POWER_CONTROL, forever).await?,
               instance_play_ctrl:   Bucket::new(js, &instance::buckets::INSTANCE_PLAY_CONTROL, forever).await?,

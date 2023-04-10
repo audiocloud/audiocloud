@@ -3,12 +3,15 @@ use schemars::{schema_for, JsonSchema};
 use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
+use crate::instance::{InstancePlayState, InstancePowerState};
 use crate::{Events, Timestamp};
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum InstanceDriverEvent {
   Connected { connected: bool },
+  PowerStateChanged { state: InstancePowerState },
+  PlayStateChanged { state: InstancePlayState },
   Report(InstanceDriverReportEvent),
 }
 

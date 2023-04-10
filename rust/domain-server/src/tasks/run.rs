@@ -10,7 +10,7 @@ use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
 use api::instance::spec::{instance_spec, InstanceSpec};
-use api::instance::state::{instance_state, InstanceState};
+use api::instance::state::{instance_power_state, InstanceState};
 use api::instance::InstancePlayState;
 use api::media::state::{media_download_state, MediaDownloadState};
 use api::task::buckets::task_spec;
@@ -143,7 +143,7 @@ impl RunDomainTask {
           .insert(instance_id.clone(), self.nats.instance_spec.watch(instance_spec(&instance_id)));
 
       self.watch_instance_states
-          .insert(instance_id.clone(), self.nats.instance_state.watch(instance_state(&instance_id)));
+          .insert(instance_id.clone(), self.nats.instance_power_state.watch(instance_power_state(&instance_id)));
     }
   }
 

@@ -16,12 +16,13 @@ pub mod state;
 pub mod buckets {
   use crate::instance::control::{InstancePlayControl, InstancePowerControl};
   use crate::instance::spec::InstanceSpec;
-  use crate::instance::state::InstanceState;
+  use crate::instance::{InstancePlayState, InstancePowerState};
   use crate::BucketName;
 
   pub const INSTANCE_POWER_CONTROL: BucketName<InstancePowerControl> = BucketName::new("audiocloud_instance_power_control");
   pub const INSTANCE_PLAY_CONTROL: BucketName<InstancePlayControl> = BucketName::new("audiocloud_instance_play_control");
-  pub const INSTANCE_STATE: BucketName<InstanceState> = BucketName::new("audiocloud_instance_state");
+  pub const INSTANCE_POWER_STATE: BucketName<InstancePowerState> = BucketName::new("audiocloud_instance_power_state");
+  pub const INSTANCE_PLAY_STATE: BucketName<InstancePlayState> = BucketName::new("audiocloud_instance_play_state");
   pub const INSTANCE_SPEC: BucketName<InstanceSpec> = BucketName::new("audiocloud_instance_spec");
 }
 

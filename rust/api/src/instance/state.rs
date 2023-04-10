@@ -1,21 +1,18 @@
 use schemars::schema::RootSchema;
-use schemars::{schema_for, JsonSchema};
-use serde::{Deserialize, Serialize};
+use schemars::schema_for;
+use schemars_zod::merge_schemas;
 
 use crate::instance::{InstancePlayState, InstancePowerState};
 use crate::BucketKey;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct InstanceState {
-  pub power: Option<InstancePowerState>,
-  pub play:  Option<InstancePlayState>,
+pub fn instance_power_state(instance_id: impl ToString) -> BucketKey<InstancePowerState> {
+  BucketKey::new(instance_id)
 }
 
-pub fn instance_state(instance_id: impl ToString) -> BucketKey<InstanceState> {
+pub fn instance_play_state(instance_id: impl ToString) -> BucketKey<InstancePlayState> {
   BucketKey::new(instance_id)
 }
 
 pub fn schema() -> RootSchema {
-  schema_for!(InstanceState)
+  merge_schemas([schema_for!(InstancePowerState), schema_for!(InstancePlayState)].into_iter())
 }
