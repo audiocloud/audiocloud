@@ -18,7 +18,8 @@ pub struct SetInstanceParameter {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SetInstanceParametersRequest {
-  pub changes: Vec<SetInstanceParameter>,
+  pub instance_id: String,
+  pub changes:     Vec<SetInstanceParameter>,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
@@ -28,6 +29,7 @@ pub enum SetInstanceParameterResponse {
   ParameterNotFound,
   ChannelNotFound,
   NotConnected,
+  RpcFailure,
 }
 
 impl Display for SetInstanceParameterResponse {
@@ -44,6 +46,9 @@ impl Display for SetInstanceParameterResponse {
       }
       | SetInstanceParameterResponse::NotConnected => {
         write!(f, "Not connected")
+      }
+      | SetInstanceParameterResponse::RpcFailure => {
+        write!(f, "RPC failure")
       }
     }
   }

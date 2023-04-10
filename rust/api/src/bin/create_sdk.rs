@@ -2,8 +2,10 @@ use std::fs;
 
 use schemars_zod::convert;
 
+use api::ws;
+
 fn main() {
-  let schemas = [("instance", api::instance::schema())];
+  let schemas = [("instance", api::instance::schema()), ("ws", ws::schema())];
 
   for (name, schema) in schemas.into_iter() {
     println!("generating {name}");

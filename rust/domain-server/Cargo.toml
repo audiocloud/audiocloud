@@ -71,7 +71,7 @@ features = ["json", "ws", "headers", "tokio"]
 
 [dependencies.tokio]
 version = "1"
-features = ["full"]
+features = ["macros", "rt-multi-thread"]
 
 [dependencies.chrono]
 version = "0.4"
