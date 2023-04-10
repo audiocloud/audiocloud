@@ -9,34 +9,34 @@ use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
+use api::instance::{InstancePlayState, InstancePowerState};
 use api::instance::spec::{instance_spec, InstanceSpec};
-use api::instance::state::{instance_power_state, InstanceState};
-use api::instance::InstancePlayState;
+use api::instance::state::{instance_play_state, instance_power_state};
 use api::media::state::{media_download_state, MediaDownloadState};
 use api::task::buckets::task_spec;
-use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
-use api::Timestamp;
+use api::task::spec::TaskSpec;
 use async_audio_engine::GraphPlayer;
 
 use crate::nats::{Nats, WatchStream};
 use crate::tasks::Result;
 
 pub struct RunDomainTask {
-  id:                    String,
-  spec:                  TaskSpec,
-  timer:                 Interval,
-  tx_external:           mpsc::Sender<ExternalTask>,
-  rx_external:           mpsc::Receiver<ExternalTask>,
-  watch_spec:            WatchStream<TaskSpec>,
-  watch_instance_specs:  StreamMap<String, WatchStream<InstanceSpec>>,
-  watch_instance_states: StreamMap<String, WatchStream<InstanceState>>,
-  watch_download_states: StreamMap<String, WatchStream<MediaDownloadState>>,
-  instances:             HashMap<String, TaskInstance>,
-  media:                 HashMap<String, TaskMedia>,
-  desired_play_state:    DesiredTaskPlayState,
-  player:                Option<GraphPlayer>,
-  nats:                  Nats,
+  id:                          String,
+  spec:                        TaskSpec,
+  timer:                       Interval,
+  tx_external:                 mpsc::Sender<ExternalTask>,
+  rx_external:                 mpsc::Receiver<ExternalTask>,
+  watch_spec:                  WatchStream<TaskSpec>,
+  watch_instance_specs:        StreamMap<String, WatchStream<InstanceSpec>>,
+  watch_instance_power_states: StreamMap<String, WatchStream<InstancePowerState>>,
+  watch_instance_play_states:  StreamMap<String, WatchStream<InstancePlayState>>,
+  watch_download_states:       StreamMap<String, WatchStream<MediaDownloadState>>,
+  instances:                   HashMap<String, TaskInstance>,
+  media:                       HashMap<String, TaskMedia>,
+  desired_play_state:          DesiredTaskPlayState,
+  player:                      Option<GraphPlayer>,
+  nats:                        Nats,
 }
 
 enum ExternalTask {}
@@ -46,7 +46,8 @@ impl RunDomainTask {
     let mut watch_spec = nats.task_spec.watch(task_spec(&id));
 
     let watch_instance_specs = StreamMap::new();
-    let watch_instance_states = StreamMap::new();
+    let watch_instance_power_states = StreamMap::new();
+    let watch_instance_play_states = StreamMap::new();
     let watch_download_states = StreamMap::new();
 
     let instances = HashMap::new();
@@ -70,7 +71,8 @@ impl RunDomainTask {
                         rx_external,
                         desired_play_state,
                         watch_instance_specs,
-                        watch_instance_states,
+                        watch_instance_power_states,
+                        watch_instance_play_states,
                         watch_download_states };
 
     rv.resubscribe_media();
@@ -86,8 +88,11 @@ impl RunDomainTask {
         Some((instance_id, (_, maybe_instance_spec_update))) = self.watch_instance_specs.next() => {
           self.instance_spec_updated(instance_id, maybe_instance_spec_update);
         },
-        Some((instance_id, (_, maybe_instance_state_update))) = self.watch_instance_states.next() => {
-          self.instance_state_updated(instance_id, maybe_instance_state_update);
+        Some((instance_id, (_, maybe_instance_power_state_update))) = self.watch_instance_power_states.next() => {
+          self.instance_power_state_updated(instance_id, maybe_instance_power_state_update);
+        },
+        Some((instance_id, (_, maybe_instance_play_state_update))) = self.watch_instance_play_states.next() => {
+          self.instance_play_state_updated(instance_id, maybe_instance_play_state_update);
         },
         Some((media_id, (_, maybe_download_state_update))) = self.watch_download_states.next() => {
           self.download_state_updated(media_id, maybe_download_state_update);
@@ -126,14 +131,14 @@ impl RunDomainTask {
   }
 
   fn resubscribe_instances(&mut self) {
-    let to_remove = self.watch_instance_states
+    let to_remove = self.watch_instance_play_states
                         .keys()
                         .filter(|key| !self.spec.instances.contains_key(*key))
                         .cloned()
                         .collect::<HashSet<_>>();
 
     for instance_id in &to_remove {
-      self.watch_instance_states.remove(instance_id);
+      self.watch_instance_play_states.remove(instance_id);
       self.watch_instance_specs.remove(instance_id);
       self.instances.remove(instance_id);
     }
@@ -142,8 +147,11 @@ impl RunDomainTask {
       self.watch_instance_specs
           .insert(instance_id.clone(), self.nats.instance_spec.watch(instance_spec(&instance_id)));
 
-      self.watch_instance_states
-          .insert(instance_id.clone(), self.nats.instance_power_state.watch(instance_power_state(&instance_id)));
+      self.watch_instance_power_states.insert(instance_id.clone(),
+                                              self.nats.instance_power_state.watch(instance_power_state(&instance_id)));
+
+      self.watch_instance_play_states.insert(instance_id.clone(),
+                                             self.nats.instance_play_state.watch(instance_play_state(&instance_id)));
     }
   }
 
@@ -175,8 +183,14 @@ impl RunDomainTask {
     // TODO: update play state decision
   }
 
-  fn instance_state_updated(&mut self, instance_id: String, spec: Option<InstanceState>) {
-    self.instances.entry(instance_id).or_default().state = spec;
+  fn instance_power_state_updated(&mut self, instance_id: String, spec: Option<InstancePowerState>) {
+    self.instances.entry(instance_id).or_default().power_state = spec;
+
+    // TODO: update play state decision
+  }
+
+  fn instance_play_state_updated(&mut self, instance_id: String, spec: Option<InstancePlayState>) {
+    self.instances.entry(instance_id).or_default().play_state = spec;
 
     // TODO: update play state decision
   }
@@ -229,9 +243,22 @@ impl RunDomainTask {
       };
 
       if spec.media.is_some() {
-        let state = match instance.state.as_ref().and_then(|state| state.play.as_ref()) {
+        let power_state = match instance.power_state.as_ref() {
+          | None =>
+            if spec.power.is_some() {
+              unready_instances.insert(instance_id.clone());
+              continue;
+            } else {
+              &InstancePowerState::On
+            },
+          | Some(state) => state,
+        };
+
+        let play_state = match instance.play_state.as_ref() {
           | None => {
-            unready_instances.insert(instance_id.clone());
+            if spec.media.is_some() {
+              unready_instances.insert(instance_id.clone());
+            }
             continue;
           }
           | Some(state) => state,
@@ -239,10 +266,10 @@ impl RunDomainTask {
 
         match &self.desired_play_state {
           | DesiredTaskPlayState::Idle =>
-            if state != &InstancePlayState::Idle {
+            if play_state != &InstancePlayState::Idle {
               unready_instances.insert(instance_id.clone());
             },
-          | DesiredTaskPlayState::Play { play_id, .. } => match state {
+          | DesiredTaskPlayState::Play { play_id, .. } => match play_state {
             | InstancePlayState::Playing { play_id: instance_play_id, .. } if play_id == instance_play_id => {}
             | _ => {
               unready_instances.insert(instance_id.clone());
@@ -295,19 +322,12 @@ impl RunDomainTask {
 
 #[derive(Default)]
 struct TaskInstance {
-  spec:  Option<InstanceSpec>,
-  state: Option<InstanceState>,
+  spec:        Option<InstanceSpec>,
+  power_state: Option<InstancePowerState>,
+  play_state:  Option<InstancePlayState>,
 }
 
 #[derive(Default)]
 struct TaskMedia {
   state: Option<MediaDownloadState>,
-}
-
-fn late_or_never(ts: Option<Timestamp>, seconds: usize) -> bool {
-  match ts {
-    | None => true,
-    | Some(ts) if Utc::now() - ts > chrono::Duration::seconds(seconds as i64) => true,
-    | _ => false,
-  }
 }

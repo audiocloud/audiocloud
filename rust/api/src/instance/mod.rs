@@ -71,7 +71,7 @@ pub struct InstancePlayStateSummary {
   pub state:      InstancePlayState,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum InstancePowerState {
   Off,
