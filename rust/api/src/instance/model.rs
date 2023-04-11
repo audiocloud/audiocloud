@@ -42,7 +42,7 @@ pub struct ParameterModel {
   pub step:     Option<f64>,
   #[serde(default)]
   pub unit:     Option<String>,
-  #[serde(default = "default_parameter_model_channels")]
+  #[serde(default = "default_model_channels")]
   pub channels: usize,
   #[serde(default)]
   pub metadata: HashMap<String, Value>,
@@ -60,7 +60,7 @@ pub enum ValueRange {
     #[serde(default)]
     step: Option<f64>,
   },
-  Values {
+  List {
     values: Vec<f64>,
   },
 }
@@ -77,15 +77,7 @@ fn default_bounded_max() -> f64 {
   1.0
 }
 
-fn default_parameter_model_min() -> f64 {
-  0.0
-}
-
-fn default_parameter_model_max() -> f64 {
-  1.0
-}
-
-fn default_parameter_model_channels() -> usize {
+fn default_model_channels() -> usize {
   2
 }
 

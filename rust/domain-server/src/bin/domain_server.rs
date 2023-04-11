@@ -36,6 +36,9 @@ struct Arguments {
   /// Enables task management services
   #[clap(long, env)]
   pub enable_tasks:            bool,
+  /// Enable media management services
+  #[clap(long, env)]
+  pub enable_media:            bool,
   #[clap(long, env, default_value = "nats://localhost:4222")]
   pub nats_url:                String,
   /// REST API listen address and port
@@ -49,9 +52,11 @@ enum InternalEvent {
   InstanceDriversFinished,
   InstancesFinished,
   TasksFinished,
+  MediaFinished,
   RestartInstanceDrivers,
   RestartInstances,
   RestartTasks,
+  RestartMedia,
 }
 
 #[tokio::main]
@@ -118,6 +123,20 @@ async fn main() -> Result {
   };
   let tasks_respawn_limit = Arc::new(RateLimiter::direct(Quota::per_minute(nonzero!(10u32))));
 
+  let create_media = || {
+    if args.enable_media {
+      let tx_internal = tx_internal.clone();
+      spawn(async move {
+              error!("Media service is not yet implemented");
+              Err::<(), _>(anyhow!("Media service is not yet implemented"))
+            }.then(|res| async move {
+               warn!("Media service exited: {res:?}");
+               let _ = tx_internal.send(MediaFinished).await;
+             }));
+    }
+  };
+  let media_respawn_limit = Arc::new(RateLimiter::direct(Quota::per_minute(nonzero!(10u32))));
+
   let bind = args.rest_api_bind;
   info!("REST API listening on {bind}");
   let mut rest_api = spawn(async move {
@@ -132,6 +151,7 @@ async fn main() -> Result {
   create_instance_drivers();
   create_instances();
   create_tasks();
+  create_media();
 
   loop {
     select! {
@@ -165,6 +185,14 @@ async fn main() -> Result {
               let _ = tx_internal.send(RestartTasks).await;
             });
           },
+          MediaFinished => {
+            let tx_internal = tx_internal.clone();
+            let media_respawn_limit = media_respawn_limit.clone();
+            spawn(async move {
+              let _ = media_respawn_limit.until_ready().await;
+              let _ = tx_internal.send(RestartMedia).await;
+            });
+          },
           RestartInstanceDrivers => {
             create_instance_drivers();
           },
@@ -174,6 +202,9 @@ async fn main() -> Result {
           RestartTasks => {
             create_tasks();
           },
+          RestartMedia => {
+            create_media();
+          }
         }
       },
       _ = tokio::signal::ctrl_c() => {

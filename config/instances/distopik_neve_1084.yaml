@@ -3,15 +3,17 @@ host: localhost
 model:
   parameters:
     inputGain:
-      type: float
       unit: dB
-      allowedValues: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
+      range:
+        type: list
+        values: [ -1000, -10, -5, 0, 5, 10, 15, 20 ]
       metadata:
         off: -1000
     highPassFilter:
-      type: float
       unit: Hz
-      allowedValues: [ -1000, 22, 45, 70, 160, 360 ]
+      range:
+        type: list
+        values: [ -1000, 22, 45, 70, 160, 360 ]
       metadata:
         off: -1000
 driver:
