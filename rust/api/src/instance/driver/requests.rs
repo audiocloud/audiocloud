@@ -29,6 +29,8 @@ pub enum SetInstanceParameterResponse {
   ParameterNotFound,
   ChannelNotFound,
   NotConnected,
+  EncodingError,
+  ConnectionError,
   RpcFailure,
 }
 
@@ -49,6 +51,12 @@ impl Display for SetInstanceParameterResponse {
       }
       | SetInstanceParameterResponse::RpcFailure => {
         write!(f, "RPC failure")
+      }
+      | SetInstanceParameterResponse::EncodingError => {
+        write!(f, "Encoding error")
+      }
+      | SetInstanceParameterResponse::ConnectionError => {
+        write!(f, "Connection error")
       }
     }
   }

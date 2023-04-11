@@ -6,5 +6,6 @@ pub mod scripting;
 pub mod serial;
 pub mod server;
 pub mod usb_hid;
+pub mod osc;
 
 pub type Result<T = ()> = super::Result<T>;

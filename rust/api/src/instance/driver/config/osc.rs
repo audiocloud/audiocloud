@@ -16,8 +16,8 @@ pub struct OscDriverConfig {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct OscParameterConfig {
-  pub osc_type:      String,
-  pub path_template: String,
+  pub osc_type:  String,
+  pub address:      String,
   #[serde(default)]
-  pub transform:     Option<String>,
+  pub transform: Option<String>,
 }

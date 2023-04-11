@@ -11,10 +11,10 @@ use super::Result;
 
 // TODO: in the future we will use the scripting engine
 
-pub async fn run_mock_driver(instance_id: String,
+pub async fn run_mock_driver(_instance_id: String,
                              mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
                              tx_evt: mpsc::Sender<InstanceDriverEvent>,
-                             scripting_engine: ScriptingEngine)
+                             _scripting_engine: ScriptingEngine)
                              -> Result {
   let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
 
@@ -22,7 +22,7 @@ pub async fn run_mock_driver(instance_id: String,
     match cmd {
       | InstanceDriverCommand::SetParameters(params, ok) => {
         for change in params.changes {
-          info!(parameter = change.parameter, channel = change.channel, value = change.value, "Set");
+          info!(channel = change.channel, value = change.value, "Set");
         }
 
         let _ = ok.send(SetInstanceParameterResponse::Success);

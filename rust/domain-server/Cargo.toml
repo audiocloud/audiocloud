@@ -3,7 +3,10 @@ name = "domain-server"
 version = "0.1.0"
 edition = "2021"
 authors = [
-    "Bojan Šernek <bojan@distopik.com>", "Gabrijela Hladnik <gabrijela@distopik.com>", "Rok Kroflič", "Matej Šajn"
+    "Bojan Šernek",
+    "Gabrijela Hladnik",
+    "Rok Kroflič",
+    "Matej Šajn"
 ]
 
 [dependencies]
@@ -12,9 +15,7 @@ futures = "0.3"
 base64 = "0.21"
 async-trait = "0.1"
 async-stream = "0.3"
-backoff = "0.4"
 governor = "0.5"
-async-stm = "0.2"
 serde_json = "1"
 serde_yaml = "0.9"
 rmp-serde = "1"
@@ -24,7 +25,6 @@ serialport = "4"
 byteorder = "1"
 tracing = "0.1"
 itertools = "0.10"
-tokio-util = "0.7"
 lazy_static = "1"
 gc = "0.4"
 regex = "1"
@@ -33,6 +33,11 @@ maplit = "1"
 nonzero_ext = "0.3"
 async-thread = "0.1"
 lru = "0.10"
+rosc = "0.9"
+
+[dependencies.mongodb]
+version = "2"
+features = ["bson-chrono-0_4"]
 
 [dependencies.boa_engine]
 version = "0.16"
