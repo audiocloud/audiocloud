@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::bail;
 use byteorder::{WriteBytesExt, LE};
 use rosc::{encoder, OscBundle, OscMessage, OscPacket, OscTime, OscType};
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use tokio::{net, select};
 
@@ -97,13 +97,12 @@ async fn serialize_changes_to_bundle(config: &OscDriverConfig,
       | _ => change.value,
     };
 
-    let value = match parameter.transform.as_ref() {
-      | None => value,
-      | Some(transform) => scripting.execute(transform.clone(),
-                                             json!({"value": value, "parameter": &change.parameter, "channel": change.channel}))
-                                    .await
-                                    .as_f64()
-                                    .unwrap_or(value),
+    let value: Value = match parameter.transform.as_ref() {
+      | None => value.into(),
+      | Some(transform) =>
+        scripting.execute(transform.clone(),
+                          json!({"value": value, "parameter": &change.parameter, "channel": change.channel}))
+                 .await,
     };
 
     let addr = if parameter.address.starts_with("/") {
@@ -115,8 +114,23 @@ async fn serialize_changes_to_bundle(config: &OscDriverConfig,
                .to_string()
     };
 
-    content.push(OscPacket::Message(OscMessage { addr,
-                                                 args: vec![OscType::Float(value as f32)] }));
+    match (parameter.osc_type.as_str(), &value) {
+      | ("i", Value::Number(n)) => {
+        content.push(OscPacket::Message(OscMessage { addr,
+                                                     args: vec![OscType::Int(n.as_f64().unwrap_or_default() as i32)] }));
+      }
+      | ("f", Value::Number(n)) => {
+        content.push(OscPacket::Message(OscMessage { addr,
+                                                     args: vec![OscType::Float(n.as_f64().unwrap_or_default() as f32)] }));
+      }
+      | ("b", Value::Bool(_) | Value::Number(_)) => {
+        let f64_bool = value.as_f64().unwrap_or_default() != 0.0;
+
+        content.push(OscPacket::Message(OscMessage { addr,
+                                                     args: vec![OscType::Bool(value.as_bool().unwrap_or(f64_bool))] }));
+      }
+      | _ => {}
+    }
   }
 
   let serialized = encoder::encode(&OscPacket::Bundle(OscBundle { timetag, content }))?;
