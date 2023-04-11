@@ -36,20 +36,45 @@ fn default_audio_io_count() -> usize {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ParameterModel {
-  #[serde(default = "default_parameter_model_min")]
-  pub min:            f64,
-  #[serde(default = "default_parameter_model_max")]
-  pub max:            f64,
   #[serde(default)]
-  pub allowed_values: Vec<f64>,
+  pub range:    ValueRange,
   #[serde(default)]
-  pub step:           Option<f64>,
+  pub step:     Option<f64>,
   #[serde(default)]
-  pub unit:           Option<String>,
+  pub unit:     Option<String>,
   #[serde(default = "default_parameter_model_channels")]
-  pub channels:       usize,
+  pub channels: usize,
   #[serde(default)]
-  pub metadata:       HashMap<String, Value>,
+  pub metadata: HashMap<String, Value>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum ValueRange {
+  Toggle,
+  Bounded {
+    #[serde(default)]
+    min:  f64,
+    #[serde(default = "default_bounded_max")]
+    max:  f64,
+    #[serde(default)]
+    step: Option<f64>,
+  },
+  Values {
+    values: Vec<f64>,
+  },
+}
+
+impl Default for ValueRange {
+  fn default() -> Self {
+    Self::Bounded { min:  0.0,
+                    max:  default_bounded_max(),
+                    step: None, }
+  }
+}
+
+fn default_bounded_max() -> f64 {
+  1.0
 }
 
 fn default_parameter_model_min() -> f64 {
@@ -67,26 +92,14 @@ fn default_parameter_model_channels() -> usize {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ReportModel {
-  #[serde(default = "default_report_model_min")]
-  pub min:      f64,
-  #[serde(default = "default_report_model_max")]
-  pub max:      f64,
   #[serde(default)]
-  pub step:     Option<f64>,
+  pub range:    ValueRange,
   #[serde(default)]
   pub unit:     Option<String>,
   #[serde(default = "default_report_model_channels")]
   pub channels: usize,
   #[serde(default)]
   pub metadata: HashMap<String, Value>,
-}
-
-fn default_report_model_min() -> f64 {
-  0.0
-}
-
-fn default_report_model_max() -> f64 {
-  1.0
 }
 
 fn default_report_model_channels() -> usize {

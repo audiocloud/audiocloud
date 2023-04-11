@@ -1,0 +1,98 @@
+model:
+  parameters:
+    bypass: &bypass
+      range: toggle
+    lfBypass: *bypass
+    lfShape: &shape
+      range:
+        min: .4
+        max: 4
+      unit: oct
+    lfFreq:
+      range:
+        values: [ 22, 26, 31, 37, 45, 53, 64, 77, 92, 110, 130, 160, 190, 230, 270, 320, 390, 470, 560, 670, 800 ]
+      unit: Hz
+    lfGain: &gain
+      range:
+        min: -5
+        max: 5
+      unit: dB
+    lfGainX2: &x2
+      range: toggle
+    lmfBypass: *bypass
+    lmfShape: *shape
+    lmfFreq:
+      range:
+        values: [ 130, 150, 180, 220, 260, 310, 370, 450, 530, 640, 770, 920, 1100, 1300, 1600, 1900, 2300, 2700, 3200, 3900, 4700 ]
+      unit: Hz
+    lmfGain: *gain
+    lmfGainX2: *x2
+    mfBypass: *bypass
+    mfShape: *shape
+    mfFreq:
+      range:
+        values: [ 220, 260, 310, 370, 450, 530, 640, 770, 920, 1100, 1300, 1600, 1900, 2300, 2700, 3200, 3900, 4700, 5600, 6700, 8000 ]
+      unit: Hz
+    mfGain: *gain
+    mfGainX2: *x2
+    hmfBypass: *bypass
+    hmfShape: *shape
+    hmfFreq:
+      range:
+        values: [ 480, 580, 710, 840, 1000, 1200, 1400, 1700, 2100, 2500, 3000, 3500, 4200, 5100, 6100, 7400, 8700, 10000, 13000, 15000, 18000 ]
+      unit: Hz
+    hmfGain: *gain
+    hmfGainX2: *x2
+    hfBypass: *bypass
+    hfShape:
+      range:
+        values: [ 6, 12 ]
+      unit: oct
+    hfFreq:
+      range:
+        values: [ 900, 1100, 1200, 1400, 1700, 2000, 2300, 2700, 3100, 3600, 4200, 4900, 5700, 6700, 7800, 9100, 10600, 12400, 14500, 16800, 20000 ]
+      unit: Hz
+    hfGain: *gain
+    hfGainX2: *x2
+driver:
+  type: OSC
+  host: 10.10.3.18
+  port: 6700
+  uscTcp: true
+  parameters:
+    bypass:
+      - address: /left/bypass
+        oscType: b
+      - address: /right/bypass
+        oscType: b
+    lfBypass:
+      - address: /left/lf/bypass
+        oscType: b
+      - address: /right/lf/bypass
+        oscType: b
+    lfShape:
+      - address: /left/lf/shape
+        oscType: i
+      - address: /right/lf/shape
+        oscType: i
+    lfFreq:
+      - address: /left/lf/freq
+        remap:
+          type: linearModel
+        oscType: i
+      - address: /right/lf/freq
+        oscType: i
+        remap:
+          type: linearModel
+    lfGain:
+      - address: /left/lf/gain
+        rescale: [ [ -10, 10 ], [ -1, 1 ] ]
+        oscType: f
+      - address: /right/lf/gain
+        rescale: [ [ -10, 10 ], [ -1, 1 ] ]
+        oscType: f
+    lfX2:
+      - address: /left/lf/x2
+        oscType: b
+      - address: /right/lf/x2
+        oscType: b

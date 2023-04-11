@@ -11,6 +11,7 @@ use api::instance::driver::config::osc::OscDriverConfig;
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::{SetInstanceParameter, SetInstanceParameterResponse};
 
+use crate::instance::driver::bin_page_utils::remap_and_rescale_value;
 use crate::instance::driver::run_driver::InstanceDriverCommand;
 use crate::instance::driver::scripting::ScriptingEngine;
 
@@ -52,7 +53,7 @@ async fn run_tcp_osc_driver(instance_id: String,
       Some(cmd) = rx_cmd.recv() => {
         match cmd {
           | InstanceDriverCommand::SetParameters(req, complete) => {
-            let Ok(serialized) = serialize_changed_to_bundle(&config, req.changes, &scripting).await else {
+            let Ok(serialized) = serialize_changes_to_bundle(&config, req.changes, &scripting).await else {
               let _ = complete.send(SetInstanceParameterResponse::EncodingError);
               continue;
             };
@@ -76,7 +77,7 @@ async fn run_tcp_osc_driver(instance_id: String,
   Ok(())
 }
 
-async fn serialize_changed_to_bundle(config: &OscDriverConfig,
+async fn serialize_changes_to_bundle(config: &OscDriverConfig,
                                      changes: Vec<SetInstanceParameter>,
                                      scripting: &ScriptingEngine)
                                      -> Result<Vec<u8>> {
@@ -87,13 +88,22 @@ async fn serialize_changed_to_bundle(config: &OscDriverConfig,
     let Some(parameters) = config.parameters.get(&change.parameter) else { continue; };
     let Some(parameter) = parameters.get(change.channel) else { continue; };
 
+    let value = match remap_and_rescale_value(change.value,
+                                              parameter.remap.as_ref(),
+                                              parameter.rescale.as_ref(),
+                                              parameter.clamp.as_ref())
+    {
+      | Ok(value) => value,
+      | _ => change.value,
+    };
+
     let value = match parameter.transform.as_ref() {
-      | None => change.value,
+      | None => value,
       | Some(transform) => scripting.execute(transform.clone(),
-                                             json!({"value": change.value, "parameter": &change.parameter, "channel": change.channel}))
+                                             json!({"value": value, "parameter": &change.parameter, "channel": change.channel}))
                                     .await
                                     .as_f64()
-                                    .unwrap_or(change.value),
+                                    .unwrap_or(value),
     };
 
     let addr = if parameter.address.starts_with("/") {

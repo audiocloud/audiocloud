@@ -1,9 +1,8 @@
 import WebSocket from "isomorphic-ws";
 import {parseURL, serializeURL} from "whatwg-url";
 
-import {InstancePlayState, InstancePowerState, SetInstanceParameter} from "./instance";
-import {clearIntervalAsync, setIntervalAsync} from "set-interval-async";
-import {WsEvent} from "./ws";
+import {InstancePlayState, InstancePowerState} from "./instance";
+import {WsEvent, WsRequest} from "./ws";
 import {nanoid} from "nanoid";
 import {match} from "ts-pattern";
 
@@ -24,7 +23,7 @@ export function createWebSocketClient(
   let connected = false;
 
   const ws = new WebSocket(serializeURL(url, false));
-  const toSend = new Map<[string, number], number>();
+  const toSend = new Map<string, Map<[string, number], number>>();
 
   ws.onopen = () => {
     connected = true;
@@ -91,60 +90,46 @@ export function createWebSocketClient(
       .exhaustive();
   };
 
-  const timer = setIntervalAsync(async () => {
-    if (connected) {
-      const request = {
-        requestId: nanoid(),
-        command: {
-          type: "setInstanceParameters",
-          changes: [] as Array<SetInstanceParameter>,
-        },
-      };
-
-      for (const [[parameter, channel], value] of toSend.entries()) {
-        request.command.changes.push({parameter, channel, value});
-      }
-
-      if (request.command.changes.length > 0) {
-        ws.send(JSON.stringify(request));
-      }
-    }
-  }, config.refreshInterval);
+  const send = (req: WsRequest) => {
+    ws.send(JSON.stringify(req))
+  }
 
   return {
     async close() {
-      await clearIntervalAsync(timer);
       ws.close();
     },
-    setParameter(name: string, channel: number, value: number) {
-      toSend.set([name, channel], value);
+    setParameter(instance: string, parameter: string, channel: number, value: number) {
+      send({
+        requestId: nanoid(),
+        command: {
+          type: 'setInstanceParameters',
+          instanceId: instance,
+          changes: [{parameter, channel, value}]
+        }
+      })
     },
     subscribeToInstanceEvents(instanceId: string) {
       if (connected) {
-        ws.send(
-          JSON.stringify({
-            requestId: nanoid(),
-            command: {
-              type: "subscribeToInstanceEvents",
-              instanceId,
-            },
-          })
-        );
+        send({
+          requestId: nanoid(),
+          command: {
+            type: "subscribeToInstanceEvents",
+            instanceId,
+          },
+        });
       } else {
         throw new Error("Not connected");
       }
     },
     unsubscribeFromInstanceEvents(instanceId: string) {
       if (connected) {
-        ws.send(
-          JSON.stringify({
-            requestId: nanoid(),
-            command: {
-              type: "unsubscribeFromInstanceEvents",
-              instanceId,
-            },
-          })
-        );
+        send({
+          requestId: nanoid(),
+          command: {
+            type: "unsubscribeFromInstanceEvents",
+            instanceId,
+          },
+        })
       } else {
         throw new Error("Not connected");
       }
@@ -172,7 +157,7 @@ export interface ReceiveEvents {
 export interface SendEvents {
   close(): void;
 
-  setParameter(name: string, channel: number, value: number): void;
+  setParameter(instance: string, name: string, channel: number, value: number): void;
 
   subscribeToInstanceEvents(instanceId: string): void;
 

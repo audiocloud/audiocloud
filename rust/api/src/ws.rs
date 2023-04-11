@@ -17,21 +17,22 @@ pub struct WsRequest {
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum WsCommand {
+  #[serde(rename_all = "camelCase")]
   SetInstancePowerControl {
     instance_id: String,
     power:       InstancePowerControl,
   },
+  #[serde(rename_all = "camelCase")]
   SetInstancePlayControl {
     instance_id: String,
     play:        InstancePlayControl,
   },
+  #[serde(rename_all = "camelCase")]
   SetInstanceParameters(SetInstanceParametersRequest),
-  SubscribeToInstanceEvents {
-    instance_id: String,
-  },
-  UnsubscribeFromInstanceEvents {
-    instance_id: String,
-  },
+  #[serde(rename_all = "camelCase")]
+  SubscribeToInstanceEvents { instance_id: String },
+  #[serde(rename_all = "camelCase")]
+  UnsubscribeFromInstanceEvents { instance_id: String },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]

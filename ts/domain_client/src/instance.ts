@@ -15,7 +15,7 @@ export type DesiredInstancePowerState = z.infer<ReturnType<typeof DesiredInstanc
 export const DriverServiceSpec = memoizeOne(() => z.object({driverId: z.string(), instanceIds: z.array(z.string()), }));
 export type DriverServiceSpec = z.infer<ReturnType<typeof DriverServiceSpec>>;
 
-export const HttpDriverParameter = memoizeOne(() => z.object({body: z.union([z.string(), z.null(), ]), headers: z.record(z.string()), method: z.lazy(HttpMethod), path: z.string(), }));
+export const HttpDriverParameter = memoizeOne(() => z.object({body: z.union([z.string(), z.null(), ]), headers: z.record(z.string()), method: z.lazy(HttpMethod), url: z.string(), }));
 export type HttpDriverParameter = z.infer<ReturnType<typeof HttpDriverParameter>>;
 
 export const HttpDriverReport = memoizeOne(() => z.object({body: z.union([z.string(), z.null(), ]), method: z.lazy(HttpMethod), path: z.string(), pollTimeMs: z.number().int(), response: z.string(), }));
@@ -24,7 +24,7 @@ export type HttpDriverReport = z.infer<ReturnType<typeof HttpDriverReport>>;
 export const HttpMethod = memoizeOne(() => z.enum(["GET", "PUT", "POST", ]));
 export type HttpMethod = z.infer<ReturnType<typeof HttpMethod>>;
 
-export const InstanceDriverConfig = memoizeOne(() => z.discriminatedUnion('type', [z.object({frameMask: z.number().int(), parameterPages: z.array(z.lazy(UsbHidParameterPage)), parameters: z.record(z.array(z.lazy(UsbHidParameterConfig))), productId: z.union([z.number().int(), z.null(), ]), readIntervalMs: z.number().int(), readPageHandler: z.union([z.string(), z.null(), ]), reportPages: z.array(z.lazy(UsbHidReportPage)), reports: z.record(z.array(z.lazy(UsbHidReportConfig))), serialNumber: z.union([z.string(), z.null(), ]), type: z.literal("USBHID"), vendorId: z.union([z.number().int(), z.null(), ]), }), z.object({baudRate: z.number().int(), commentsStartWith: z.array(z.string()), errorsStartWith: z.array(z.string()), flowControl: z.union([z.lazy(SerialFlowControl), z.null(), ]), lineHandler: z.union([z.string(), z.null(), ]), parameters: z.record(z.array(z.lazy(SerialParameterConfig))), productId: z.union([z.number().int(), z.null(), ]), readResponseAfterEverySend: z.boolean(), receiveLineTerminator: z.string(), reports: z.record(z.array(z.lazy(SerialReportConfig))), sendLineTerminator: z.string(), serialNumber: z.union([z.string(), z.null(), ]), serialPort: z.union([z.string(), z.null(), ]), type: z.literal("serial"), vendorId: z.union([z.number().int(), z.null(), ]), }), z.object({host: z.string(), parameters: z.record(z.array(z.lazy(OscParameterConfig))), port: z.number().int(), type: z.literal("OSC"), useTcp: z.boolean(), }), z.object({baseUrl: z.string(), parameters: z.record(z.lazy(HttpDriverParameter)), reports: z.record(z.lazy(HttpDriverReport)), type: z.literal("HTTP"), }), z.object({type: z.literal("SPI"), }), ]));
+export const InstanceDriverConfig = memoizeOne(() => z.discriminatedUnion('type', [z.object({frameMask: z.number().int(), parameterPages: z.array(z.lazy(UsbHidParameterPage)), parameters: z.record(z.array(z.lazy(UsbHidParameterConfig))), productId: z.union([z.number().int(), z.null(), ]), readIntervalMs: z.number().int(), readPageHandler: z.union([z.string(), z.null(), ]), reportPages: z.array(z.lazy(UsbHidReportPage)), reports: z.record(z.array(z.lazy(UsbHidReportConfig))), serialNumber: z.union([z.string(), z.null(), ]), type: z.literal("USBHID"), vendorId: z.union([z.number().int(), z.null(), ]), }), z.object({baudRate: z.number().int(), commentsStartWith: z.array(z.string()), errorsStartWith: z.array(z.string()), flowControl: z.union([z.lazy(SerialFlowControl), z.null(), ]), lineHandler: z.union([z.string(), z.null(), ]), parameters: z.record(z.array(z.lazy(SerialParameterConfig))), productId: z.union([z.number().int(), z.null(), ]), readResponseAfterEverySend: z.boolean(), receiveLineTerminator: z.string(), reports: z.record(z.array(z.lazy(SerialReportConfig))), sendLineTerminator: z.string(), serialNumber: z.union([z.string(), z.null(), ]), serialPort: z.union([z.string(), z.null(), ]), type: z.literal("serial"), vendorId: z.union([z.number().int(), z.null(), ]), }), z.object({host: z.string(), parameters: z.record(z.array(z.lazy(OscParameterConfig))), port: z.number().int(), type: z.literal("OSC"), useTcp: z.boolean(), }), z.object({baseUrl: z.string(), parameters: z.record(z.lazy(HttpDriverParameter)), reports: z.record(z.lazy(HttpDriverReport)), type: z.literal("HTTP"), }), z.object({type: z.literal("SPI"), }), z.object({type: z.literal("mock"), }), ]));
 export type InstanceDriverConfig = z.infer<ReturnType<typeof InstanceDriverConfig>>;
 
 export const InstanceDriverEvent = memoizeOne(() => z.discriminatedUnion('type', [z.object({connected: z.boolean(), type: z.literal("connected"), }), z.object({state: z.lazy(InstancePowerState), type: z.literal("powerStateChanged"), }), z.object({state: z.lazy(InstancePlayState), type: z.literal("playStateChanged"), }), z.object({capturedAt: z.coerce.date(), channel: z.number().int(), instanceId: z.string(), reportId: z.string(), type: z.literal("report"), value: z.number(), }), ]));
@@ -54,7 +54,7 @@ export type InstancePlayStateTransition = z.infer<ReturnType<typeof InstancePlay
 export const InstancePowerControl = memoizeOne(() => z.object({desired: z.lazy(DesiredInstancePowerState), until: z.coerce.date(), }));
 export type InstancePowerControl = z.infer<ReturnType<typeof InstancePowerControl>>;
 
-export const InstancePowerSpec = memoizeOne(() => z.object({coolDownMs: z.number().int(), idleMs: z.number().int(), powerController: z.string(), powerOff: z.lazy(ParameterCommand), powerOn: z.lazy(ParameterCommand), warmUpMs: z.number().int(), }));
+export const InstancePowerSpec = memoizeOne(() => z.object({coolDownMs: z.number().int(), driverNeedsPower: z.boolean(), idleMs: z.number().int(), powerController: z.string(), powerOff: z.lazy(ParameterCommand), powerOn: z.lazy(ParameterCommand), warmUpMs: z.number().int(), }));
 export type InstancePowerSpec = z.infer<ReturnType<typeof InstancePowerSpec>>;
 
 export const InstancePowerState = memoizeOne(() => z.enum(["off", "coolingDown", "on", "warmingUp", ]));
@@ -63,13 +63,13 @@ export type InstancePowerState = z.infer<ReturnType<typeof InstancePowerState>>;
 export const InstanceSpec = memoizeOne(() => z.object({driver: z.lazy(InstanceDriverConfig), host: z.string(), media: z.union([z.lazy(InstanceMediaSpec), z.null(), ]), model: z.lazy(InstanceModel), power: z.union([z.lazy(InstancePowerSpec), z.null(), ]), }));
 export type InstanceSpec = z.infer<ReturnType<typeof InstanceSpec>>;
 
-export const OscParameterConfig = memoizeOne(() => z.object({oscType: z.string(), pathTemplate: z.string(), transform: z.union([z.string(), z.null(), ]), }));
+export const OscParameterConfig = memoizeOne(() => z.object({address: z.string(), clamp: z.union([z.lazy(Clamp), z.null(), ]), oscType: z.string(), remap: z.union([z.lazy(Remap), z.null(), ]), rescale: z.union([z.lazy(Rescale), z.null(), ]), transform: z.union([z.string(), z.null(), ]), }));
 export type OscParameterConfig = z.infer<ReturnType<typeof OscParameterConfig>>;
 
 export const ParameterCommand = memoizeOne(() => z.object({channel: z.number().int(), parameter: z.string(), value: z.number(), }));
 export type ParameterCommand = z.infer<ReturnType<typeof ParameterCommand>>;
 
-export const ParameterModel = memoizeOne(() => z.object({allowedValues: z.array(z.number()), channels: z.number().int(), max: z.number(), metadata: z.record(z.any()), min: z.number(), step: z.union([z.number(), z.null(), ]), unit: z.union([z.string(), z.null(), ]), }));
+export const ParameterModel = memoizeOne(() => z.object({channels: z.number().int(), metadata: z.record(z.any()), range: z.lazy(ValueRange), step: z.union([z.number(), z.null(), ]), unit: z.union([z.string(), z.null(), ]), }));
 export type ParameterModel = z.infer<ReturnType<typeof ParameterModel>>;
 
 export const PlayStateReportTrigger = memoizeOne(() => z.object({equals: z.union([z.number(), z.null(), ]), greaterThan: z.union([z.number(), z.null(), ]), lessThan: z.union([z.number(), z.null(), ]), report: z.string(), then: z.lazy(InstancePlayStateTransition), }));
@@ -81,10 +81,10 @@ export type RegisterOrUpdateInstanceRequest = z.infer<ReturnType<typeof Register
 export const RegisterOrUpdateInstanceResponse = memoizeOne(() => z.literal("success"));
 export type RegisterOrUpdateInstanceResponse = z.infer<ReturnType<typeof RegisterOrUpdateInstanceResponse>>;
 
-export const Remap = memoizeOne(() => z.discriminatedUnion('type', [z.object({type: z.literal("linear"), values: z.array(z.number()), }), z.object({pairs: z.array(z.tuple([z.number(), z.number(), ])), type: z.literal("pairs"), }), ]));
+export const Remap = memoizeOne(() => z.discriminatedUnion('type', [z.object({type: z.literal("linear"), values: z.array(z.number()), }), z.object({pairs: z.array(z.tuple([z.number(), z.number(), ])), type: z.literal("pairs"), }), z.object({type: z.literal("linearModel"), }), ]));
 export type Remap = z.infer<ReturnType<typeof Remap>>;
 
-export const ReportModel = memoizeOne(() => z.object({channels: z.number().int(), max: z.number(), metadata: z.record(z.any()), min: z.number(), step: z.union([z.number(), z.null(), ]), unit: z.union([z.string(), z.null(), ]), }));
+export const ReportModel = memoizeOne(() => z.object({channels: z.number().int(), metadata: z.record(z.any()), range: z.lazy(ValueRange), unit: z.union([z.string(), z.null(), ]), }));
 export type ReportModel = z.infer<ReturnType<typeof ReportModel>>;
 
 export const Rescale = memoizeOne(() => z.object({from: z.tuple([z.number(), z.number(), ]), to: z.tuple([z.number(), z.number(), ]), }));
@@ -111,7 +111,7 @@ export type SerialRequestTimer = z.infer<ReturnType<typeof SerialRequestTimer>>;
 export const SetInstanceParameter = memoizeOne(() => z.object({channel: z.number().int(), parameter: z.string(), value: z.number(), }));
 export type SetInstanceParameter = z.infer<ReturnType<typeof SetInstanceParameter>>;
 
-export const SetInstanceParameterResponse = memoizeOne(() => z.enum(["success", "parameterNotFound", "channelNotFound", "notConnected", "rpcFailure", ]));
+export const SetInstanceParameterResponse = memoizeOne(() => z.enum(["success", "parameterNotFound", "channelNotFound", "notConnected", "encodingError", "connectionError", "rpcFailure", ]));
 export type SetInstanceParameterResponse = z.infer<ReturnType<typeof SetInstanceParameterResponse>>;
 
 export const UsbHidParameterConfig = memoizeOne(() => z.object({clamp: z.union([z.lazy(Clamp), z.null(), ]), packing: z.lazy(ValuePacking), page: z.number().int(), position: z.lazy(BinaryPosition), remap: z.union([z.lazy(Remap), z.null(), ]), rescale: z.union([z.lazy(Rescale), z.null(), ]), transform: z.union([z.string(), z.null(), ]), }));
@@ -128,6 +128,9 @@ export type UsbHidReportPage = z.infer<ReturnType<typeof UsbHidReportPage>>;
 
 export const ValuePacking = memoizeOne(() => z.enum(["uint8", "uint16le", "uint16be", "uint32le", "uint32be", "int8", "int16le", "int16be", "int32le", "int32be", "float32le", "float32be", "float64le", "float64be", ]));
 export type ValuePacking = z.infer<ReturnType<typeof ValuePacking>>;
+
+export const ValueRange = memoizeOne(() => z.union([z.null(), z.object({max: z.number(), min: z.number(), step: z.union([z.number(), z.null(), ]), }), z.object({values: z.array(z.number()), }), ]));
+export type ValueRange = z.infer<ReturnType<typeof ValueRange>>;
 
 export const WsDriverEvent = memoizeOne(() => z.discriminatedUnion('type', [z.object({capturedAt: z.coerce.date(), channel: z.number().int(), instanceId: z.string(), reportId: z.string(), type: z.literal("report"), value: z.number(), }), z.object({config: z.lazy(InstanceDriverConfig), type: z.literal("config"), }), z.object({type: z.literal("keepAlive"), }), ]));
 export type WsDriverEvent = z.infer<ReturnType<typeof WsDriverEvent>>;
