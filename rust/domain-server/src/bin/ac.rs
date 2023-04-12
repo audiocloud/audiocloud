@@ -206,6 +206,7 @@ async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result
     None
   };
 
+  let connected_state = nats.instance_connection_state.get(BucketKey::new(&id)).await?;
   let power_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
   let play_state = nats.instance_play_state.get(BucketKey::new(&id)).await?;
   let power = nats.instance_power_ctrl.get(BucketKey::new(&id)).await?;
@@ -215,6 +216,8 @@ async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result
   if include_spec {
     println!(" * Spec: {}", serde_json::to_string_pretty(&spec).unwrap());
   }
+
+  println!(" * Connected: {}", serde_json::to_string_pretty(&connected_state).unwrap());
 
   println!(" * Power: {}", serde_json::to_string_pretty(&power).unwrap());
   println!(" * Power State: {}", serde_json::to_string_pretty(&power_state).unwrap());

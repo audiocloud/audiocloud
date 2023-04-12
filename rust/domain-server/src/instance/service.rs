@@ -274,6 +274,9 @@ impl Instance {
     let actual = self.power_request.get_actual();
     if self.persisted_power_state.as_ref() != Some(&actual) {
       if let Ok(_) = nats.instance_power_state.put(BucketKey::new(id), actual).await {
+        let _ = nats.publish_event(instance_driver_events(id), InstanceDriverEvent::PowerStateChanged { state: actual })
+                    .await;
+
         self.persisted_power_state = Some(actual);
       }
     }
@@ -327,7 +330,10 @@ impl Instance {
 
     let actual = self.play_request.get_actual();
     if self.persisted_play_state.as_ref() != Some(&actual) {
-      if let Ok(_) = nats.instance_play_state.put(BucketKey::new(id), actual).await {
+      if let Ok(_) = nats.instance_play_state.put(BucketKey::new(id), actual.clone()).await {
+        let _ = nats.publish_event(instance_driver_events(id), InstanceDriverEvent::PlayStateChanged { state: actual })
+                    .await;
+
         self.persisted_play_state = Some(actual);
       }
     }

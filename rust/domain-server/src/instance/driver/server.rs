@@ -14,7 +14,8 @@ use api::instance::driver::requests::{
   set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse, SetInstanceParametersRequest,
 };
 use api::instance::spec::InstanceSpec;
-use api::Events;
+use api::instance::InstanceConnectionState;
+use api::{BucketKey, Events};
 
 use crate::instance::driver::scripting::ScriptingEngine;
 use crate::nats::{Nats, RequestStream, WatchStream};
@@ -130,6 +131,20 @@ impl DriverService {
 
   async fn handle_driver_event(&mut self, instance_id: String, event: InstanceDriverEvent) {
     if let Some(driver) = self.drivers.get(&instance_id) {
+      match event {
+        | InstanceDriverEvent::Connected { connected } => {
+          let _ = self.nats
+                      .instance_connection_state
+                      .put(BucketKey::new(&instance_id),
+                           if connected {
+                             InstanceConnectionState::Connected
+                           } else {
+                             InstanceConnectionState::Disconnected
+                           })
+                      .await;
+        }
+        | _ => {}
+      }
       if let Err(err) = self.nats.publish_event(driver.events_subject.clone(), event).await {
         error!(?err, "Failed to publish driver event: {err}");
       }

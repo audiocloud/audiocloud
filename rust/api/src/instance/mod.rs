@@ -16,11 +16,12 @@ pub mod state;
 pub mod buckets {
   use crate::instance::control::{InstancePlayControl, InstancePowerControl};
   use crate::instance::spec::InstanceSpec;
-  use crate::instance::{InstancePlayState, InstancePowerState};
+  use crate::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
   use crate::BucketName;
 
   pub const INSTANCE_POWER_CONTROL: BucketName<InstancePowerControl> = BucketName::new("audiocloud_instance_power_control");
   pub const INSTANCE_PLAY_CONTROL: BucketName<InstancePlayControl> = BucketName::new("audiocloud_instance_play_control");
+  pub const INSTANCE_CONNECTION_STATE: BucketName<InstanceConnectionState> = BucketName::new("audiocloud_instance_connection_state");
   pub const INSTANCE_POWER_STATE: BucketName<InstancePowerState> = BucketName::new("audiocloud_instance_power_state");
   pub const INSTANCE_PLAY_STATE: BucketName<InstancePlayState> = BucketName::new("audiocloud_instance_play_state");
   pub const INSTANCE_SPEC: BucketName<InstanceSpec> = BucketName::new("audiocloud_instance_spec");
@@ -78,6 +79,13 @@ pub enum InstancePowerState {
   CoolingDown,
   On,
   WarmingUp,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum InstanceConnectionState {
+  Connected,
+  Disconnected,
 }
 
 impl InstancePowerState {

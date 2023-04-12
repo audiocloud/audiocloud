@@ -1,7 +1,7 @@
 import WebSocket from "isomorphic-ws";
 import {parseURL, serializeURL} from "whatwg-url";
 
-import {InstancePlayState, InstancePowerState} from "./instance";
+import {InstancePlayControl, InstancePlayState, InstancePowerControl, InstancePowerState} from "./instance";
 import {WsEvent, WsRequest} from "./ws";
 import {nanoid} from "nanoid";
 import {match} from "ts-pattern";
@@ -108,6 +108,26 @@ export function createWebSocketClient(
         }
       })
     },
+    setInstancePowerControl(instance: string, power: InstancePowerControl) {
+      send({
+        requestId: nanoid(),
+        command: {
+          type: "setInstancePowerControl",
+          instanceId: instance,
+          power,
+        },
+      });
+    },
+    setInstancePlayControl(instance: string, power: InstancePlayControl) {
+      send({
+        requestId: nanoid(),
+        command: {
+          type: "setInstancePlayControl",
+          instanceId: instance,
+          play: power,
+        },
+      });
+    },
     subscribeToInstanceEvents(instanceId: string) {
       if (connected) {
         send({
@@ -158,6 +178,10 @@ export interface SendEvents {
   close(): void;
 
   setParameter(instance: string, name: string, channel: number, value: number): void;
+
+  setInstancePowerControl(instance: string, power: InstancePowerControl): void;
+
+  setInstancePlayControl(instance: string, power: InstancePlayControl): void;
 
   subscribeToInstanceEvents(instanceId: string): void;
 

@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 pub mod request;
 pub mod spec;
 pub mod state;

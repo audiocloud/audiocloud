@@ -34,10 +34,10 @@ nonzero_ext = "0.3"
 async-thread = "0.1"
 lru = "0.10"
 rosc = "0.9"
-
-[dependencies.mongodb]
-version = "2"
-features = ["bson-chrono-0_4"]
+sha2 = "0.10"
+tempfile = "3"
+hex = "0.4"
+ffprobe = "0.3"
 
 [dependencies.boa_engine]
 version = "0.16"
@@ -45,7 +45,7 @@ features = ["console"]
 
 [dependencies.reqwest]
 version = "0.11"
-features = ["json", "rustls-tls"]
+features = ["json", "rustls-tls", "stream"]
 
 [dependencies.async-nats]
 git = "https://github.com/nats-io/nats.rs"
@@ -76,7 +76,7 @@ features = ["json", "ws", "headers", "tokio"]
 
 [dependencies.tokio]
 version = "1"
-features = ["macros", "rt-multi-thread"]
+features = ["macros", "rt-multi-thread", "fs"]
 
 [dependencies.chrono]
 version = "0.4"

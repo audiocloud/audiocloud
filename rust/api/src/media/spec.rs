@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct MediaDownloadSpec {
   pub from_url: String,
+  pub size:     u64,
+  pub sha256:   String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
@@ -17,5 +19,6 @@ pub struct MediaUploadSpec {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaSpec {
-  pub id: String,
+  pub id:     String,
+  pub sha256: String,
 }

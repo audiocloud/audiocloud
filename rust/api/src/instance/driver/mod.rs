@@ -5,7 +5,6 @@ pub mod config;
 pub mod events;
 pub mod requests;
 pub mod spec;
-pub mod ws;
 
 pub mod buckets {
   use crate::instance::driver::spec::DriverServiceSpec;
@@ -15,5 +14,5 @@ pub mod buckets {
 }
 
 pub fn schema() -> RootSchema {
-  merge_schemas([config::schema(), requests::schema(), spec::schema(), events::schema(), ws::schema()].into_iter())
+  merge_schemas([config::schema(), requests::schema(), spec::schema(), events::schema()].into_iter())
 }

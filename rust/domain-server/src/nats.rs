@@ -24,7 +24,7 @@ use wildmatch::WildMatch;
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::spec::DriverServiceSpec;
 use api::instance::spec::InstanceSpec;
-use api::instance::{InstancePlayState, InstancePowerState};
+use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::task::spec::TaskSpec;
@@ -89,21 +89,22 @@ pub fn json_err(err: serde_json::Error) -> anyhow::Error {
 
 #[derive(Clone)]
 pub struct Nats {
-  pub client:               Client,
-  pub jetstream:            Context,
-  pub driver_spec:          Bucket<DriverServiceSpec>,
-  pub instance_power_state: Bucket<InstancePowerState>,
-  pub instance_play_state:  Bucket<InstancePlayState>,
-  pub instance_spec:        Bucket<InstanceSpec>,
-  pub instance_power_ctrl:  Bucket<InstancePowerControl>,
-  pub instance_play_ctrl:   Bucket<InstancePlayControl>,
-  pub media_download_spec:  Bucket<MediaDownloadSpec>,
-  pub media_download_state: Bucket<MediaDownloadState>,
-  pub media_upload_spec:    Bucket<MediaUploadSpec>,
-  pub media_upload_state:   Bucket<MediaUploadState>,
-  pub task_spec:            Bucket<TaskSpec>,
-  pub task_state:           Bucket<()>,
-  pub task_ctrl:            Bucket<()>,
+  pub client:                    Client,
+  pub jetstream:                 Context,
+  pub driver_spec:               Bucket<DriverServiceSpec>,
+  pub instance_power_state:      Bucket<InstancePowerState>,
+  pub instance_play_state:       Bucket<InstancePlayState>,
+  pub instance_connection_state: Bucket<InstanceConnectionState>,
+  pub instance_spec:             Bucket<InstanceSpec>,
+  pub instance_power_ctrl:       Bucket<InstancePowerControl>,
+  pub instance_play_ctrl:        Bucket<InstancePlayControl>,
+  pub media_download_spec:       Bucket<MediaDownloadSpec>,
+  pub media_download_state:      Bucket<MediaDownloadState>,
+  pub media_upload_spec:         Bucket<MediaUploadSpec>,
+  pub media_upload_state:        Bucket<MediaUploadState>,
+  pub task_spec:                 Bucket<TaskSpec>,
+  pub task_state:                Bucket<()>,
+  pub task_ctrl:                 Bucket<()>,
 }
 
 impl Nats {
@@ -114,21 +115,22 @@ impl Nats {
     let jetstream = async_nats::jetstream::new(client.clone());
     let js = &jetstream;
 
-    Ok(Self { client:               client.clone(),
-              jetstream:            async_nats::jetstream::new(client),
-              driver_spec:          Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever).await?,
-              instance_power_state: Bucket::new(js, &instance::buckets::INSTANCE_POWER_STATE, forever).await?,
-              instance_play_state:  Bucket::new(js, &instance::buckets::INSTANCE_PLAY_STATE, forever).await?,
-              instance_spec:        Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever).await?,
-              instance_power_ctrl:  Bucket::new(js, &instance::buckets::INSTANCE_POWER_CONTROL, forever).await?,
-              instance_play_ctrl:   Bucket::new(js, &instance::buckets::INSTANCE_PLAY_CONTROL, forever).await?,
-              media_download_spec:  Bucket::new(js, &media::buckets::DOWNLOAD_SPEC, three_days).await?,
-              media_upload_spec:    Bucket::new(js, &media::buckets::UPLOAD_SPEC, three_days).await?,
-              media_download_state: Bucket::new(js, &media::buckets::DOWNLOAD_STATE, three_days).await?,
-              media_upload_state:   Bucket::new(js, &media::buckets::UPLOAD_STATE, three_days).await?,
-              task_spec:            Bucket::new(js, &task::buckets::TASK_SPEC, forever).await?,
-              task_state:           Bucket::new(js, &task::buckets::TASK_STATE, forever).await?,
-              task_ctrl:            Bucket::new(js, &task::buckets::TASK_CONTROL, forever).await?, })
+    Ok(Self { client:                    client.clone(),
+              jetstream:                 async_nats::jetstream::new(client),
+              driver_spec:               Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever).await?,
+              instance_connection_state: Bucket::new(js, &instance::buckets::INSTANCE_CONNECTION_STATE, forever).await?,
+              instance_power_state:      Bucket::new(js, &instance::buckets::INSTANCE_POWER_STATE, forever).await?,
+              instance_play_state:       Bucket::new(js, &instance::buckets::INSTANCE_PLAY_STATE, forever).await?,
+              instance_spec:             Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever).await?,
+              instance_power_ctrl:       Bucket::new(js, &instance::buckets::INSTANCE_POWER_CONTROL, forever).await?,
+              instance_play_ctrl:        Bucket::new(js, &instance::buckets::INSTANCE_PLAY_CONTROL, forever).await?,
+              media_download_spec:       Bucket::new(js, &media::buckets::DOWNLOAD_SPEC, three_days).await?,
+              media_upload_spec:         Bucket::new(js, &media::buckets::UPLOAD_SPEC, three_days).await?,
+              media_download_state:      Bucket::new(js, &media::buckets::DOWNLOAD_STATE, three_days).await?,
+              media_upload_state:        Bucket::new(js, &media::buckets::UPLOAD_STATE, three_days).await?,
+              task_spec:                 Bucket::new(js, &task::buckets::TASK_SPEC, forever).await?,
+              task_state:                Bucket::new(js, &task::buckets::TASK_STATE, forever).await?,
+              task_ctrl:                 Bucket::new(js, &task::buckets::TASK_CONTROL, forever).await?, })
   }
 
   pub fn subscribe_to_events<Evt>(&self, events: Events<Evt>) -> EventStream<Evt>
