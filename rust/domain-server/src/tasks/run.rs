@@ -11,7 +11,7 @@ use tracing::{debug, instrument};
 
 use api::instance::spec::{instance_spec, InstanceSpec};
 use api::instance::state::{instance_play_state, instance_power_state};
-use api::instance::{InstancePlayState, InstancePowerState};
+use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::state::{media_download_state, MediaDownloadState};
 use api::task::buckets::task_spec;
 use api::task::spec::TaskSpec;
@@ -22,21 +22,22 @@ use crate::nats::{Nats, WatchStream};
 use crate::tasks::Result;
 
 pub struct RunDomainTask {
-  id:                          String,
-  spec:                        TaskSpec,
-  timer:                       Interval,
-  tx_external:                 mpsc::Sender<ExternalTask>,
-  rx_external:                 mpsc::Receiver<ExternalTask>,
-  watch_spec:                  WatchStream<TaskSpec>,
-  watch_instance_specs:        StreamMap<String, WatchStream<InstanceSpec>>,
+  id: String,
+  spec: TaskSpec,
+  timer: Interval,
+  tx_external: mpsc::Sender<ExternalTask>,
+  rx_external: mpsc::Receiver<ExternalTask>,
+  watch_spec: WatchStream<TaskSpec>,
+  watch_instance_specs: StreamMap<String, WatchStream<InstanceSpec>>,
+  watch_instance_connection_state: StreamMap<String, WatchStream<InstanceConnectionState>>,
   watch_instance_power_states: StreamMap<String, WatchStream<InstancePowerState>>,
-  watch_instance_play_states:  StreamMap<String, WatchStream<InstancePlayState>>,
-  watch_download_states:       StreamMap<String, WatchStream<MediaDownloadState>>,
-  instances:                   HashMap<String, TaskInstance>,
-  media:                       HashMap<String, TaskMedia>,
-  desired_play_state:          DesiredTaskPlayState,
-  player:                      Option<GraphPlayer>,
-  nats:                        Nats,
+  watch_instance_play_states: StreamMap<String, WatchStream<InstancePlayState>>,
+  watch_download_states: StreamMap<String, WatchStream<MediaDownloadState>>,
+  instances: HashMap<String, TaskInstance>,
+  media: HashMap<String, TaskMedia>,
+  desired_play_state: DesiredTaskPlayState,
+  player: Option<GraphPlayer>,
+  nats: Nats,
 }
 
 enum ExternalTask {}
@@ -48,6 +49,7 @@ impl RunDomainTask {
     let watch_instance_specs = StreamMap::new();
     let watch_instance_power_states = StreamMap::new();
     let watch_instance_play_states = StreamMap::new();
+    let watch_instance_connection_state = StreamMap::new();
     let watch_download_states = StreamMap::new();
 
     let instances = HashMap::new();
@@ -71,6 +73,7 @@ impl RunDomainTask {
                         rx_external,
                         desired_play_state,
                         watch_instance_specs,
+                        watch_instance_connection_state,
                         watch_instance_power_states,
                         watch_instance_play_states,
                         watch_download_states };
@@ -90,6 +93,9 @@ impl RunDomainTask {
         },
         Some((instance_id, (_, maybe_instance_power_state_update))) = self.watch_instance_power_states.next() => {
           self.instance_power_state_updated(instance_id, maybe_instance_power_state_update);
+        },
+        Some((instance_id, (_, maybe_instance_connection_state_update))) = self.watch_instance_connection_state.next() => {
+          self.instance_connection_state_updated(instance_id, maybe_instance_connection_state_update);
         },
         Some((instance_id, (_, maybe_instance_play_state_update))) = self.watch_instance_play_states.next() => {
           self.instance_play_state_updated(instance_id, maybe_instance_play_state_update);
@@ -185,6 +191,12 @@ impl RunDomainTask {
 
   fn instance_power_state_updated(&mut self, instance_id: String, spec: Option<InstancePowerState>) {
     self.instances.entry(instance_id).or_default().power_state = spec;
+
+    // TODO: update play state decision
+  }
+
+  fn instance_connection_state_updated(&mut self, instance_id: String, spec: Option<InstanceConnectionState>) {
+    self.instances.entry(instance_id).or_default().connection_state = spec;
 
     // TODO: update play state decision
   }
@@ -322,9 +334,10 @@ impl RunDomainTask {
 
 #[derive(Default)]
 struct TaskInstance {
-  spec:        Option<InstanceSpec>,
-  power_state: Option<InstancePowerState>,
-  play_state:  Option<InstancePlayState>,
+  spec:             Option<InstanceSpec>,
+  connection_state: Option<InstanceConnectionState>,
+  power_state:      Option<InstancePowerState>,
+  play_state:       Option<InstancePlayState>,
 }
 
 #[derive(Default)]

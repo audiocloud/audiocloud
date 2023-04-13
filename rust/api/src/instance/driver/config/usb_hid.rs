@@ -14,8 +14,8 @@ pub struct UsbHidDriverConfig {
   pub product_id:        Option<u16>,
   #[serde(default)]
   pub serial_number:     Option<String>,
-  #[serde(default = "super::read_interval_ms_default")]
-  pub read_interval_ms:  i32,
+  #[serde(default = "super::read_duration_ms_default")]
+  pub read_duration_ms:  i32,
   #[serde(default)]
   pub read_page_handler: Option<String>,
   #[serde(default)]

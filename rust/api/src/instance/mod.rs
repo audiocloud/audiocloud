@@ -81,6 +81,12 @@ pub enum InstancePowerState {
   WarmingUp,
 }
 
+impl InstancePowerState {
+  pub fn is_on(&self) -> bool {
+    matches!(self, Self::On)
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum InstanceConnectionState {

@@ -29,8 +29,8 @@ pub struct InstanceService {
   watch_power_control:   WatchStream<InstancePowerControl>,
   watch_play_control:    WatchStream<InstancePlayControl>,
   media_instance_events: StreamMap<String, EventStream<InstanceDriverEvent>>,
-  tx_internal:           mpsc::Sender<InternalUpdate>,
-  rx_internal:           mpsc::Receiver<InternalUpdate>,
+  tx_internal:           mpsc::Sender<InternalEvent>,
+  rx_internal:           mpsc::Receiver<InternalEvent>,
   instances:             HashMap<String, Instance>,
   timer:                 Interval,
 }
@@ -84,9 +84,9 @@ impl InstanceService {
     }
   }
 
-  async fn internal_update(&mut self, update: InternalUpdate) {
+  async fn internal_update(&mut self, update: InternalEvent) {
     match update {
-      | InternalUpdate::InstancePowerSetSuccess { instance_id, desired } => {
+      | InternalEvent::InstancePowerSetSuccess { instance_id, desired } => {
         let entry = self.instances.entry(instance_id.clone()).or_default();
 
         if entry.power_set_success(&instance_id, desired) {
@@ -207,7 +207,7 @@ struct Instance {
 }
 
 impl Instance {
-  pub async fn update(&mut self, id: &str, nats: &Nats, tx_internal: &mpsc::Sender<InternalUpdate>) -> bool {
+  pub async fn update(&mut self, id: &str, nats: &Nats, tx_internal: &mpsc::Sender<InternalEvent>) -> bool {
     let power_is_fulfilled = self.update_power(id, nats, tx_internal).await;
     if power_is_fulfilled {
       self.update_play(id, nats).await
@@ -216,7 +216,7 @@ impl Instance {
     }
   }
 
-  async fn update_power(&mut self, id: &str, nats: &Nats, tx_internal: &mpsc::Sender<InternalUpdate>) -> bool {
+  async fn update_power(&mut self, id: &str, nats: &Nats, tx_internal: &mpsc::Sender<InternalEvent>) -> bool {
     let mut desired = self.power_request.get_desired();
 
     let idle_ms = self.idle_ms();
@@ -257,7 +257,7 @@ impl Instance {
         let tx_internal = tx_internal.clone();
         nats.request_and_forget(subject, command, move |response| match response {
               | Ok(SetInstanceParameterResponse::Success) => {
-                let _ = tx_internal.try_send(InternalUpdate::InstancePowerSetSuccess { instance_id, desired });
+                let _ = tx_internal.try_send(InternalEvent::InstancePowerSetSuccess { instance_id, desired });
               }
               | Ok(other) => {
                 error!(instance_id, "Failed to set power state for instance: {other}");
@@ -366,7 +366,7 @@ impl Instance {
   }
 }
 
-enum InternalUpdate {
+enum InternalEvent {
   InstancePowerSetSuccess {
     instance_id: String,
     desired:     DesiredInstancePowerState,

@@ -25,10 +25,6 @@ pub enum InstanceDriverConfig {
   Mock,
 }
 
-fn read_interval_ms_default() -> i32 {
-  10
-}
-
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum BinaryPosition {
@@ -109,4 +105,8 @@ impl Default for ValuePacking {
 
 pub fn schema() -> RootSchema {
   merge_schemas([schema_for!(InstanceDriverConfig)].into_iter())
+}
+
+fn read_duration_ms_default() -> i32 {
+  20
 }
