@@ -53,7 +53,14 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
         let _ = tx_internal.send(WsEvent::InstanceDriverEvent { instance_id, event }).await;
       },
       Some(event) = rx_internal.recv() => {
-        let Ok(event) = serde_json::to_string(&event) else { continue; };
+        let event = match serde_json::to_string(&event) {
+          Ok(event) => event,
+          Err(err) => {
+            error!(?err, ?event, "failed to serialize web socket event, bailing: {err}");
+            continue;
+          }
+        };
+
         if let Err(err) = tx.send(Message::Text(event)).await {
           error!(?err, "failed to send message, bailing: {err}");
           break;
