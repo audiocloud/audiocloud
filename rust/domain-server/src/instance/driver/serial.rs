@@ -7,8 +7,6 @@ use std::time::{Duration, Instant};
 use anyhow::anyhow;
 use byteorder::ReadBytesExt;
 use chrono::Utc;
-use governor::{Quota, RateLimiter};
-use nonzero_ext::nonzero;
 use regex::Regex;
 use serde_json::json;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
@@ -34,7 +32,6 @@ pub struct SerialDriver {
   changes:     HashMap<(String, usize), f64>,
   notify_done: Vec<oneshot::Sender<SetInstanceParameterResponse>>,
   scripting:   ScriptingEngine,
-  fatal_error: bool,
   regex_cache: HashMap<String, Regex>,
 }
 
@@ -87,8 +84,6 @@ impl SerialDriver {
 
         let changes = HashMap::new();
 
-        let fatal_error = false;
-
         let instance_id = instance_id.to_owned();
 
         let notify_done = vec![];
@@ -98,7 +93,6 @@ impl SerialDriver {
                                  changes,
                                  notify_done,
                                  scripting,
-                                 fatal_error,
                                  instance_id,
                                  regex_cache });
       }
@@ -150,7 +144,6 @@ impl SerialDriver {
                                     .as_str();
 
       if let Err(err) = self.port.write(value.as_bytes()) {
-        self.fatal_error = true;
         return Err(anyhow!("Failed to write {parameter_id}: '{value}' to serial port").context(err));
       }
 
@@ -173,10 +166,6 @@ impl SerialDriver {
     }
 
     Ok(events)
-  }
-
-  fn can_continue(&self) -> bool {
-    !self.fatal_error
   }
 }
 
@@ -288,52 +277,25 @@ fn run_serial_driver_sync(instance_id: String,
                           tx_evt: Sender<InstanceDriverEvent>,
                           scripting_engine: ScriptingEngine)
                           -> Result {
-  let mut driver: Option<SerialDriver> = None;
-  let respawn_governor = RateLimiter::direct(Quota::per_minute(nonzero!(5u32)));
+  let mut driver = SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone())?;
 
   loop {
-    let driver_ready = driver.as_ref().map(|driver| driver.can_continue()).unwrap_or(false);
-    let start = Instant::now();
+    let mut start = Instant::now();
 
-    if let Ok(cmd) = rx_cmd.try_recv() {
+    while let Ok(cmd) = rx_cmd.try_recv() {
       match cmd {
-        | InstanceDriverCommand::SetParameters(parameters, tx_one) =>
-          if let Some(driver) = driver.as_mut() {
-            driver.set_parameters(parameters, tx_one)?;
-          } else {
-            let _ = tx_one.send(SetInstanceParameterResponse::NotConnected);
-          },
+        | InstanceDriverCommand::SetParameters(parameters, tx_one) => driver.set_parameters(parameters, tx_one)?,
         | InstanceDriverCommand::Terminate => return Ok(()),
       }
     }
 
-    if !driver_ready && respawn_governor.check().is_ok() {
-      drop(driver.take());
-
-      driver = match SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone()) {
-        | Ok(driver) => {
-          let _ = tx_evt.try_send(InstanceDriverEvent::Connected { connected: true });
-          Some(driver)
-        }
-        | Err(err) => {
-          let _ = tx_evt.try_send(InstanceDriverEvent::Connected { connected: false });
-          warn!(?err, "Failed to create serial driver: {err}");
-          None
-        }
-      };
-    }
-
-    if driver_ready {
-      if let Some(driver) = driver.as_mut() {
-        match driver.poll(Instant::now() + Duration::from_millis(25)) {
-          | Ok(events) =>
-            for event in events {
-              let _ = tx_evt.try_send(event);
-            },
-          | Err(err) => {
-            warn!(?err, "Failed to poll serial driver: {err}");
-          }
-        }
+    match driver.poll(Instant::now() + Duration::from_millis(25)) {
+      | Ok(events) =>
+        for event in events {
+          let _ = tx_evt.try_send(event);
+        },
+      | Err(err) => {
+        warn!(?err, "Failed to poll serial driver: {err}");
       }
     }
 
