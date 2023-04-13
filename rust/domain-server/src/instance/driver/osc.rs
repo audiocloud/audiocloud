@@ -43,6 +43,7 @@ async fn run_tcp_osc_driver(instance_id: String,
 
   let mut tcp_stream = net::TcpStream::connect((config.host.clone(), config.port)).await?;
   let (mut tcp_rx, mut tcp_tx) = tcp_stream.split();
+  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
 
   loop {
     let mut buf = [0u8; 1024];

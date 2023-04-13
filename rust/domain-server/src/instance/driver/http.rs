@@ -27,6 +27,8 @@ pub async fn run_http_driver(instance_id: String,
                              tx_evt: mpsc::Sender<InstanceDriverEvent>,
                              scripting_engine: ScriptingEngine)
                              -> Result {
+  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
+
   while let Some(cmd) = rx_cmd.recv().await {
     match cmd {
       | InstanceDriverCommand::SetParameters(parameters, tx_done) => {
