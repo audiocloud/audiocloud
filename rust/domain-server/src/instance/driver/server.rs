@@ -12,7 +12,7 @@ use tokio::task::JoinHandle;
 use tokio::{select, spawn};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
-use tracing::error;
+use tracing::{error, info};
 
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::driver::requests::{
@@ -163,6 +163,8 @@ impl DriverService {
     use InstanceConnectionState::*;
 
     let connection_state = if connected { Connected } else { Disconnected };
+
+    info!(instance_id, connected = ?connection_state, "Instance connection state changed: {instance_id}->{connection_state}");
 
     let _ = self.nats
                 .instance_connection_state

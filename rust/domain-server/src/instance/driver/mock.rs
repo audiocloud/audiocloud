@@ -1,5 +1,5 @@
 use tokio::sync::mpsc;
-use tracing::info;
+use tracing::{debug, trace};
 
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::SetInstanceParameterResponse;
@@ -22,13 +22,13 @@ pub async fn run_mock_driver(_instance_id: String,
     match cmd {
       | InstanceDriverCommand::SetParameters(params, ok) => {
         for change in params.changes {
-          info!(channel = change.channel, value = change.value, "Set");
+          trace!(channel = change.channel, value = change.value, "Set");
         }
 
         let _ = ok.send(SetInstanceParameterResponse::Success);
       }
       | InstanceDriverCommand::Terminate => {
-        info!("Terminate");
+        debug!("Terminate");
         break;
       }
     }

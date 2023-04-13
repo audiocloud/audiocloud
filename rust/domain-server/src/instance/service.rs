@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use tokio::time::Interval;
 use tokio::{select, time};
 use tokio_stream::{StreamExt, StreamMap};
-use tracing::{error, info, instrument};
+use tracing::{error, instrument, trace};
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
@@ -132,7 +132,7 @@ impl InstanceService {
     let entry = self.instances.entry(instance_id.clone()).or_default();
     entry.power_control = maybe_instance_power_control;
 
-    info!("updating power control");
+    trace!("updating power control");
 
     if let Some(power_control) = &entry.power_control {
       if entry.power_request.set_desired(power_control.desired) {

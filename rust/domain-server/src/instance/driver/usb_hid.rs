@@ -9,7 +9,7 @@ use lazy_static::lazy_static;
 use serde_json::json;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{mpsc, oneshot};
-use tracing::{instrument, trace, warn};
+use tracing::{info, instrument, trace, warn};
 
 use api::instance::driver::config::usb_hid::{UsbHidDriverConfig, UsbHidReportConfig};
 use api::instance::driver::events::{InstanceDriverEvent, InstanceDriverReportEvent};
@@ -240,13 +240,22 @@ impl UsbHidDriver {
       return Err(anyhow!("Received page '{page_id}' that is not declared as report page"));
     };
 
+    info!(page_id, "Received page");
+
     let mut events = vec![];
     let captured_at = Utc::now();
 
     for (report_id, report_configs) in rep_page.reports.iter() {
       for (channel, report_config) in report_configs.iter().enumerate() {
+        trace!(report_id, channel, "Reading report");
+
         let value = read_binary_within_page(rep_page.data.as_slice(), &report_config.position);
+
+        trace!(report_id, channel, "Binary value");
+
         let value = read_packed_value(&value, &report_config.packing);
+
+        trace!(report_id, channel, "Unpacked value");
 
         let env = || json!({"value": value, "channel": channel, "report": report_id.clone(), "instance": self.instance_id.clone()});
 
@@ -255,7 +264,11 @@ impl UsbHidDriver {
           | None => value,
         };
 
+        trace!(report_id, channel, "Transformed value");
+
         let value = remap_and_rescale_value(value, report_config.remap.as_ref(), report_config.rescale.as_ref(), None)?;
+
+        trace!(report_id, channel, "Remapped value");
 
         events.push(InstanceDriverEvent::Report(InstanceDriverReportEvent { instance_id: self.instance_id.clone(),
                                                                             report_id: report_id.clone(),

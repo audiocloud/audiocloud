@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use schemars::schema::RootSchema;
 use schemars::JsonSchema;
 use schemars_zod::merge_schemas;
@@ -92,6 +94,15 @@ impl InstancePowerState {
 pub enum InstanceConnectionState {
   Connected,
   Disconnected,
+}
+
+impl Display for InstanceConnectionState {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    match self {
+      | InstanceConnectionState::Connected => write!(f, "connected"),
+      | InstanceConnectionState::Disconnected => write!(f, "disconnected"),
+    }
+  }
 }
 
 impl InstancePowerState {
