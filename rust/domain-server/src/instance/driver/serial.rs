@@ -286,6 +286,7 @@ fn run_serial_driver_sync(instance_id: String,
                           scripting_engine: ScriptingEngine)
                           -> Result {
   let mut driver = SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone())?;
+  let _ = tx_evt.blocking_send(InstanceDriverEvent::Connected { connected: true });
 
   loop {
     let mut start = Instant::now();

@@ -347,6 +347,7 @@ fn run_usb_driver_sync(instance_id: String,
                        -> Result {
   let mut instance = UsbHidDriver::new(&instance_id, config.clone(), scripting_engine)?;
   let read_duration = Duration::from_millis(config.read_duration_ms as u64);
+  let _ = tx_evt.blocking_send(InstanceDriverEvent::Connected { connected: true });
 
   loop {
     while let Ok(cmd) = rx_cmd.try_recv() {

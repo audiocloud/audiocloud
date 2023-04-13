@@ -34,7 +34,5 @@ pub async fn run_mock_driver(_instance_id: String,
     }
   }
 
-  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: false }).await;
-
   Ok(())
 }

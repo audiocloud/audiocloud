@@ -113,7 +113,7 @@ impl DriverService {
 
       let is_running = instance.running
                                .as_ref()
-                               .map(|running| running.handle.is_finished())
+                               .map(|running| running.handle.is_finished() && running.received_connected)
                                .unwrap_or(false);
 
       let nats = self.nats.clone();
@@ -169,11 +169,14 @@ impl DriverService {
                                                  rx_cmd,
                                                  tx_evt));
 
+            let received_running = false;
             self.instance_driver_events.insert(instance_id.clone(), ReceiverStream::new(rx_evt));
             self.set_parameter_req.insert(instance_id.clone(),
                                           self.nats.serve_requests(set_instance_parameters_request(&instance_id)));
 
-            driver.running = Some(RunningInstanceDriver { tx_cmd, handle });
+            driver.running = Some(RunningInstanceDriver { tx_cmd,
+                                                          handle,
+                                                          received_connected: received_running });
             driver.prev_spec = driver.spec.clone();
           }
         }
@@ -200,6 +203,10 @@ impl DriverService {
     let connection_state = if connected { Connected } else { Disconnected };
 
     info!(instance_id, connected = ?connection_state, "Instance connection state changed: {instance_id}->{connection_state}");
+
+    if let Some(running) = self.instances.get_mut(&instance_id).and_then(|instance| instance.running.as_mut()) {
+      running.received_connected = connected;
+    }
 
     let _ = self.nats
                 .instance_connection_state
@@ -232,8 +239,9 @@ struct InstanceDriver {
 }
 
 struct RunningInstanceDriver {
-  tx_cmd: mpsc::Sender<InstanceDriverCommand>,
-  handle: JoinHandle<Result>,
+  tx_cmd:             mpsc::Sender<InstanceDriverCommand>,
+  handle:             JoinHandle<Result>,
+  received_connected: bool,
 }
 
 impl Drop for RunningInstanceDriver {
