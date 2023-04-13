@@ -6,7 +6,7 @@ use api::instance::driver::requests::{set_instance_parameters_request, SetInstan
 use api::instance::spec::InstanceSpec;
 use api::BucketKey;
 
-use crate::nats::{EventStream, Nats};
+use crate::nats::{EventStream, Nats, WatchStream};
 
 #[derive(Clone)]
 pub struct Service {
@@ -38,5 +38,9 @@ impl Service {
 
   pub fn subscribe_to_instance_events(&self, instance_id: &str) -> EventStream<InstanceDriverEvent> {
     self.nats.subscribe_to_events(instance_driver_events(instance_id))
+  }
+
+  pub fn subscribe_to_instance_specs(&self, instance_id: &str) -> WatchStream<InstanceSpec> {
+    self.nats.instance_spec.watch(BucketKey::new(instance_id))
   }
 }

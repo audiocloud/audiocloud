@@ -14,9 +14,10 @@ use tracing::{error, info, instrument, warn};
 
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::SetInstanceParameterResponse;
+use api::instance::spec::InstanceSpec;
 use api::ws::{WsCommand, WsEvent, WsRequest};
 
-use crate::nats::EventStream;
+use crate::nats::{EventStream, WatchStream};
 use crate::service::Service;
 
 pub fn rest_api(router: Router<Service>) -> Router<Service> {
@@ -43,6 +44,8 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
   let (mut tx, mut rx) = web_socket.split();
 
   let mut instance_events = StreamMap::<String, EventStream<InstanceDriverEvent>>::new();
+  let mut instance_specs = StreamMap::<String, WatchStream<InstanceSpec>>::new();
+
   let (tx_internal, mut rx_internal) = mpsc::channel::<WsEvent>(0x100);
 
   // TODO: we can make this faster by spawning request handlers and piping response to tx_internal.
@@ -52,11 +55,14 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
       Some((instance_id, (_, event))) = instance_events.next(), if !instance_events.is_empty() => {
         let _ = tx_internal.send(WsEvent::InstanceDriverEvent { instance_id, event }).await;
       },
+      Some((instance_id, (_, spec))) = instance_specs.next(), if !instance_specs.is_empty() => {
+        let _ = tx_internal.send(WsEvent::SetInstanceSpec { instance_id, spec }).await;
+      },
       Some(event) = rx_internal.recv() => {
         let event = match serde_json::to_string(&event) {
           Ok(event) => event,
           Err(err) => {
-            error!(?err, ?event, "failed to serialize web socket event, bailing: {err}");
+            error!(?err, ?event, "failed to serialize web socket event: {err}");
             continue;
           }
         };
@@ -127,7 +133,11 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
           | WsCommand::SubscribeToInstanceEvents { instance_id } => {
             let success = if !instance_events.contains_key(&instance_id) {
               let stream = service.subscribe_to_instance_events(&instance_id);
-              instance_events.insert(instance_id, stream);
+              instance_events.insert(instance_id.clone(), stream);
+
+              let stream = service.subscribe_to_instance_specs(&instance_id);
+              instance_specs.insert(instance_id.clone(), stream);
+
               true
             } else {
               false
@@ -137,7 +147,8 @@ async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr
                        .await;
           },
           | WsCommand::UnsubscribeFromInstanceEvents {instance_id} => {
-            let success = instance_events.remove(&instance_id).is_some();
+            let success = true && instance_events.remove(&instance_id).is_some();
+            let success = success && instance_specs.remove(&instance_id).is_some();
 
             let _ = tx_internal.send(WsEvent::UnsubscribeFromInstanceEvents { request_id, success })
                        .await;

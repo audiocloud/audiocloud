@@ -1,16 +1,22 @@
 import WebSocket from "isomorphic-ws";
-import {parseURL, serializeURL} from "whatwg-url";
+import { parseURL, serializeURL } from "whatwg-url";
 
-import {InstancePlayControl, InstancePlayState, InstancePowerControl, InstancePowerState} from "./instance";
-import {WsEvent, WsRequest} from "./ws";
-import {nanoid} from "nanoid";
-import {match} from "ts-pattern";
+import {
+  InstancePlayControl,
+  InstancePlayState,
+  InstancePowerControl,
+  InstancePowerState,
+  InstanceSpec,
+  SetInstanceParameter,
+} from "./instance";
+import { WsEvent, WsRequest } from "./ws";
+import { nanoid } from "nanoid";
+import { match } from "ts-pattern";
 
 // noinspection JSUnusedGlobalSymbols
 export function createWebSocketClient(
   baseUrl: string,
-  handler: ReceiveEvents,
-  config: { refreshInterval: number } = {refreshInterval: 30}
+  handler: ReceiveEvents
 ): SendEvents {
   const url = parseURL(baseUrl);
   if (!url) {
@@ -23,7 +29,6 @@ export function createWebSocketClient(
   let connected = false;
 
   const ws = new WebSocket(serializeURL(url, false));
-  const toSend = new Map<string, Map<[string, number], number>>();
 
   ws.onopen = () => {
     connected = true;
@@ -37,40 +42,40 @@ export function createWebSocketClient(
   ws.onmessage = (message: any) => {
     const parsed = WsEvent().parse(JSON.parse(message.data));
     match(parsed)
-      .with({type: "instanceDriverEvent"}, ({instanceId, event}) => {
+      .with({ type: "instanceDriverEvent" }, ({ instanceId, event }) => {
         match(event)
-          .with({type: "report"}, ({reportId, channel, value}) => {
+          .with({ type: "report" }, ({ reportId, channel, value }) => {
             handler.instanceReport(instanceId, reportId, channel, value);
           })
-          .with({type: "connected"}, ({connected}) => {
+          .with({ type: "connected" }, ({ connected }) => {
             handler.instanceConnectionChanged(instanceId, connected);
           })
-          .with({type: "powerStateChanged"}, ({state}) => {
+          .with({ type: "powerStateChanged" }, ({ state }) => {
             handler.instancePowerStateChanged(instanceId, state);
           })
-          .with({type: "playStateChanged"}, ({state}) => {
+          .with({ type: "playStateChanged" }, ({ state }) => {
             handler.instancePlayStateChanged(instanceId, state);
           })
           .exhaustive();
       })
-      .with({type: "setInstancePowerControl"}, ({requestId, success}) => {
+      .with({ type: "setInstancePowerControl" }, ({ requestId, success }) => {
         console.log(
           "instance power request",
           requestId,
           success ? "success" : "failure"
         );
       })
-      .with({type: "setInstancePlayControl"}, ({requestId, success}) => {
+      .with({ type: "setInstancePlayControl" }, ({ requestId, success }) => {
         console.log(
           "instance play request",
           requestId,
           success ? "success" : "failure"
         );
       })
-      .with({type: "setInstanceParameters"}, ({requestId, response}) => {
+      .with({ type: "setInstanceParameters" }, ({ requestId, response }) => {
         console.log("instance play request", requestId, response);
       })
-      .with({type: "subscribeToInstanceEvents"}, ({requestId, success}) => {
+      .with({ type: "subscribeToInstanceEvents" }, ({ requestId, success }) => {
         console.log(
           "instance subscribe to events request",
           requestId,
@@ -78,8 +83,8 @@ export function createWebSocketClient(
         );
       })
       .with(
-        {type: "unsubscribeFromInstanceEvents"},
-        ({requestId, success}) => {
+        { type: "unsubscribeFromInstanceEvents" },
+        ({ requestId, success }) => {
           console.log(
             "instance unsubscribe to events request",
             requestId,
@@ -87,26 +92,32 @@ export function createWebSocketClient(
           );
         }
       )
+      .with({ type: "setInstanceSpec" }, ({ instanceId, spec }) => {
+        handler.instanceSpec(instanceId, spec);
+      })
       .exhaustive();
   };
 
   const send = (req: WsRequest) => {
-    ws.send(JSON.stringify(req))
-  }
+    ws.send(JSON.stringify(req));
+  };
 
   return {
     async close() {
       ws.close();
     },
-    setParameter(instance: string, parameter: string, channel: number, value: number) {
+    setInstanceParameters(
+      instance: string,
+      changes: Array<SetInstanceParameter>
+    ) {
       send({
         requestId: nanoid(),
         command: {
-          type: 'setInstanceParameters',
+          type: "setInstanceParameters",
           instanceId: instance,
-          changes: [{parameter, channel, value}]
-        }
-      })
+          changes,
+        },
+      });
     },
     setInstancePowerControl(instance: string, power: InstancePowerControl) {
       send({
@@ -118,13 +129,13 @@ export function createWebSocketClient(
         },
       });
     },
-    setInstancePlayControl(instance: string, power: InstancePlayControl) {
+    setInstancePlayControl(instance: string, play: InstancePlayControl) {
       send({
         requestId: nanoid(),
         command: {
           type: "setInstancePlayControl",
           instanceId: instance,
-          play: power,
+          play: play,
         },
       });
     },
@@ -149,7 +160,7 @@ export function createWebSocketClient(
             type: "unsubscribeFromInstanceEvents",
             instanceId,
           },
-        })
+        });
       } else {
         throw new Error("Not connected");
       }
@@ -167,21 +178,32 @@ export interface ReceiveEvents {
     value: number
   ): void;
 
+  instanceSpec(instanceId: String, spec: InstanceSpec | null): void;
+
   instanceConnectionChanged(instanceId: String, connected: boolean): void;
 
   instancePlayStateChanged(instanceId: String, state: InstancePlayState): void;
 
-  instancePowerStateChanged(instanceId: String, state: InstancePowerState): void;
+  instancePowerStateChanged(
+    instanceId: String,
+    state: InstancePowerState
+  ): void;
 }
 
 export interface SendEvents {
   close(): void;
 
-  setParameter(instance: string, name: string, channel: number, value: number): void;
+  setInstanceParameters(
+    instanceId: string,
+    changes: Array<SetInstanceParameter>
+  ): void;
 
-  setInstancePowerControl(instance: string, power: InstancePowerControl): void;
+  setInstancePowerControl(
+    instanceId: string,
+    power: InstancePowerControl
+  ): void;
 
-  setInstancePlayControl(instance: string, power: InstancePlayControl): void;
+  setInstancePlayControl(instanceId: string, play: InstancePlayControl): void;
 
   subscribeToInstanceEvents(instanceId: string): void;
 

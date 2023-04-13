@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::instance::control::{InstancePlayControl, InstancePowerControl};
 use crate::instance::driver::events::InstanceDriverEvent;
 use crate::instance::driver::requests::{SetInstanceParameterResponse, SetInstanceParametersRequest};
+use crate::instance::spec::InstanceSpec;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -42,6 +43,11 @@ pub enum WsEvent {
   SetInstancePowerControl { success: bool, request_id: String },
   #[serde(rename_all = "camelCase")]
   SetInstancePlayControl { success: bool, request_id: String },
+  #[serde(rename_all = "camelCase")]
+  SetInstanceSpec {
+    instance_id: String,
+    spec:        Option<InstanceSpec>,
+  },
   #[serde(rename_all = "camelCase")]
   SetInstanceParameters {
     response:   SetInstanceParameterResponse,
