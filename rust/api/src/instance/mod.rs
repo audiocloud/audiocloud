@@ -96,6 +96,12 @@ pub enum InstanceConnectionState {
   Disconnected,
 }
 
+impl InstanceConnectionState {
+  pub fn is_connected(&self) -> bool {
+    matches!(self, Self::Connected)
+  }
+}
+
 impl Display for InstanceConnectionState {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     match self {

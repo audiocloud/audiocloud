@@ -76,6 +76,12 @@ pub enum DesiredTaskPlayState {
   },
 }
 
+impl Default for DesiredTaskPlayState {
+  fn default() -> Self {
+    Self::Idle
+  }
+}
+
 impl DesiredTaskPlayState {
   pub fn is_playing(&self) -> bool {
     matches!(self, Self::Play { .. })
@@ -94,13 +100,22 @@ pub struct GetTaskListResponse {
 
 pub mod buckets {
   use crate::task::spec::TaskSpec;
+  use crate::task::DesiredTaskPlayState;
   use crate::{BucketKey, BucketName};
 
   pub const TASK_SPEC: BucketName<TaskSpec> = BucketName::new("audiocloud_task_spec");
-  pub const TASK_CONTROL: BucketName<()> = BucketName::new("audiocloud_task_control");
+  pub const TASK_CONTROL: BucketName<DesiredTaskPlayState> = BucketName::new("audiocloud_task_control");
   pub const TASK_STATE: BucketName<()> = BucketName::new("audiocloud_task_state");
 
   pub fn task_spec(task_id: impl ToString) -> BucketKey<TaskSpec> {
+    BucketKey::new(task_id)
+  }
+
+  pub fn task_control(task_id: impl ToString) -> BucketKey<DesiredTaskPlayState> {
+    BucketKey::new(task_id)
+  }
+
+  pub fn task_state(task_id: impl ToString) -> BucketKey<()> {
     BucketKey::new(task_id)
   }
 }

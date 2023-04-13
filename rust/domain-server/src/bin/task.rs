@@ -20,8 +20,8 @@ async fn main() -> tasks::Result {
   let buckets = Nats::new(async_nats::connect("127.0.0.1:4222").await?).await
                                                                        .expect("failed to create buckets");
 
-  let mut le_instnaces = HashMap::new();
-  le_instnaces.insert("one".to_owned(), "pultec_1".to_owned());
+  let mut le_instances = HashMap::new();
+  le_instances.insert("one".to_owned(), "pultec_1".to_owned());
 
   let task_id = "task".to_owned();
   let spec = TaskSpec { app_id:     "bintest".to_string(),
@@ -29,7 +29,7 @@ async fn main() -> tasks::Result {
                         from:       Utc::now(),
                         to:         Utc::now() + chrono::Duration::hours(4),
                         requests:   Default::default(),
-                        instances:  le_instnaces,
+                        instances:  le_instances,
                         graph_spec: AudioGraphSpec::default(), };
 
   Ok(())

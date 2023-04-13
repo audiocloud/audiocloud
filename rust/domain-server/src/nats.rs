@@ -28,6 +28,7 @@ use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerSta
 use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::task::spec::TaskSpec;
+use api::task::DesiredTaskPlayState;
 use api::{instance, media, task, BucketKey, BucketName, Events, Request};
 
 pub type WatchStream<T> = Pin<Box<dyn Stream<Item = (String, Option<T>)> + Send>>;
@@ -104,12 +105,13 @@ pub struct Nats {
   pub media_upload_state:        Bucket<MediaUploadState>,
   pub task_spec:                 Bucket<TaskSpec>,
   pub task_state:                Bucket<()>,
-  pub task_ctrl:                 Bucket<()>,
+  pub task_ctrl:                 Bucket<DesiredTaskPlayState>,
 }
 
 impl Nats {
   pub async fn new(client: Client) -> anyhow::Result<Self> {
     let forever = Duration::default();
+    let one_minute = Duration::from_secs(60);
     let three_days = Duration::from_secs(3 * 24 * 60 * 60);
 
     let jetstream = async_nats::jetstream::new(client.clone());
@@ -118,7 +120,7 @@ impl Nats {
     Ok(Self { client:                    client.clone(),
               jetstream:                 async_nats::jetstream::new(client),
               driver_spec:               Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever).await?,
-              instance_connection_state: Bucket::new(js, &instance::buckets::INSTANCE_CONNECTION_STATE, forever).await?,
+              instance_connection_state: Bucket::new(js, &instance::buckets::INSTANCE_CONNECTION_STATE, one_minute).await?,
               instance_power_state:      Bucket::new(js, &instance::buckets::INSTANCE_POWER_STATE, forever).await?,
               instance_play_state:       Bucket::new(js, &instance::buckets::INSTANCE_PLAY_STATE, forever).await?,
               instance_spec:             Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever).await?,

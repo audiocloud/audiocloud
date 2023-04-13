@@ -10,10 +10,10 @@ use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
 use api::instance::spec::{instance_spec, InstanceSpec};
-use api::instance::state::{instance_play_state, instance_power_state};
+use api::instance::state::{instance_connection_state, instance_play_state, instance_power_state};
 use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::state::{media_download_state, MediaDownloadState};
-use api::task::buckets::task_spec;
+use api::task::buckets::{task_control, task_spec};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
 use async_audio_engine::GraphPlayer;
@@ -28,6 +28,7 @@ pub struct RunDomainTask {
   tx_external: mpsc::Sender<ExternalTask>,
   rx_external: mpsc::Receiver<ExternalTask>,
   watch_spec: WatchStream<TaskSpec>,
+  watch_control: WatchStream<DesiredTaskPlayState>,
   watch_instance_specs: StreamMap<String, WatchStream<InstanceSpec>>,
   watch_instance_connection_state: StreamMap<String, WatchStream<InstanceConnectionState>>,
   watch_instance_power_states: StreamMap<String, WatchStream<InstancePowerState>>,
@@ -44,8 +45,8 @@ enum ExternalTask {}
 
 impl RunDomainTask {
   pub fn new(id: String, spec: TaskSpec, nats: Nats) -> RunDomainTask {
-    let mut watch_spec = nats.task_spec.watch(task_spec(&id));
-
+    let watch_spec = nats.task_spec.watch(task_spec(&id));
+    let watch_control = nats.task_ctrl.watch(task_control(&id));
     let watch_instance_specs = StreamMap::new();
     let watch_instance_power_states = StreamMap::new();
     let watch_instance_play_states = StreamMap::new();
@@ -69,6 +70,7 @@ impl RunDomainTask {
                         nats,
                         instances,
                         watch_spec,
+                        watch_control,
                         tx_external,
                         rx_external,
                         desired_play_state,
@@ -88,28 +90,31 @@ impl RunDomainTask {
   pub async fn run(mut self) -> Result {
     while Utc::now() < self.spec.to {
       select! {
-        Some((instance_id, (_, maybe_instance_spec_update))) = self.watch_instance_specs.next() => {
+        Some((instance_id, (_, maybe_instance_spec_update))) = self.watch_instance_specs.next(), if !self.watch_instance_specs.is_empty() => {
           self.instance_spec_updated(instance_id, maybe_instance_spec_update);
         },
-        Some((instance_id, (_, maybe_instance_power_state_update))) = self.watch_instance_power_states.next() => {
+        Some((instance_id, (_, maybe_instance_power_state_update))) = self.watch_instance_power_states.next(), if !self.watch_instance_power_states.is_empty() => {
           self.instance_power_state_updated(instance_id, maybe_instance_power_state_update);
         },
-        Some((instance_id, (_, maybe_instance_connection_state_update))) = self.watch_instance_connection_state.next() => {
+        Some((instance_id, (_, maybe_instance_connection_state_update))) = self.watch_instance_connection_state.next(), if !self.watch_instance_connection_state.is_empty() => {
           self.instance_connection_state_updated(instance_id, maybe_instance_connection_state_update);
         },
-        Some((instance_id, (_, maybe_instance_play_state_update))) = self.watch_instance_play_states.next() => {
+        Some((instance_id, (_, maybe_instance_play_state_update))) = self.watch_instance_play_states.next(), if !self.watch_instance_play_states.is_empty() => {
           self.instance_play_state_updated(instance_id, maybe_instance_play_state_update);
         },
-        Some((media_id, (_, maybe_download_state_update))) = self.watch_download_states.next() => {
+        Some((media_id, (_, maybe_download_state_update))) = self.watch_download_states.next(), if !self.watch_download_states.is_empty() => {
           self.download_state_updated(media_id, maybe_download_state_update);
         },
         Some((_, maybe_new_spec)) = self.watch_spec.next() => {
           if let Some(new_spec) = maybe_new_spec {
             self.set_spec(new_spec);
           } else {
-            // the
+            // we are done, go..
             break;
           }
+        },
+        Some((_, maybe_new_control)) = self.watch_control.next() => {
+          self.set_desired_play_state(maybe_new_control);
         },
         Some(external_task) = self.rx_external.recv() => {
           self.external_task_completed(external_task);
@@ -136,6 +141,10 @@ impl RunDomainTask {
     self.resubscribe_media();
   }
 
+  fn set_desired_play_state(&mut self, new_control: Option<DesiredTaskPlayState>) {
+    let new_control = new_control.unwrap_or_default();
+  }
+
   fn resubscribe_instances(&mut self) {
     let to_remove = self.watch_instance_play_states
                         .keys()
@@ -158,6 +167,9 @@ impl RunDomainTask {
 
       self.watch_instance_play_states.insert(instance_id.clone(),
                                              self.nats.instance_play_state.watch(instance_play_state(&instance_id)));
+
+      self.watch_instance_connection_state.insert(instance_id.clone(),
+                                                  self.nats.instance_connection_state.watch(instance_connection_state(&instance_id)));
     }
   }
 
@@ -186,29 +198,30 @@ impl RunDomainTask {
   fn instance_spec_updated(&mut self, instance_id: String, spec: Option<InstanceSpec>) {
     self.instances.entry(instance_id).or_default().spec = spec;
 
-    // TODO: update play state decision
+    self.update_play_state();
   }
 
   fn instance_power_state_updated(&mut self, instance_id: String, spec: Option<InstancePowerState>) {
     self.instances.entry(instance_id).or_default().power_state = spec;
 
-    // TODO: update play state decision
+    self.update_play_state();
   }
 
   fn instance_connection_state_updated(&mut self, instance_id: String, spec: Option<InstanceConnectionState>) {
     self.instances.entry(instance_id).or_default().connection_state = spec;
 
-    // TODO: update play state decision
+    self.update_play_state();
   }
 
   fn instance_play_state_updated(&mut self, instance_id: String, spec: Option<InstancePlayState>) {
     self.instances.entry(instance_id).or_default().play_state = spec;
 
-    // TODO: update play state decision
+    self.update_play_state();
   }
 
   fn download_state_updated(&mut self, media_id: String, state: Option<MediaDownloadState>) {
     self.media.entry(media_id).or_default().state = state;
+
     self.update_play_state();
   }
 
@@ -254,6 +267,15 @@ impl RunDomainTask {
         continue;
       };
 
+      if instance.connection_state
+                 .as_ref()
+                 .map(|connection| connection.is_connected())
+                 .unwrap_or(false)
+      {
+        unready_instances.insert(instance_id.clone());
+        continue;
+      }
+
       if spec.media.is_some() {
         let power_state = match instance.power_state.as_ref() {
           | None =>
@@ -265,6 +287,11 @@ impl RunDomainTask {
             },
           | Some(state) => state,
         };
+
+        if !power_state.is_on() {
+          unready_instances.insert(instance_id.clone());
+          continue;
+        }
 
         let play_state = match instance.play_state.as_ref() {
           | None => {

@@ -19,6 +19,7 @@ use api::instance::driver::requests::{
   set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse, SetInstanceParametersRequest,
 };
 use api::instance::spec::InstanceSpec;
+use api::instance::state::instance_connection_state;
 use api::instance::{InstanceConnectionState, InstancePowerState};
 use api::BucketKey;
 
@@ -63,22 +64,27 @@ impl DriverService {
   }
 
   pub async fn run(mut self) -> Result {
+    use tokio::time::sleep;
+
     loop {
       select! {
-        Some((instance_id, maybe_new_spec)) = self.watch_instance_specs.next() => {
-          self.handle_maybe_instance_spec(instance_id, maybe_new_spec).await;
-        },
-        Some((instance_id, maybe_new_power)) = self.watch_instance_power.next() => {
-          self.handle_maybe_instance_power(instance_id, maybe_new_power).await;
-        },
         Some((instance_id, event)) = self.instance_driver_events.next(), if !self.instance_driver_events.is_empty() => {
           self.handle_instance_driver_event(instance_id, event).await;
         },
         Some((instance_id, (_, request, response))) = self.set_parameter_req.next(), if !self.set_parameter_req.is_empty() => {
           self.handle_set_parameter_request(instance_id, request, response);
         },
-        _ = tokio::time::sleep(Duration::from_secs(1)) => {
+        Some((instance_id, maybe_new_spec)) = self.watch_instance_specs.next() => {
+          self.handle_maybe_instance_spec(instance_id, maybe_new_spec).await;
+        },
+        Some((instance_id, maybe_new_power)) = self.watch_instance_power.next() => {
+          self.handle_maybe_instance_power(instance_id, maybe_new_power).await;
+        },
+        _ = sleep(Duration::from_secs(1)) => {
           self.respawn_instance_drivers().await;
+        },
+        _ = sleep(Duration::from_secs(10)) => {
+          self.update_connection_state().await;
         },
         else => break
       }
@@ -96,6 +102,35 @@ impl DriverService {
     entry.prev_spec = entry.spec.take();
     entry.spec = maybe_new_spec;
     self.respawn_instance_drivers().await;
+  }
+
+  async fn update_connection_state(&mut self) {
+    for (instance_id, instance) in &self.instances {
+      let Some(spec) = instance.spec.as_ref() else { continue; };
+      if &spec.host != &self.host {
+        continue;
+      }
+
+      let is_running = instance.running
+                               .as_ref()
+                               .map(|running| running.handle.is_finished())
+                               .unwrap_or(false);
+
+      let nats = self.nats.clone();
+      let instance_id = instance_id.clone();
+
+      spawn(async move {
+        let connection_state = if is_running {
+          InstanceConnectionState::Connected
+        } else {
+          InstanceConnectionState::Disconnected
+        };
+
+        nats.instance_connection_state
+            .put(instance_connection_state(instance_id), connection_state)
+            .await
+      });
+    }
   }
 
   async fn respawn_instance_drivers(&mut self) {
