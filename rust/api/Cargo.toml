@@ -20,4 +20,4 @@ version = "1"
 features = ["derive"]
 
 [dependencies.schemars-zod]
-path = "../../../schemars-zod"
+version = "0.1"

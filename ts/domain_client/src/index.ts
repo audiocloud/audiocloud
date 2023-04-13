@@ -24,7 +24,7 @@ export function createWebSocketClient(
   }
 
   url.scheme = url.scheme === "https" ? "wss" : "ws";
-  url.path = "ws";
+  url.path = ["ws"];
 
   let connected = false;
 
@@ -172,20 +172,20 @@ export interface ReceiveEvents {
   connectionChanged(connected: boolean): any;
 
   instanceReport(
-    instance: String,
+    instance: string,
     name: string,
     channel: number,
     value: number
   ): void;
 
-  instanceSpec(instanceId: String, spec: InstanceSpec | null): void;
+  instanceSpec(instanceId: string, spec: InstanceSpec | null): void;
 
-  instanceConnectionChanged(instanceId: String, connected: boolean): void;
+  instanceConnectionChanged(instanceId: string, connected: boolean): void;
 
-  instancePlayStateChanged(instanceId: String, state: InstancePlayState): void;
+  instancePlayStateChanged(instanceId: string, state: InstancePlayState): void;
 
   instancePowerStateChanged(
-    instanceId: String,
+    instanceId: string,
     state: InstancePowerState
   ): void;
 }
