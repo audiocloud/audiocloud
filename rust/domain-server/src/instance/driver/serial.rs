@@ -35,6 +35,14 @@ pub struct SerialDriver {
   regex_cache: HashMap<String, Regex>,
 }
 
+impl Drop for SerialDriver {
+  fn drop(&mut self) {
+    for notify in self.notify_done.drain(..) {
+      let _ = notify.send(SetInstanceParameterResponse::NotConnected);
+    }
+  }
+}
+
 type Config = SerialDriverConfig;
 
 impl SerialDriver {

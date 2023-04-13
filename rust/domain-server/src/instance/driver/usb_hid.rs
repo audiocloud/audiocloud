@@ -32,6 +32,14 @@ pub struct UsbHidDriver {
   notifications:   Vec<oneshot::Sender<SetInstanceParameterResponse>>,
 }
 
+impl Drop for UsbHidDriver {
+  fn drop(&mut self) {
+    for notify in self.notifications.drain(..) {
+      let _ = notify.send(SetInstanceParameterResponse::NotConnected);
+    }
+  }
+}
+
 struct ParameterPage {
   header:                  Vec<u8>,
   data:                    Vec<u8>,
