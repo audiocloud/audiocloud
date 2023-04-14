@@ -13,6 +13,7 @@
       <sourceFolder url="file://$MODULE_DIR$/rust/nats-processor/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/scriptingtest/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/rust/kvtest/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/rust/testclap/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />

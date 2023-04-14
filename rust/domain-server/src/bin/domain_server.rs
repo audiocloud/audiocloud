@@ -29,26 +29,30 @@ const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
 #[command(author, version, about)]
 struct Arguments {
   /// Enables instance services
-  #[clap(long, env)]
+  #[clap(long, env, group = "instances")]
   pub enable_instances:        bool,
   /// Enables instance driver services
-  #[clap(long, env)]
+  #[clap(long, env, group = "instance_drivers")]
   pub enable_instance_drivers: bool,
   /// Enables task management services
-  #[clap(long, env)]
+  #[clap(long, env, group = "tasks")]
   pub enable_tasks:            bool,
+  /// Enables REST API
+  #[clap(long, env, group = "api")]
+  pub enable_api:              bool,
   /// Enable media management services
-  #[clap(long, env)]
+  #[clap(long, env, group = "media")]
   pub enable_media:            bool,
+  /// NATS JetStream URL
   #[clap(long, env, default_value = "nats://localhost:4222")]
   pub nats_url:                String,
   /// REST API listen address and port
-  #[clap(long, env, default_value = "127.0.0.1:7200")]
+  #[clap(long, env, default_value = "127.0.0.1:7200", group = "api")]
   pub rest_api_bind:           SocketAddr,
   /// The host name of the domain server
   pub host_name:               String,
   /// Media root directory
-  #[clap(long, env, default_value = ".media")]
+  #[clap(long, env, default_value = ".media", group = "media")]
   pub media_root:              PathBuf,
   /// Native (default) sample rate.
   #[clap(long, env, default_value = "192000")]
@@ -60,6 +64,7 @@ enum InternalEvent {
   InstancesFinished,
   TasksFinished,
   MediaFinished,
+  RestApiFinished,
   RestartInstanceDrivers,
   RestartInstances,
   RestartTasks,
@@ -146,28 +151,33 @@ async fn main() -> Result {
   };
   let media_respawn_limit = Arc::new(RateLimiter::direct(Quota::per_minute(nonzero!(10u32))));
 
-  let bind = args.rest_api_bind;
-  info!("REST API listening on {bind}");
-  let mut rest_api = spawn(async move {
-    let router = router.layer(cors::CorsLayer::permissive())
-                       .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
-                       .with_state(service);
+  let create_rest_api = || {
+    if args.enable_api {
+      let bind = args.rest_api_bind;
+      let tx_internal = tx_internal.clone();
+      info!("REST API listening on {bind}");
+      spawn(async move {
+              let router = router.layer(cors::CorsLayer::permissive())
+                                 .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
+                                 .with_state(service);
 
-    Ok::<_, anyhow::Error>(axum::Server::bind(&bind).serve(router.into_make_service_with_connect_info::<SocketAddr>())
-                                                    .await?)
-  });
+              Ok::<_, anyhow::Error>(axum::Server::bind(&bind).serve(router.into_make_service_with_connect_info::<SocketAddr>())
+                                                              .await?)
+            }.then(|res| async move {
+               warn!("REST API exited: {res:?}");
+               let _ = tx_internal.send(RestApiFinished).await;
+             }));
+    }
+  };
 
   create_instance_drivers();
   create_instances();
   create_tasks();
   create_media();
+  create_rest_api();
 
   loop {
     select! {
-      rest_api = &mut rest_api => {
-        error!("FATAL: REST API exited: {rest_api:?}");
-        break;
-      },
       Some(internal) = rx_internal.recv() => {
         match internal {
           InstanceDriversFinished => {
@@ -201,6 +211,10 @@ async fn main() -> Result {
               let _ = media_respawn_limit.until_ready().await;
               let _ = tx_internal.send(RestartMedia).await;
             });
+          },
+          RestApiFinished => {
+            error!("Rest API stopped, exiting");
+            break;
           },
           RestartInstanceDrivers => {
             create_instance_drivers();
