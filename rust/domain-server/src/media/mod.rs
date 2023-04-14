@@ -9,6 +9,7 @@ use reqwest::Client;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::{select, spawn};
+use tracing::{info, instrument};
 
 use api::media::spec::{MediaDownloadSpec, MediaSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
@@ -38,13 +39,10 @@ pub struct MediaService {
   rx_internal:          mpsc::Receiver<InternalEvent>,
 }
 
-pub enum InternalEvent {
-  DownloadProgress { id: String, progress: f64 },
-  DownloadComplete { id: String, result: Result<MediaSpec> },
-}
-
 impl MediaService {
   pub fn new(nats: Nats, media_root: PathBuf, native_sample_rate: u32) -> Self {
+    info!("Created");
+
     let watch_download_specs = nats.media_download_spec.watch_all();
     let watch_upload_specs = nats.media_upload_spec.watch_all();
 
@@ -74,13 +72,14 @@ impl MediaService {
           self.media_upload_spec_changed(media_id, maybe_upload_spec);
         },
         Some(event) = self.rx_internal.recv() => {
-          self.internal_event(event);
+          let _ = self.internal_event(event).await;
         }
       }
     }
   }
 
   async fn media_download_spec_changed(&mut self, media_id: String, maybe_download_spec: Option<MediaDownloadSpec>) {
+    info!(media_id, spec = ?maybe_download_spec, "Download spec");
     match maybe_download_spec {
       | None => self.abort_download_if_exists(media_id),
       | Some(download) => self.create_or_update_download_if_not_completed(media_id, download).await,
@@ -103,6 +102,8 @@ impl MediaService {
                           .ok()
                           .and_then(identity)
                           .and_then(|state| state.done);
+
+    info!("existing spec for media {media_id}: {maybe_state:?}");
 
     if maybe_state.map(|state| &state.sha256 != &spec.sha256).unwrap_or(true) {
       self.create_or_update_download(media_id, spec);
@@ -136,14 +137,20 @@ impl MediaService {
     // TODO: ...
   }
 
-  fn internal_event(&mut self, event: InternalEvent) {
+  #[instrument(skip(self), err)]
+  async fn internal_event(&mut self, event: InternalEvent) -> Result {
+    info!("Internal event: {event:?}");
+
     match event {
       | InternalEvent::DownloadProgress { id, progress } =>
         if let Some(download) = self.downloads.get_mut(&id) {
           download.state.progress = progress;
           download.state.updated_at = Utc::now();
 
-          let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state.clone());
+          let _ = self.nats
+                      .media_download_state
+                      .put(BucketKey::new(&id), download.state.clone())
+                      .await?;
         },
       | InternalEvent::DownloadComplete { id, result } => match result {
         | Ok(spec) =>
@@ -153,7 +160,7 @@ impl MediaService {
             download.state.updated_at = Utc::now();
             download.state.progress = 100.0;
 
-            let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state);
+            let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state).await?;
           },
         | Err(err) =>
           if let Some(mut download) = self.downloads.remove(&id) {
@@ -162,11 +169,19 @@ impl MediaService {
             download.state.updated_at = Utc::now();
             download.state.progress = -100.0;
 
-            let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state);
+            let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state).await?;
           },
       },
     }
+
+    Ok(())
   }
+}
+
+#[derive(Debug)]
+pub enum InternalEvent {
+  DownloadProgress { id: String, progress: f64 },
+  DownloadComplete { id: String, result: Result<MediaSpec> },
 }
 
 struct Download {

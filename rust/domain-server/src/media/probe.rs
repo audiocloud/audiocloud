@@ -4,8 +4,8 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 
-const SUPPORTED_FORMATS: [&'static str; 1] = ["wav"];
-const SUPPORTED_CODECS: [&'static str; 10] = ["pcm_s16le",
+const SUPPORTED_FORMATS: [&'static str; 3] = ["wav", "flac", "mp3"];
+const SUPPORTED_CODECS: [&'static str; 12] = ["pcm_s16le",
                                               "pcm_s24le",
                                               "pcm_s32le",
                                               "pcm_f32le",
@@ -14,10 +14,19 @@ const SUPPORTED_CODECS: [&'static str; 10] = ["pcm_s16le",
                                               "pcm_s24be",
                                               "pcm_s32be",
                                               "pcm_f32be",
-                                              "pcm_f64be"];
+                                              "pcm_f64be",
+                                              "mp3",
+                                              "flac"];
 
 pub async fn get_sample_rate(path: impl AsRef<Path>) -> anyhow::Result<u32> {
-  let read_out = Command::new("ffprobe").args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams"])
+  let path = path.as_ref().to_string_lossy();
+  let read_out = Command::new("ffprobe").args(["-v",
+                                               "quiet",
+                                               "-print_format",
+                                               "json",
+                                               "-show_format",
+                                               "-show_streams",
+                                               path.as_ref()])
                                         .kill_on_drop(true)
                                         .output()
                                         .await?;

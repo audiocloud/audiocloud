@@ -18,13 +18,14 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use domain_server::instance::driver::scripting::new_scripting_engine;
+use domain_server::media::MediaService;
 use domain_server::nats::Nats;
 use domain_server::service::Service;
 use domain_server::Result;
 
 const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
 
-#[derive(Debug, Parser)]
+#[derive(Debug, Parser, Clone)]
 #[command(author, version, about)]
 struct Arguments {
   /// Enables instance services
@@ -46,6 +47,12 @@ struct Arguments {
   pub rest_api_bind:           SocketAddr,
   /// The host name of the domain server
   pub host_name:               String,
+  /// Media root directory
+  #[clap(long, env, default_value = ".media")]
+  pub media_root:              PathBuf,
+  /// Native (default) sample rate.
+  #[clap(long, env, default_value = "192000")]
+  pub native_sample_rate:      u32,
 }
 
 enum InternalEvent {
@@ -125,10 +132,12 @@ async fn main() -> Result {
 
   let create_media = || {
     if args.enable_media {
+      let nats = nats.clone();
+      let args = args.clone();
       let tx_internal = tx_internal.clone();
       spawn(async move {
-              error!("Media service is not yet implemented");
-              Err::<(), _>(anyhow!("Media service is not yet implemented"))
+              MediaService::new(nats.clone(), args.media_root.clone(), args.native_sample_rate).run()
+                                                                                               .await
             }.then(|res| async move {
                warn!("Media service exited: {res:?}");
                let _ = tx_internal.send(MediaFinished).await;

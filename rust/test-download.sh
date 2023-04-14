@@ -1,0 +1,1 @@
+cargo run --bin ac -- media download "$1" create https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3 b7da992345804fd3d14a4cca943f51339082cad0414e71a4fea7187ce8c2e3f6 10095020

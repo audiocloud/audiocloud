@@ -5,6 +5,7 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
+use futures::StreamExt;
 use tracing::instrument;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -13,6 +14,7 @@ use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::spec::InstanceSpec;
 use api::instance::{DesiredInstancePlayState, DesiredInstancePowerState};
+use api::media::spec::MediaDownloadSpec;
 use api::task::spec::PlayId;
 use api::BucketKey;
 use domain_server::nats::Nats;
@@ -34,6 +36,10 @@ enum Command {
   Instance {
     #[clap(subcommand)]
     command: InstanceCommand,
+  },
+  Media {
+    #[clap(subcommand)]
+    command: MediaCommand,
   },
 }
 
@@ -88,6 +94,31 @@ enum InstanceCommand {
     #[clap(subcommand)]
     command: InstancePlayCommand,
   },
+}
+
+#[derive(Debug, Subcommand)]
+enum MediaCommand {
+  Download {
+    /// Media id
+    id:      String,
+    #[clap(subcommand)]
+    command: MediaDownloadCommand,
+  },
+}
+
+#[derive(Debug, Subcommand)]
+enum MediaDownloadCommand {
+  /// Create a download request
+  Create {
+    /// Url
+    url:    String,
+    /// Sha 256 hash
+    sha256: String,
+    /// Size of the file in bytes
+    size:   Option<u64>,
+  },
+  /// Get status of download
+  Status,
 }
 
 #[derive(Debug, Subcommand)]
@@ -148,6 +179,7 @@ async fn main() -> anyhow::Result<()> {
 
   match args.command {
     | Command::Instance { command } => instance_command(nats, command).await,
+    | Command::Media { command } => media_command(nats, command).await,
   }
 }
 
@@ -160,6 +192,60 @@ async fn instance_command(nats: Nats, cmd: InstanceCommand) -> Result {
     | InstanceCommand::Power { id, command } => set_instance_power(nats, id, command).await,
     | InstanceCommand::Play { id, command } => set_instance_play(nats, id, command).await,
   }
+}
+
+#[instrument(err, skip(nats))]
+async fn media_command(nats: Nats, cmd: MediaCommand) -> Result {
+  match cmd {
+    | MediaCommand::Download { id, command } => media_download_command(nats, id, command).await,
+  }
+}
+
+async fn media_download_command(nats: Nats, id: String, cmd: MediaDownloadCommand) -> Result {
+  match cmd {
+    | MediaDownloadCommand::Create { url, sha256, size } => create_media_download(nats, id, url, sha256, size).await,
+    | MediaDownloadCommand::Status => media_download_status(nats, id).await,
+  }
+}
+
+async fn create_media_download(nats: Nats, id: String, url: String, sha256: String, size: Option<u64>) -> Result {
+  let spec = MediaDownloadSpec { from_url: url,
+                                 size: size.unwrap_or_default(),
+                                 sha256 };
+
+  let revision = nats.media_download_spec.put(BucketKey::new(&id), spec).await?;
+
+  println!("Download created with revision {revision}");
+
+  Ok(())
+}
+
+async fn media_download_status(nats: Nats, id: String) -> Result {
+  let mut watch = nats.media_download_state.watch(BucketKey::new(&id));
+
+  println!("Download of media {id}");
+
+  while let Some((_, state)) = watch.next().await {
+    match state {
+      | None => {
+        println!("Deleted or not found");
+        break;
+      }
+      | Some(state) => {
+        println!(" * Progress: {:?}", state.progress);
+
+        if let Some(error) = state.error {
+          println!(" * Error: {error}");
+          break;
+        } else if let Some(done) = state.done {
+          println!(" * Completed: {done:?}");
+          break;
+        }
+      }
+    }
+  }
+
+  Ok(())
 }
 
 async fn set_instance_play(nats: Nats, id: String, play: InstancePlayCommand) -> Result {
@@ -176,7 +262,9 @@ async fn set_instance_play(nats: Nats, id: String, play: InstancePlayCommand) ->
     }
   };
 
-  nats.instance_play_ctrl.put(BucketKey::new(id), play).await?;
+  let revision = nats.instance_play_ctrl.put(BucketKey::new(id), play).await?;
+
+  println!("Play state updated with revision {revision}");
 
   Ok(())
 }
@@ -194,7 +282,9 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
     }
   };
 
-  nats.instance_power_ctrl.put(BucketKey::new(id), power).await?;
+  let revision = nats.instance_power_ctrl.put(BucketKey::new(id), power).await?;
+
+  println!("Power state updated with revision {revision}");
 
   Ok(())
 }
@@ -263,7 +353,9 @@ async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String
     spec.driver = InstanceDriverConfig::Mock;
   }
 
-  nats.instance_spec.put(BucketKey::new(id), spec).await?;
+  let revision = nats.instance_spec.put(BucketKey::new(id), spec).await?;
+
+  println!("Instance spec updated with revision {revision}");
 
   Ok(())
 }

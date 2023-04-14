@@ -1,18 +1,20 @@
 use std::path::PathBuf;
+use std::process::Stdio;
 
 use anyhow::anyhow;
 use hex::ToHex;
-use sha2::Digest;
+use reqwest::Url;
 use sha2::digest::FixedOutput;
+use sha2::Digest;
 use tempfile::NamedTempFile;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::sync::mpsc::Sender;
-use tokio::task::spawn_blocking;
+use tokio::task::{block_in_place, spawn_blocking};
 
 use api::media::spec::{MediaDownloadSpec, MediaSpec};
 
-use crate::media::{InternalEvent, probe};
+use crate::media::{probe, InternalEvent};
 
 use super::Result;
 
@@ -23,13 +25,15 @@ pub async fn download_file(id: String,
                            sender: Sender<InternalEvent>)
                            -> Result<MediaSpec> {
   // create a temp file
-  let mut temp_file = NamedTempFile::new()?;
+  let mut temp_file = block_in_place(|| NamedTempFile::new())?;
   let temp_path = temp_file.path().to_owned();
-  let mut out = tokio::fs::File::open(&temp_path).await?;
+  let mut out = tokio::fs::File::create(&temp_path).await?;
   let mut sha = sha2::Sha256::default();
 
   // download the file in chunks
-  let mut request = super::HTTP_CLIENT.get(&spec.from_url).send().await?;
+  let parsed_url = Url::parse(&spec.from_url)?;
+
+  let mut request = super::HTTP_CLIENT.get(parsed_url).send().await?;
   let mut progress = 0.0;
   let mut read = 0;
 
@@ -38,11 +42,14 @@ pub async fn download_file(id: String,
     out.write_all(&chunk).await?;
 
     read += chunk.len();
-    let new_progress = (read as f64 / spec.size as f64 * 100.0).round();
-    if new_progress != progress {
-      progress = new_progress;
-      let id = id.clone();
-      let _ = sender.send(InternalEvent::DownloadProgress { id, progress }).await;
+
+    if spec.size != 0 {
+      let new_progress = (read as f64 / spec.size as f64 * 100.0).round();
+      if new_progress != progress {
+        progress = new_progress;
+        let id = id.clone();
+        let _ = sender.send(InternalEvent::DownloadProgress { id, progress }).await;
+      }
     }
   }
 
@@ -61,7 +68,8 @@ pub async fn download_file(id: String,
     let resampled_file = NamedTempFile::new()?;
     let resampled_path = resampled_file.path().to_owned();
 
-    let resampling_status = Command::new("ffmpeg").args(["-i",
+    let resampling_status = Command::new("ffmpeg").args(["-y",
+                                                         "-i",
                                                          temp_path.to_str().unwrap(),
                                                          "-af",
                                                          "aresample=resampler=soxr",
@@ -73,6 +81,7 @@ pub async fn download_file(id: String,
                                                          "wav",
                                                          resampled_path.to_str().unwrap()].into_iter())
                                                   .kill_on_drop(true)
+                                                  .stdin(Stdio::null())
                                                   .spawn()?
                                                   .wait()
                                                   .await?;

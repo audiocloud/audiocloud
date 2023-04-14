@@ -293,15 +293,15 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
     Ok(rv)
   }
 
-  pub async fn put(&self, key: BucketKey<T>, value: T) -> anyhow::Result<()>
+  pub async fn put(&self, key: BucketKey<T>, value: T) -> anyhow::Result<u64>
     where T: Serialize + Debug
   {
     debug!(?value, "Update {}[{}]", self.store.name, key.key);
 
     let value = serde_json::to_vec(&value).map_err(json_err)?;
-    self.store.put(&key.key, Bytes::from(value)).await.map_err(nats_err)?;
+    let revision = self.store.put(&key.key, Bytes::from(value)).await.map_err(nats_err)?;
 
-    Ok(())
+    Ok(revision)
   }
 
   pub async fn get(&self, key: BucketKey<T>) -> anyhow::Result<Option<T>> {
