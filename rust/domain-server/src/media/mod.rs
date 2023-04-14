@@ -3,7 +3,9 @@ use std::convert::identity;
 use std::path::PathBuf;
 
 use chrono::Utc;
-use futures::{FutureExt, StreamExt};
+use futures::StreamExt;
+use lazy_static::lazy_static;
+use reqwest::Client;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::{select, spawn};
@@ -16,8 +18,13 @@ use crate::nats::{Nats, WatchStream};
 
 pub use super::Result;
 
+lazy_static! {
+  pub(crate) static ref HTTP_CLIENT: Client = Client::new();
+}
+
 mod download;
 mod probe;
+mod upload;
 
 pub struct MediaService {
   nats:                 Nats,
@@ -32,8 +39,7 @@ pub struct MediaService {
 }
 
 pub enum InternalEvent {
-  CreateDownload {},
-  DownloadProgress { id: String, progress: f32 },
+  DownloadProgress { id: String, progress: f64 },
   DownloadComplete { id: String, result: Result<MediaSpec> },
 }
 
@@ -107,7 +113,8 @@ impl MediaService {
     self.abort_download_if_exists(id.clone());
     let state = MediaDownloadState { updated_at: Utc::now(),
                                      progress:   0.0,
-                                     done:       None, };
+                                     done:       None,
+                                     error:      None, };
 
     let task = spawn({
       let tx_internal = self.tx_internal.clone();
@@ -130,7 +137,35 @@ impl MediaService {
   }
 
   fn internal_event(&mut self, event: InternalEvent) {
-    // TODO: ...
+    match event {
+      | InternalEvent::DownloadProgress { id, progress } =>
+        if let Some(download) = self.downloads.get_mut(&id) {
+          download.state.progress = progress;
+          download.state.updated_at = Utc::now();
+
+          let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state.clone());
+        },
+      | InternalEvent::DownloadComplete { id, result } => match result {
+        | Ok(spec) =>
+          if let Some(mut download) = self.downloads.remove(&id) {
+            download.state.done = Some(spec);
+            download.state.error = None;
+            download.state.updated_at = Utc::now();
+            download.state.progress = 100.0;
+
+            let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state);
+          },
+        | Err(err) =>
+          if let Some(mut download) = self.downloads.remove(&id) {
+            download.state.done = None;
+            download.state.error = Some(err.to_string());
+            download.state.updated_at = Utc::now();
+            download.state.progress = -100.0;
+
+            let _ = self.nats.media_download_state.put(BucketKey::new(&id), download.state);
+          },
+      },
+    }
   }
 }
 

@@ -2,10 +2,8 @@ use std::path::PathBuf;
 
 use anyhow::anyhow;
 use hex::ToHex;
-use lazy_static::lazy_static;
-use reqwest::Client;
-use sha2::digest::FixedOutput;
 use sha2::Digest;
+use sha2::digest::FixedOutput;
 use tempfile::NamedTempFile;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
@@ -14,13 +12,9 @@ use tokio::task::spawn_blocking;
 
 use api::media::spec::{MediaDownloadSpec, MediaSpec};
 
-use crate::media::{probe, InternalEvent};
+use crate::media::{InternalEvent, probe};
 
 use super::Result;
-
-lazy_static! {
-  static ref HTTP_CLIENT: Client = Client::new();
-}
 
 pub async fn download_file(id: String,
                            spec: MediaDownloadSpec,
@@ -35,7 +29,7 @@ pub async fn download_file(id: String,
   let mut sha = sha2::Sha256::default();
 
   // download the file in chunks
-  let mut request = HTTP_CLIENT.get(&spec.from_url).send().await?;
+  let mut request = super::HTTP_CLIENT.get(&spec.from_url).send().await?;
   let mut progress = 0.0;
   let mut read = 0;
 
@@ -44,7 +38,7 @@ pub async fn download_file(id: String,
     out.write_all(&chunk).await?;
 
     read += chunk.len();
-    let new_progress = (read as f32 / spec.size as f32 * 100.0).round();
+    let new_progress = (read as f64 / spec.size as f64 * 100.0).round();
     if new_progress != progress {
       progress = new_progress;
       let id = id.clone();

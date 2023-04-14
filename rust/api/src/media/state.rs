@@ -18,6 +18,7 @@ pub struct MediaDownloadState {
   pub updated_at: Timestamp,
   pub progress:   f64,
   pub done:       Option<MediaSpec>,
+  pub error:      Option<String>,
 }
 
 pub fn media_download_state(media_id: impl ToString) -> BucketKey<MediaDownloadState> {
