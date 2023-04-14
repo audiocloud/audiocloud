@@ -12,7 +12,7 @@ use tokio::task::JoinHandle;
 use tokio::{select, spawn};
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::driver::requests::{
@@ -137,12 +137,25 @@ impl DriverService {
     for (instance_id, driver) in self.instances.iter_mut() {
       if let Some(spec) = &driver.spec {
         let spec_changed = &driver.prev_spec != &driver.spec;
+
+        if spec_changed {
+          if let Some(running) = driver.running.as_mut() {
+            if running.terminate_requested > 10 {
+              warn!("Instance driver {} is not terminating, killing it", instance_id);
+              running.handle.abort();
+            } else {
+              running.terminate_requested += 1;
+              let _ = running.tx_cmd.try_send(InstanceDriverCommand::Terminate);
+            }
+          }
+        }
+
         let driver_running = driver.running
                                    .as_ref()
                                    .map(|running| !running.handle.is_finished())
                                    .unwrap_or(false);
 
-        if !driver_running || spec_changed {
+        if !driver_running {
           drop(driver.running.take());
 
           let can_respawn = &spec.host == &self.host;
@@ -169,14 +182,17 @@ impl DriverService {
                                                  rx_cmd,
                                                  tx_evt));
 
-            let received_running = false;
+            let received_connected = false;
+            let terminate_requested = 0;
+
             self.instance_driver_events.insert(instance_id.clone(), ReceiverStream::new(rx_evt));
             self.set_parameter_req.insert(instance_id.clone(),
                                           self.nats.serve_requests(set_instance_parameters_request(&instance_id)));
 
             driver.running = Some(RunningInstanceDriver { tx_cmd,
                                                           handle,
-                                                          received_connected: received_running });
+                                                          received_connected,
+                                                          terminate_requested });
             driver.prev_spec = driver.spec.clone();
           }
         }
@@ -239,9 +255,10 @@ struct InstanceDriver {
 }
 
 struct RunningInstanceDriver {
-  tx_cmd:             mpsc::Sender<InstanceDriverCommand>,
-  handle:             JoinHandle<Result>,
-  received_connected: bool,
+  tx_cmd:              mpsc::Sender<InstanceDriverCommand>,
+  handle:              JoinHandle<Result>,
+  received_connected:  bool,
+  terminate_requested: u32,
 }
 
 impl Drop for RunningInstanceDriver {

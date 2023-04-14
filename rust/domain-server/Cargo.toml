@@ -37,7 +37,6 @@ rosc = "0.9"
 sha2 = "0.10"
 tempfile = "3"
 hex = "0.4"
-ffprobe = "0.3"
 
 [dependencies.boa_engine]
 version = "0.16"
@@ -76,7 +75,7 @@ features = ["json", "ws", "headers", "tokio"]
 
 [dependencies.tokio]
 version = "1"
-features = ["macros", "rt-multi-thread", "fs"]
+features = ["macros", "rt-multi-thread", "fs", "process"]
 
 [dependencies.chrono]
 version = "0.4"
