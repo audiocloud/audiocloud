@@ -8,8 +8,8 @@ use clap::Parser;
 use futures::FutureExt;
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::sync::mpsc;
 use tokio::{select, spawn};
+use tokio::sync::mpsc;
 use tower_http::cors;
 use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -18,10 +18,10 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 use domain_server::instance::driver::scripting::new_scripting_engine;
-use domain_server::media::MediaService;
+use domain_server::media::service::MediaService;
 use domain_server::nats::Nats;
-use domain_server::service::Service;
 use domain_server::Result;
+use domain_server::service::Service;
 
 const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
 
@@ -29,30 +29,31 @@ const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
 #[command(author, version, about)]
 struct Arguments {
   /// Enables instance services
-  #[clap(long, env, group = "instances")]
+  #[clap(long, env)]
   pub enable_instances:        bool,
   /// Enables instance driver services
-  #[clap(long, env, group = "instance_drivers")]
+  #[clap(long, env)]
   pub enable_instance_drivers: bool,
   /// Enables task management services
-  #[clap(long, env, group = "tasks")]
+  #[clap(long, env)]
   pub enable_tasks:            bool,
   /// Enables REST API
-  #[clap(long, env, group = "api")]
+  #[clap(long, env)]
   pub enable_api:              bool,
   /// Enable media management services
-  #[clap(long, env, group = "media")]
+  #[clap(long, env)]
   pub enable_media:            bool,
   /// NATS JetStream URL
   #[clap(long, env, default_value = "nats://localhost:4222")]
   pub nats_url:                String,
   /// REST API listen address and port
-  #[clap(long, env, default_value = "127.0.0.1:7200", group = "api")]
+  #[clap(long, env, default_value = "127.0.0.1:7200")]
   pub rest_api_bind:           SocketAddr,
   /// The host name of the domain server
-  pub host_name:               String,
+  #[clap(long, env, default_value = "localhost.localdomain")]
+  pub driver_host_name:        String,
   /// Media root directory
-  #[clap(long, env, default_value = ".media", group = "media")]
+  #[clap(long, env, default_value = ".media")]
   pub media_root:              PathBuf,
   /// Native (default) sample rate.
   #[clap(long, env, default_value = "192000")]
@@ -65,6 +66,7 @@ enum InternalEvent {
   TasksFinished,
   MediaFinished,
   RestApiFinished,
+  ScriptingFinished,
   RestartInstanceDrivers,
   RestartInstances,
   RestartTasks,
@@ -93,13 +95,14 @@ async fn main() -> Result {
 
   let (tx_internal, mut rx_internal) = mpsc::channel(0xff);
 
-  let (scripting_engine, scripting_handle) = new_scripting_engine();
+  let (scripting_engine, mut scripting_handle) = new_scripting_engine();
 
   let create_instance_drivers = || {
     if args.enable_instance_drivers {
       let tx_internal = tx_internal.clone();
+      info!("Starting instance driver service: {}", args.driver_host_name);
       let service =
-        domain_server::instance::driver::server::DriverService::new(nats.clone(), scripting_engine.clone(), args.host_name.clone());
+        domain_server::instance::driver::server::DriverService::new(nats.clone(), scripting_engine.clone(), args.driver_host_name.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance driver service exited: {res:?}");
                            let _ = tx_internal.send(InstanceDriversFinished).await;
@@ -111,6 +114,7 @@ async fn main() -> Result {
   let create_instances = || {
     if args.enable_instances {
       let tx_internal = tx_internal.clone();
+      info!("Starting instances service");
       let service = domain_server::instance::service::InstanceService::new(nats.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance service exited: {res:?}");
@@ -141,6 +145,7 @@ async fn main() -> Result {
       let args = args.clone();
       let tx_internal = tx_internal.clone();
       spawn(async move {
+              info!("Starting media service");
               MediaService::new(nats.clone(), args.media_root.clone(), args.native_sample_rate).run()
                                                                                                .await
             }.then(|res| async move {
@@ -175,6 +180,15 @@ async fn main() -> Result {
   create_tasks();
   create_media();
   create_rest_api();
+
+  spawn({
+    let tx_internal = tx_internal.clone();
+
+    async move {
+      let _ = scripting_handle.join().await;
+      let _ = tx_internal.send(InternalEvent::ScriptingFinished).await;
+    }
+  });
 
   loop {
     select! {
@@ -213,7 +227,11 @@ async fn main() -> Result {
             });
           },
           RestApiFinished => {
-            error!("Rest API stopped, exiting");
+            error!("FATAL: Rest API stopped, exiting");
+            break;
+          },
+          ScriptingFinished => {
+            error!("FATAL: Scripting engine stopped, exiting");
             break;
           },
           RestartInstanceDrivers => {

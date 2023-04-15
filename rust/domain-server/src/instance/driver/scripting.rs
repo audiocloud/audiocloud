@@ -1,7 +1,8 @@
 use std::num::NonZeroUsize;
-use std::thread::{sleep, spawn, JoinHandle};
+use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+use async_thread::{spawn, JoinHandle};
 use boa_engine::prelude::*;
 use boa_engine::vm::CodeBlock;
 use gc::Gc;

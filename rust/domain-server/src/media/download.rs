@@ -14,7 +14,8 @@ use tokio::task::{block_in_place, spawn_blocking};
 
 use api::media::spec::{MediaDownloadSpec, MediaSpec};
 
-use crate::media::{probe, InternalEvent};
+use crate::media::probe;
+use crate::media::service::InternalEvent;
 
 use super::Result;
 
@@ -48,7 +49,7 @@ pub async fn download_file(id: String,
       if new_progress != progress {
         progress = new_progress;
         let id = id.clone();
-        let _ = sender.send(InternalEvent::DownloadProgress { id, progress }).await;
+        let _ = sender.send(InternalEvent::DownloadProgress { media_id: id, progress }).await;
       }
     }
   }
