@@ -14,7 +14,7 @@ use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::spec::InstanceSpec;
 use api::instance::{DesiredInstancePlayState, DesiredInstancePowerState};
-use api::media::spec::MediaDownloadSpec;
+use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
 use api::task::spec::PlayId;
 use api::BucketKey;
 use domain_server::nats::Nats;
@@ -104,13 +104,19 @@ enum MediaCommand {
     #[clap(subcommand)]
     command: MediaDownloadCommand,
   },
+  Upload {
+    /// Media id
+    id:      String,
+    #[clap(subcommand)]
+    command: MediaUploadCommand,
+  },
 }
 
 #[derive(Debug, Subcommand)]
 enum MediaDownloadCommand {
   /// Create a download request
   Create {
-    /// Url
+    /// Source URL to GET the file from
     url:    String,
     /// Sha 256 hash
     sha256: String,
@@ -118,6 +124,17 @@ enum MediaDownloadCommand {
     size:   Option<u64>,
   },
   /// Get status of download
+  Status,
+}
+
+#[derive(Debug, Subcommand)]
+enum MediaUploadCommand {
+  /// Create an upload request
+  Create {
+    /// Destination URL to PUT the file to
+    url: String,
+  },
+  /// Get status of upload
   Status,
 }
 
@@ -198,6 +215,7 @@ async fn instance_command(nats: Nats, cmd: InstanceCommand) -> Result {
 async fn media_command(nats: Nats, cmd: MediaCommand) -> Result {
   match cmd {
     | MediaCommand::Download { id, command } => media_download_command(nats, id, command).await,
+    | MediaCommand::Upload { id, command } => media_upload_command(nats, id, command).await,
   }
 }
 
@@ -205,6 +223,13 @@ async fn media_download_command(nats: Nats, id: String, cmd: MediaDownloadComman
   match cmd {
     | MediaDownloadCommand::Create { url, sha256, size } => create_media_download(nats, id, url, sha256, size).await,
     | MediaDownloadCommand::Status => media_download_status(nats, id).await,
+  }
+}
+
+async fn media_upload_command(nats: Nats, id: String, cmd: MediaUploadCommand) -> Result {
+  match cmd {
+    | MediaUploadCommand::Create { url } => create_media_upload(nats, id, url).await,
+    | MediaUploadCommand::Status => media_upload_status(nats, id).await,
   }
 }
 
@@ -220,10 +245,48 @@ async fn create_media_download(nats: Nats, id: String, url: String, sha256: Stri
   Ok(())
 }
 
+async fn create_media_upload(nats: Nats, id: String, url: String) -> Result {
+  let spec = MediaUploadSpec { to_url: url };
+
+  let revision = nats.media_upload_spec.put(BucketKey::new(&id), spec).await?;
+
+  println!("Upload created with revision {revision}");
+
+  Ok(())
+}
+
 async fn media_download_status(nats: Nats, id: String) -> Result {
   let mut watch = nats.media_download_state.watch(BucketKey::new(&id));
 
   println!("Download of media {id}");
+
+  while let Some((_, state)) = watch.next().await {
+    match state {
+      | None => {
+        println!("Deleted or not found");
+        break;
+      }
+      | Some(state) => {
+        println!(" * Progress: {:?}", state.progress);
+
+        if let Some(error) = state.error {
+          println!(" * Error: {error}");
+          break;
+        } else if let Some(done) = state.done {
+          println!(" * Completed: {done:?}");
+          break;
+        }
+      }
+    }
+  }
+
+  Ok(())
+}
+
+async fn media_upload_status(nats: Nats, id: String) -> Result {
+  let mut watch = nats.media_upload_state.watch(BucketKey::new(&id));
+
+  println!("Upload of media {id}");
 
   while let Some((_, state)) = watch.next().await {
     match state {

@@ -15,8 +15,10 @@ use api::media::spec::{MediaDownloadSpec, MediaSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::BucketKey;
 
-use crate::media::download;
+use crate::media::{download, upload};
 use crate::nats::{Nats, WatchStream};
+
+use super::Result;
 
 pub struct MediaService {
   nats:                 Nats,
@@ -58,7 +60,7 @@ impl MediaService {
           self.media_download_spec_changed(media_id, maybe_download_spec).await;
         },
         Some((media_id, maybe_upload_spec)) = self.watch_upload_specs.next() => {
-          self.media_upload_spec_changed(media_id, maybe_upload_spec);
+          self.media_upload_spec_changed(media_id, maybe_upload_spec).await;
         },
         Some(event) = self.rx_internal.recv() => {
           let _ = self.internal_event(event).await;
@@ -103,16 +105,12 @@ impl MediaService {
   async fn create_or_update_download(&mut self, media_id: String, spec: MediaDownloadSpec) {
     self.abort_download_if_exists(media_id.clone()).await;
 
-    let state = MediaDownloadState { updated_at: Utc::now(),
-                                     progress:   0.0,
-                                     done:       None,
-                                     error:      None, };
+    let state = MediaDownloadState::default();
 
     let task = spawn({
       let tx_internal = self.tx_internal.clone();
       let media_root = self.media_root.clone();
       let native_sample_rate = self.native_sample_rate;
-      let spec = spec.clone();
       let media_id = media_id.clone();
 
       async move {
@@ -121,15 +119,64 @@ impl MediaService {
       }
     });
 
-    self.downloads.insert(media_id, Download { spec, state, task });
+    self.downloads.insert(media_id, Download { state, task });
   }
 
-  fn media_upload_spec_changed(&mut self, media_id: String, maybe_upload_spec: Option<MediaUploadSpec>) {
-    // TODO: ...
+  async fn media_upload_spec_changed(&mut self, media_id: String, maybe_upload_spec: Option<MediaUploadSpec>) {
+    match maybe_upload_spec {
+      | None => self.abort_upload_if_exists(media_id).await,
+      | Some(upload) => self.create_or_update_upload_if_not_completed(media_id, upload).await,
+    }
+  }
+
+  async fn abort_upload_if_exists(&mut self, media_id: String) {
+    if let Some(upload) = self.uploads.remove(&media_id) {
+      if !upload.task.is_finished() {
+        warn!(media_id, "Aborting upload task");
+        upload.task.abort();
+        let _ = timeout(Duration::from_millis(150), upload.task).await;
+      }
+    }
+  }
+
+  async fn create_or_update_upload_if_not_completed(&mut self, media_id: String, spec: MediaUploadSpec) {
+    let is_url_new = self.nats
+                         .media_upload_spec
+                         .get(BucketKey::new(&media_id))
+                         .await
+                         .ok()
+                         .and_then(identity)
+                         .map(|bucket_spec| &bucket_spec.to_url == &spec.to_url)
+                         .unwrap_or(false);
+
+    if !is_url_new {
+      self.create_or_update_upload(media_id, spec).await;
+    } else {
+      debug!(media_id, "Upload already completed");
+    }
+  }
+
+  async fn create_or_update_upload(&mut self, media_id: String, spec: MediaUploadSpec) {
+    self.abort_upload_if_exists(media_id.clone()).await;
+
+    let state = MediaUploadState::default();
+
+    let task = spawn({
+      let tx_internal = self.tx_internal.clone();
+      let media_root = self.media_root.clone();
+      let media_id = media_id.clone();
+
+      async move {
+        let result = upload::upload_file(media_id.clone(), spec, media_root, tx_internal.clone()).await;
+        let _ = tx_internal.send(InternalEvent::UploadComplete { media_id, result }).await;
+      }
+    });
+
+    self.uploads.insert(media_id, Upload { state, task });
   }
 
   #[instrument(skip(self), err)]
-  async fn internal_event(&mut self, event: InternalEvent) -> crate::Result {
+  async fn internal_event(&mut self, event: InternalEvent) -> Result {
     info!("Internal event: {event:?}");
 
     match event {
@@ -173,6 +220,40 @@ impl MediaService {
                         .await?;
           },
       },
+      | InternalEvent::UploadProgress { media_id, progress } =>
+        if let Some(upload) = self.uploads.get_mut(&media_id) {
+          upload.state.progress = progress;
+          upload.state.updated_at = Utc::now();
+
+          let _ = self.nats
+                      .media_upload_state
+                      .put(BucketKey::new(&media_id), upload.state.clone())
+                      .await?;
+        },
+      | InternalEvent::UploadComplete { media_id, result } => match result {
+        | Ok(_) =>
+          if let Some(mut upload) = self.uploads.remove(&media_id) {
+            upload.state.uploaded = true;
+            upload.state.error = None;
+            upload.state.updated_at = Utc::now();
+            upload.state.progress = 100.0;
+
+            info!(media_id, "Upload completed");
+
+            let _ = self.nats.media_upload_state.put(BucketKey::new(&media_id), upload.state).await?;
+          },
+        | Err(err) =>
+          if let Some(mut upload) = self.uploads.remove(&media_id) {
+            upload.state.uploaded = false;
+            upload.state.error = Some(err.to_string());
+            upload.state.updated_at = Utc::now();
+            upload.state.progress = -100.0;
+
+            info!(media_id, ?err, "Upload failed: {err}");
+
+            let _ = self.nats.media_upload_state.put(BucketKey::new(&media_id), upload.state).await?;
+          },
+      },
     }
 
     Ok(())
@@ -181,18 +262,13 @@ impl MediaService {
 
 #[derive(Debug)]
 pub enum InternalEvent {
-  DownloadProgress {
-    media_id: String,
-    progress: f64,
-  },
-  DownloadComplete {
-    media_id: String,
-    result:   crate::Result<MediaSpec>,
-  },
+  DownloadProgress { media_id: String, progress: f64 },
+  DownloadComplete { media_id: String, result: Result<MediaSpec> },
+  UploadProgress { media_id: String, progress: f64 },
+  UploadComplete { media_id: String, result: Result },
 }
 
 struct Download {
-  spec:  MediaDownloadSpec,
   state: MediaDownloadState,
   task:  JoinHandle<()>,
 }
