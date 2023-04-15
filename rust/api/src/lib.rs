@@ -51,12 +51,24 @@ pub struct BucketKey<Ctrl> {
   pub key:          String,
 }
 
+pub trait IntoBucketKey<T> {
+  fn to_bucket_key(&self) -> BucketKey<T>;
+}
+
+impl<T, Ctrl> IntoBucketKey<Ctrl> for T where T: ToString
+{
+  fn to_bucket_key(&self) -> BucketKey<Ctrl> {
+    BucketKey::new(self)
+  }
+}
+
 impl<Ctrl> BucketKey<Ctrl> {
   pub fn all() -> Self {
-    BucketKey::new("*")
+    BucketKey { phantom_ctrl: Default::default(),
+                key:          "*".to_string(), }
   }
 
-  pub fn new(key: impl ToString) -> Self {
+  pub fn new<T: ToString>(key: &T) -> Self {
     Self { phantom_ctrl: Default::default(),
            key:          key.to_string(), }
   }

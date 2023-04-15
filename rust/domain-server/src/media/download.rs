@@ -12,14 +12,14 @@ use tokio::process::Command;
 use tokio::sync::mpsc::Sender;
 use tokio::task::{block_in_place, spawn_blocking};
 
-use api::media::spec::{MediaDownloadSpec, MediaSpec};
+use api::media::spec::{MediaDownloadSpec, MediaId, MediaSpec};
 
 use crate::media::probe;
 use crate::media::service::InternalEvent;
 
 use super::Result;
 
-pub async fn download_file(id: String,
+pub async fn download_file(id: MediaId,
                            spec: MediaDownloadSpec,
                            media_root: PathBuf,
                            native_sample_rate: u32,
@@ -95,7 +95,7 @@ pub async fn download_file(id: String,
   }
 
   // move the file to the final location
-  let persistent_path = media_root.join(&id);
+  let persistent_path = media_root.join(&id.to_string());
   spawn_blocking(move || temp_file.persist(&persistent_path)).await??;
 
   Ok(MediaSpec { id, sha256 })

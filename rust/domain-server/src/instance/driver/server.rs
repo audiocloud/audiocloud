@@ -19,9 +19,8 @@ use api::instance::driver::requests::{
   set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse, SetInstanceParametersRequest,
 };
 use api::instance::spec::InstanceSpec;
-use api::instance::state::instance_connection_state;
+use api::instance::state::instance_connection_state_key;
 use api::instance::{InstanceConnectionState, InstancePowerState};
-use api::BucketKey;
 
 use crate::instance::driver::scripting::ScriptingEngine;
 use crate::nats::{Nats, RequestStream, WatchStream};
@@ -127,7 +126,7 @@ impl DriverService {
         };
 
         nats.instance_connection_state
-            .put(instance_connection_state(instance_id), connection_state)
+            .put(instance_connection_state_key(&instance_id), connection_state)
             .await
       });
     }
@@ -226,7 +225,7 @@ impl DriverService {
 
     let _ = self.nats
                 .instance_connection_state
-                .put(BucketKey::new(&instance_id), connection_state)
+                .put(instance_connection_state_key(&instance_id), connection_state)
                 .await;
   }
 

@@ -5,14 +5,14 @@ use reqwest::Body;
 use tokio::sync::mpsc;
 use tokio_util::io::ReaderStream;
 
-use api::media::spec::MediaUploadSpec;
+use api::media::spec::{MediaId, MediaUploadSpec};
 
 use crate::media::service::InternalEvent;
 
 use super::Result;
 
-pub async fn upload_file(media_id: String, spec: MediaUploadSpec, media_root: PathBuf, sender: mpsc::Sender<InternalEvent>) -> Result {
-  let source_file = tokio::fs::File::open(media_root.join(&media_id)).await?;
+pub async fn upload_file(media_id: MediaId, spec: MediaUploadSpec, media_root: PathBuf, sender: mpsc::Sender<InternalEvent>) -> Result {
+  let source_file = tokio::fs::File::open(media_root.join(&media_id.to_string())).await?;
   let size = source_file.metadata().await?.len();
 
   let mut read = 0;

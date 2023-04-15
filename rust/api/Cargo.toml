@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 thiserror = "1"
 derive_more = "0.99"
+anyhow = "1"
 
 [dependencies.schemars]
 version = "0.8"

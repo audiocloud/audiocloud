@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use reqwest::Client;
+use api::BucketKey;
 
 pub use super::Result;
 

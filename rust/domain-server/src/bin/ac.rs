@@ -10,13 +10,16 @@ use tracing::instrument;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use api::instance::control::{InstancePlayControl, InstancePowerControl};
+use api::instance::control::{instance_play_control_key, instance_power_control_key, InstancePlayControl, InstancePowerControl};
 use api::instance::driver::config::InstanceDriverConfig;
 use api::instance::spec::InstanceSpec;
+use api::instance::state::{instance_connection_state_key, instance_play_state_key, instance_power_state_key};
 use api::instance::{DesiredInstancePlayState, DesiredInstancePowerState};
-use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
+use api::media::buckets::{media_upload_spec_key, media_upload_state_key};
+use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
+use api::media::state::media_download_state_key;
 use api::task::spec::PlayId;
-use api::BucketKey;
+use api::IntoBucketKey;
 use domain_server::nats::Nats;
 
 const LOG_DEFAULTS: &'static str = "warn";
@@ -100,13 +103,13 @@ enum InstanceCommand {
 enum MediaCommand {
   Download {
     /// Media id
-    id:      String,
+    id:      MediaId,
     #[clap(subcommand)]
     command: MediaDownloadCommand,
   },
   Upload {
     /// Media id
-    id:      String,
+    id:      MediaId,
     #[clap(subcommand)]
     command: MediaUploadCommand,
   },
@@ -219,44 +222,44 @@ async fn media_command(nats: Nats, cmd: MediaCommand) -> Result {
   }
 }
 
-async fn media_download_command(nats: Nats, id: String, cmd: MediaDownloadCommand) -> Result {
+async fn media_download_command(nats: Nats, id: MediaId, cmd: MediaDownloadCommand) -> Result {
   match cmd {
     | MediaDownloadCommand::Create { url, sha256, size } => create_media_download(nats, id, url, sha256, size).await,
     | MediaDownloadCommand::Status => media_download_status(nats, id).await,
   }
 }
 
-async fn media_upload_command(nats: Nats, id: String, cmd: MediaUploadCommand) -> Result {
+async fn media_upload_command(nats: Nats, id: MediaId, cmd: MediaUploadCommand) -> Result {
   match cmd {
     | MediaUploadCommand::Create { url } => create_media_upload(nats, id, url).await,
     | MediaUploadCommand::Status => media_upload_status(nats, id).await,
   }
 }
 
-async fn create_media_download(nats: Nats, id: String, url: String, sha256: String, size: Option<u64>) -> Result {
+async fn create_media_download(nats: Nats, id: MediaId, url: String, sha256: String, size: Option<u64>) -> Result {
   let spec = MediaDownloadSpec { from_url: url,
                                  size: size.unwrap_or_default(),
                                  sha256 };
 
-  let revision = nats.media_download_spec.put(BucketKey::new(&id), spec).await?;
+  let revision = nats.media_download_spec.put(id.to_bucket_key(), spec).await?;
 
   println!("Download created with revision {revision}");
 
   Ok(())
 }
 
-async fn create_media_upload(nats: Nats, id: String, url: String) -> Result {
+async fn create_media_upload(nats: Nats, id: MediaId, url: String) -> Result {
   let spec = MediaUploadSpec { to_url: url };
 
-  let revision = nats.media_upload_spec.put(BucketKey::new(&id), spec).await?;
+  let revision = nats.media_upload_spec.put(media_upload_spec_key(&id), spec).await?;
 
   println!("Upload created with revision {revision}");
 
   Ok(())
 }
 
-async fn media_download_status(nats: Nats, id: String) -> Result {
-  let mut watch = nats.media_download_state.watch(BucketKey::new(&id));
+async fn media_download_status(nats: Nats, id: MediaId) -> Result {
+  let mut watch = nats.media_download_state.watch(media_download_state_key(&id));
 
   println!("Download of media {id}");
 
@@ -273,7 +276,7 @@ async fn media_download_status(nats: Nats, id: String) -> Result {
           println!(" * Error: {error}");
           break;
         } else if let Some(done) = state.done {
-          println!(" * Completed: {done:?}");
+          println!(" * Download complete: {done:?}");
           break;
         }
       }
@@ -283,8 +286,8 @@ async fn media_download_status(nats: Nats, id: String) -> Result {
   Ok(())
 }
 
-async fn media_upload_status(nats: Nats, id: String) -> Result {
-  let mut watch = nats.media_upload_state.watch(BucketKey::new(&id));
+async fn media_upload_status(nats: Nats, id: MediaId) -> Result {
+  let mut watch = nats.media_upload_state.watch(media_upload_state_key(&id));
 
   println!("Upload of media {id}");
 
@@ -300,8 +303,8 @@ async fn media_upload_status(nats: Nats, id: String) -> Result {
         if let Some(error) = state.error {
           println!(" * Error: {error}");
           break;
-        } else if let Some(done) = state.done {
-          println!(" * Completed: {done:?}");
+        } else if state.uploaded {
+          println!(" * Upload complete!");
           break;
         }
       }
@@ -320,12 +323,12 @@ async fn set_instance_play(nats: Nats, id: String, play: InstancePlayCommand) ->
     | InstancePlayCommand::Stop => InstancePlayControl { desired: DesiredInstancePlayState::Stop,
                                                          until:   Utc::now(), },
     | InstancePlayCommand::Delete => {
-      nats.instance_play_ctrl.delete(BucketKey::new(id)).await?;
+      nats.instance_play_ctrl.delete(id.to_bucket_key()).await?;
       return Ok(());
     }
   };
 
-  let revision = nats.instance_play_ctrl.put(BucketKey::new(id), play).await?;
+  let revision = nats.instance_play_ctrl.put(id.to_bucket_key(), play).await?;
 
   println!("Play state updated with revision {revision}");
 
@@ -340,12 +343,12 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
     | InstancePowerCommand::Off => InstancePowerControl { desired: DesiredInstancePowerState::Off,
                                                           until:   Utc::now(), },
     | InstancePowerCommand::Delete => {
-      nats.instance_power_ctrl.delete(BucketKey::new(id)).await?;
+      nats.instance_power_ctrl.delete(id.to_bucket_key()).await?;
       return Ok(());
     }
   };
 
-  let revision = nats.instance_power_ctrl.put(BucketKey::new(id), power).await?;
+  let revision = nats.instance_power_ctrl.put(id.to_bucket_key(), power).await?;
 
   println!("Power state updated with revision {revision}");
 
@@ -354,16 +357,16 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
 
 async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result {
   let spec = if include_spec {
-    nats.instance_spec.get(BucketKey::new(&id)).await?
+    nats.instance_spec.get(id.to_bucket_key()).await?
   } else {
     None
   };
 
-  let connected_state = nats.instance_connection_state.get(BucketKey::new(&id)).await?;
-  let power_state = nats.instance_power_state.get(BucketKey::new(&id)).await?;
-  let play_state = nats.instance_play_state.get(BucketKey::new(&id)).await?;
-  let power = nats.instance_power_ctrl.get(BucketKey::new(&id)).await?;
-  let play = nats.instance_play_ctrl.get(BucketKey::new(&id)).await?;
+  let connected_state = nats.instance_connection_state.get(instance_connection_state_key(&id)).await?;
+  let power_state = nats.instance_power_state.get(instance_power_state_key(&id)).await?;
+  let play_state = nats.instance_play_state.get(instance_play_state_key(&id)).await?;
+  let power = nats.instance_power_ctrl.get(instance_power_control_key(&id)).await?;
+  let play = nats.instance_play_ctrl.get(instance_play_control_key(&id)).await?;
 
   println!("Instance: {id}");
   if include_spec {
@@ -416,7 +419,7 @@ async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String
     spec.driver = InstanceDriverConfig::Mock;
   }
 
-  let revision = nats.instance_spec.put(BucketKey::new(id), spec).await?;
+  let revision = nats.instance_spec.put(id.to_bucket_key(), spec).await?;
 
   println!("Instance spec updated with revision {revision}");
 

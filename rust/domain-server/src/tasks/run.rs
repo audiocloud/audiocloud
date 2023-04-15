@@ -9,11 +9,11 @@ use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
-use api::instance::spec::{instance_spec, InstanceSpec};
-use api::instance::state::{instance_connection_state, instance_play_state, instance_power_state};
+use api::instance::spec::{instance_spec_key, InstanceSpec};
+use api::instance::state::{instance_connection_state_key, instance_play_state_key, instance_power_state_key};
 use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
-use api::media::state::{media_download_state, MediaDownloadState};
-use api::task::buckets::{task_control, task_spec};
+use api::media::state::{media_download_state_key, MediaDownloadState};
+use api::task::buckets::{task_control_key, task_spec_key};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
 use async_audio_engine::GraphPlayer;
@@ -45,8 +45,8 @@ enum ExternalTask {}
 
 impl RunDomainTask {
   pub fn new(id: String, spec: TaskSpec, nats: Nats) -> RunDomainTask {
-    let watch_spec = nats.task_spec.watch(task_spec(&id));
-    let watch_control = nats.task_ctrl.watch(task_control(&id));
+    let watch_spec = nats.task_spec.watch(task_spec_key(&id));
+    let watch_control = nats.task_ctrl.watch(task_control_key(&id));
     let watch_instance_specs = StreamMap::new();
     let watch_instance_power_states = StreamMap::new();
     let watch_instance_play_states = StreamMap::new();
@@ -160,16 +160,16 @@ impl RunDomainTask {
 
     for instance_id in self.spec.instances.values() {
       self.watch_instance_specs
-          .insert(instance_id.clone(), self.nats.instance_spec.watch(instance_spec(&instance_id)));
+          .insert(instance_id.clone(), self.nats.instance_spec.watch(instance_spec_key(&instance_id)));
 
       self.watch_instance_power_states.insert(instance_id.clone(),
-                                              self.nats.instance_power_state.watch(instance_power_state(&instance_id)));
+                                              self.nats.instance_power_state.watch(instance_power_state_key(&instance_id)));
 
       self.watch_instance_play_states.insert(instance_id.clone(),
-                                             self.nats.instance_play_state.watch(instance_play_state(&instance_id)));
+                                             self.nats.instance_play_state.watch(instance_play_state_key(&instance_id)));
 
       self.watch_instance_connection_state.insert(instance_id.clone(),
-                                                  self.nats.instance_connection_state.watch(instance_connection_state(&instance_id)));
+                                                  self.nats.instance_connection_state.watch(instance_connection_state_key(&instance_id)));
     }
   }
 
@@ -191,7 +191,7 @@ impl RunDomainTask {
       }
 
       self.watch_download_states.insert(source.media_id.clone(),
-                                        self.nats.media_download_state.watch(media_download_state(&source.media_id)));
+                                        self.nats.media_download_state.watch(media_download_state_key(&source.media_id)));
     }
   }
 

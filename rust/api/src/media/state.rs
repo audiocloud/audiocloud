@@ -3,7 +3,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::media::spec::MediaSpec;
-use crate::{BucketKey, Timestamp};
+use crate::{BucketKey, IntoBucketKey, Timestamp};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -41,6 +41,6 @@ impl Default for MediaDownloadState {
   }
 }
 
-pub fn media_download_state(media_id: impl ToString) -> BucketKey<MediaDownloadState> {
-  BucketKey::new(media_id)
+pub fn media_download_state_key<T: ToString>(media_id: &T) -> BucketKey<MediaDownloadState> {
+  media_id.to_bucket_key()
 }

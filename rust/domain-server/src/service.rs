@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
-use api::instance::control::{InstancePlayControl, InstancePowerControl};
+use api::instance::control::{instance_play_control_key, instance_power_control_key, InstancePlayControl, InstancePowerControl};
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameterResponse, SetInstanceParametersRequest};
-use api::instance::spec::InstanceSpec;
-use api::BucketKey;
+use api::instance::spec::{instance_spec_key, InstanceSpec};
 
 use crate::nats::{EventStream, Nats, WatchStream};
 
@@ -21,12 +20,20 @@ impl Service {
   }
 
   pub async fn set_instance_power_control(&self, instance_id: &str, power: InstancePowerControl) -> Result {
-    self.nats.instance_power_ctrl.put(BucketKey::new(instance_id), power).await?;
+    self.nats
+        .instance_power_ctrl
+        .put(instance_power_control_key(&instance_id), power)
+        .await?;
+
     Ok(())
   }
 
   pub async fn set_instance_play_control(&self, instance_id: &str, play: InstancePlayControl) -> Result {
-    self.nats.instance_play_ctrl.put(BucketKey::new(instance_id), play).await?;
+    self.nats
+        .instance_play_ctrl
+        .put(instance_play_control_key(&instance_id), play)
+        .await?;
+
     Ok(())
   }
 
@@ -41,6 +48,6 @@ impl Service {
   }
 
   pub fn subscribe_to_instance_specs(&self, instance_id: &str) -> WatchStream<InstanceSpec> {
-    self.nats.instance_spec.watch(BucketKey::new(instance_id))
+    self.nats.instance_spec.watch(instance_spec_key(&instance_id))
   }
 }

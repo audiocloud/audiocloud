@@ -13,10 +13,10 @@ use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse};
 use api::instance::spec::InstanceSpec;
+use api::instance::state::{instance_play_state_key, instance_power_state_key};
 use api::instance::{
   DesiredInstancePlayState, DesiredInstancePowerState, InstancePlayState, InstancePlayStateTransition, InstancePowerState,
 };
-use api::BucketKey;
 
 use crate::nats::{EventStream, Nats, WatchStream};
 use crate::request_tracker::RequestTracker;
@@ -111,13 +111,13 @@ impl InstanceService {
         }
 
         if spec.power.is_some() {
-          if let Ok(Some(actual_power)) = self.nats.instance_power_state.get(BucketKey::new(&instance_id)).await {
+          if let Ok(Some(actual_power)) = self.nats.instance_power_state.get(instance_power_state_key(&instance_id)).await {
             entry.persisted_power_state = Some(actual_power);
           }
         }
 
         if spec.media.is_some() {
-          if let Ok(Some(actual_play)) = self.nats.instance_play_state.get(BucketKey::new(&instance_id)).await {
+          if let Ok(Some(actual_play)) = self.nats.instance_play_state.get(instance_play_state_key(&instance_id)).await {
             entry.persisted_play_state = Some(actual_play);
           }
         }
@@ -273,7 +273,7 @@ impl Instance {
 
     let actual = self.power_request.get_actual();
     if self.persisted_power_state.as_ref() != Some(&actual) {
-      if let Ok(_) = nats.instance_power_state.put(BucketKey::new(id), actual).await {
+      if let Ok(_) = nats.instance_power_state.put(instance_power_state_key(&id), actual).await {
         let _ = nats.publish_event(instance_driver_events(id), InstanceDriverEvent::PowerStateChanged { state: actual })
                     .await;
 
@@ -330,7 +330,7 @@ impl Instance {
 
     let actual = self.play_request.get_actual();
     if self.persisted_play_state.as_ref() != Some(&actual) {
-      if let Ok(_) = nats.instance_play_state.put(BucketKey::new(id), actual.clone()).await {
+      if let Ok(_) = nats.instance_play_state.put(instance_play_state_key(&id), actual.clone()).await {
         let _ = nats.publish_event(instance_driver_events(id), InstanceDriverEvent::PlayStateChanged { state: actual })
                     .await;
 

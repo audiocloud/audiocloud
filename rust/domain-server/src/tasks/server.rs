@@ -8,7 +8,7 @@ use tokio::time::Interval;
 use tokio::{select, spawn};
 
 use api::task::spec::TaskSpec;
-use api::task::subjects::{get_task_list, set_task_graph};
+use api::task::subjects::{get_task_list_req, set_task_graph_req};
 use api::task::{GetTaskListRequest, GetTaskListResponse, SetTaskGraphRequest, SetTaskGraphResponse, TaskSummary};
 
 use crate::nats::{Nats, RequestStream, WatchStream};
@@ -30,8 +30,8 @@ impl TasksServer {
     let watch_specs = nats.task_spec.watch_all();
     let timer = tokio::time::interval(Duration::from_secs(1));
 
-    let get_task_list = nats.serve_requests(get_task_list());
-    let set_task_graph = nats.serve_requests(set_task_graph());
+    let get_task_list = nats.serve_requests(get_task_list_req());
+    let set_task_graph = nats.serve_requests(set_task_graph_req());
 
     let tasks = HashMap::new();
 
