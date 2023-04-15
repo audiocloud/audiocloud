@@ -270,7 +270,11 @@ pub struct Bucket<T> {
 impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
 {
   pub async fn new(js: &Context, name: &BucketName<T>, ttl: Duration) -> anyhow::Result<Self> {
-    let store = js.create_key_value(default_bucket_config(name.name, ttl)).await.map_err(nats_err)?;
+    let store = if cfg!(debug) {
+      js.create_key_value(default_bucket_config(name.name, ttl)).await.map_err(nats_err)?
+    } else {
+      js.get_key_value(name.name).await.map_err(nats_err)?
+    };
 
     Ok(Self { store:   Arc::new(store),
               _marker: PhantomData, })
