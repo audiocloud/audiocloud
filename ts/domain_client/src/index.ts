@@ -1,5 +1,7 @@
-import WebSocket from "isomorphic-ws";
 import { parseURL, serializeURL } from "whatwg-url";
+import { nanoid } from "nanoid";
+import WebSocket from "isomorphic-ws";
+import { match } from "ts-pattern";
 
 import {
   InstancePlayControl,
@@ -9,9 +11,7 @@ import {
   InstanceSpec,
   SetInstanceParameter,
 } from "./instance";
-import { WsEvent, WsRequest } from "./ws";
-import { nanoid } from "nanoid";
-import { match } from "ts-pattern";
+import { RtEvent, RtRequest } from "./rt";
 
 // noinspection JSUnusedGlobalSymbols
 export function createWebSocketClient(
@@ -40,7 +40,7 @@ export function createWebSocketClient(
   };
 
   ws.onmessage = (message: any) => {
-    const parsed = WsEvent().parse(JSON.parse(message.data));
+    const parsed = RtEvent().parse(JSON.parse(message.data));
     match(parsed)
       .with({ type: "instanceDriverEvent" }, ({ instanceId, event }) => {
         match(event)
@@ -98,7 +98,7 @@ export function createWebSocketClient(
       .exhaustive();
   };
 
-  const send = (req: WsRequest) => {
+  const send = (req: RtRequest) => {
     ws.send(JSON.stringify(req));
   };
 

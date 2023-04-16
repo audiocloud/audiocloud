@@ -9,8 +9,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct MediaId {
-  app_id:   String,
-  media_id: String,
+  pub app_id:   String,
+  pub media_id: String,
 }
 
 impl JsonSchema for MediaId {

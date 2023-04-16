@@ -96,6 +96,12 @@ pub async fn download_file(id: MediaId,
 
   // move the file to the final location
   let persistent_path = media_root.join(&id.to_string());
+  let app_path = media_root.join(&id.app_id);
+
+  if !app_path.try_exists()? {
+    tokio::fs::create_dir_all(&app_path).await?;
+  }
+
   spawn_blocking(move || temp_file.persist(&persistent_path)).await??;
 
   Ok(MediaSpec { id, sha256 })

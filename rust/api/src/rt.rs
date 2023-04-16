@@ -10,14 +10,14 @@ use crate::instance::spec::InstanceSpec;
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct WsRequest {
+pub struct RtRequest {
   pub request_id: String,
-  pub command:    WsCommand,
+  pub command:    RtCommand,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
-pub enum WsCommand {
+pub enum RtCommand {
   #[serde(rename_all = "camelCase")]
   SetInstancePowerControl {
     instance_id: String,
@@ -34,15 +34,27 @@ pub enum WsCommand {
   SubscribeToInstanceEvents { instance_id: String },
   #[serde(rename_all = "camelCase")]
   UnsubscribeFromInstanceEvents { instance_id: String },
+  #[serde(rename_all = "camelCase")]
+  CreatePeerConnection,
+  #[serde(rename_all = "camelCase")]
+  AcceptPeerConnection { offer: String },
+  #[serde(rename_all = "camelCase")]
+  OfferPeerConnectionCandidate { candidate: String },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
-pub enum WsEvent {
+pub enum RtEvent {
   #[serde(rename_all = "camelCase")]
-  SetInstancePowerControl { success: bool, request_id: String },
+  SetInstancePowerControl {
+    success:    bool,
+    request_id: String,
+  },
   #[serde(rename_all = "camelCase")]
-  SetInstancePlayControl { success: bool, request_id: String },
+  SetInstancePlayControl {
+    success:    bool,
+    request_id: String,
+  },
   #[serde(rename_all = "camelCase")]
   SetInstanceSpec {
     instance_id: String,
@@ -59,11 +71,24 @@ pub enum WsEvent {
     event:       InstanceDriverEvent,
   },
   #[serde(rename_all = "camelCase")]
-  SubscribeToInstanceEvents { success: bool, request_id: String },
+  SubscribeToInstanceEvents {
+    success:    bool,
+    request_id: String,
+  },
   #[serde(rename_all = "camelCase")]
-  UnsubscribeFromInstanceEvents { success: bool, request_id: String },
+  UnsubscribeFromInstanceEvents {
+    success:    bool,
+    request_id: String,
+  },
+  OfferPeerConnection {
+    offer: String,
+  },
+  #[serde(rename_all = "camelCase")]
+  OfferPeerConnectionCandidate {
+    candidate: String,
+  },
 }
 
 pub fn schema() -> RootSchema {
-  merge_schemas([schema_for!(WsRequest), schema_for!(WsEvent)].into_iter())
+  merge_schemas([schema_for!(RtRequest), schema_for!(RtEvent)].into_iter())
 }

@@ -1,10 +1,12 @@
 use std::collections::HashMap;
 
-use schemars::JsonSchema;
+use schemars::schema::RootSchema;
+use schemars::{schema_for, JsonSchema};
+use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
 use crate::instance::driver::events::InstanceDriverEvent;
-use crate::task::spec::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent, PlayId};
+use crate::task::spec::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent, PlayId, TaskSpec};
 use crate::Timestamp;
 
 pub mod spec;
@@ -130,4 +132,8 @@ pub mod subjects {
   pub fn set_task_graph_req() -> Request<SetTaskGraphRequest, SetTaskGraphResponse> {
     Request::new("audiocloud_set_task_graph")
   }
+}
+
+pub fn schema() -> RootSchema {
+  merge_schemas([schema_for!(TaskSpec), schema_for!(DesiredTaskPlayState)].into_iter())
 }

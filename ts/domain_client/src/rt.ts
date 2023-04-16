@@ -308,6 +308,81 @@ export const Rescale = memoizeOne(() =>
 );
 export type Rescale = z.infer<ReturnType<typeof Rescale>>;
 
+export const RtCommand = memoizeOne(() =>
+  z.discriminatedUnion("type", [
+    z.object({
+      instanceId: z.string(),
+      power: z.lazy(InstancePowerControl),
+      type: z.literal("setInstancePowerControl"),
+    }),
+    z.object({
+      instanceId: z.string(),
+      play: z.lazy(InstancePlayControl),
+      type: z.literal("setInstancePlayControl"),
+    }),
+    z.object({
+      changes: z.array(z.lazy(SetInstanceParameter)),
+      instanceId: z.string(),
+      type: z.literal("setInstanceParameters"),
+    }),
+    z.object({
+      instanceId: z.string(),
+      type: z.literal("subscribeToInstanceEvents"),
+    }),
+    z.object({
+      instanceId: z.string(),
+      type: z.literal("unsubscribeFromInstanceEvents"),
+    }),
+  ])
+);
+export type RtCommand = z.infer<ReturnType<typeof RtCommand>>;
+
+export const RtEvent = memoizeOne(() =>
+  z.discriminatedUnion("type", [
+    z.object({
+      requestId: z.string(),
+      success: z.boolean(),
+      type: z.literal("setInstancePowerControl"),
+    }),
+    z.object({
+      requestId: z.string(),
+      success: z.boolean(),
+      type: z.literal("setInstancePlayControl"),
+    }),
+    z.object({
+      instanceId: z.string(),
+      spec: z.union([z.lazy(InstanceSpec), z.null()]),
+      type: z.literal("setInstanceSpec"),
+    }),
+    z.object({
+      requestId: z.string(),
+      response: z.lazy(SetInstanceParameterResponse),
+      type: z.literal("setInstanceParameters"),
+    }),
+    z.object({
+      event: z.lazy(InstanceDriverEvent),
+      instanceId: z.string(),
+      type: z.literal("instanceDriverEvent"),
+    }),
+    z.object({
+      requestId: z.string(),
+      success: z.boolean(),
+      type: z.literal("subscribeToInstanceEvents"),
+    }),
+    z.object({
+      requestId: z.string(),
+      success: z.boolean(),
+      type: z.literal("unsubscribeFromInstanceEvents"),
+    }),
+  ])
+);
+export type RtEvent = z.infer<ReturnType<typeof RtEvent>>;
+
+export const RtRequest = memoizeOne(() =>
+  z.object({ command: z.lazy(RtCommand), requestId: z.string() })
+);
+export type RtRequest = z.infer<ReturnType<typeof RtRequest>>;
+
 export const SerialFlowControl = memoizeOne(() =>
   z.enum(["xonXoff", "rtsCts"])
 );
@@ -475,78 +550,3 @@ export const ValueRange = memoizeOne(() =>
   ])
 );
 export type ValueRange = z.infer<ReturnType<typeof ValueRange>>;
-
-export const WsCommand = memoizeOne(() =>
-  z.discriminatedUnion("type", [
-    z.object({
-      instanceId: z.string(),
-      power: z.lazy(InstancePowerControl),
-      type: z.literal("setInstancePowerControl"),
-    }),
-    z.object({
-      instanceId: z.string(),
-      play: z.lazy(InstancePlayControl),
-      type: z.literal("setInstancePlayControl"),
-    }),
-    z.object({
-      changes: z.array(z.lazy(SetInstanceParameter)),
-      instanceId: z.string(),
-      type: z.literal("setInstanceParameters"),
-    }),
-    z.object({
-      instanceId: z.string(),
-      type: z.literal("subscribeToInstanceEvents"),
-    }),
-    z.object({
-      instanceId: z.string(),
-      type: z.literal("unsubscribeFromInstanceEvents"),
-    }),
-  ])
-);
-export type WsCommand = z.infer<ReturnType<typeof WsCommand>>;
-
-export const WsEvent = memoizeOne(() =>
-  z.discriminatedUnion("type", [
-    z.object({
-      requestId: z.string(),
-      success: z.boolean(),
-      type: z.literal("setInstancePowerControl"),
-    }),
-    z.object({
-      requestId: z.string(),
-      success: z.boolean(),
-      type: z.literal("setInstancePlayControl"),
-    }),
-    z.object({
-      instanceId: z.string(),
-      spec: z.lazy(InstanceSpec),
-      type: z.literal("setInstanceSpec"),
-    }),
-    z.object({
-      requestId: z.string(),
-      response: z.lazy(SetInstanceParameterResponse),
-      type: z.literal("setInstanceParameters"),
-    }),
-    z.object({
-      event: z.lazy(InstanceDriverEvent),
-      instanceId: z.string(),
-      type: z.literal("instanceDriverEvent"),
-    }),
-    z.object({
-      requestId: z.string(),
-      success: z.boolean(),
-      type: z.literal("subscribeToInstanceEvents"),
-    }),
-    z.object({
-      requestId: z.string(),
-      success: z.boolean(),
-      type: z.literal("unsubscribeFromInstanceEvents"),
-    }),
-  ])
-);
-export type WsEvent = z.infer<ReturnType<typeof WsEvent>>;
-
-export const WsRequest = memoizeOne(() =>
-  z.object({ command: z.lazy(WsCommand), requestId: z.string() })
-);
-export type WsRequest = z.infer<ReturnType<typeof WsRequest>>;

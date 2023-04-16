@@ -1,4 +1,10 @@
+use schemars::schema::RootSchema;
+use schemars::schema_for;
+use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
+
+use crate::media::spec::{MediaDownloadSpec, MediaUploadSpec};
+use crate::media::state::{MediaDownloadState, MediaUploadState};
 
 pub mod request;
 pub mod spec;
@@ -29,4 +35,11 @@ pub mod buckets {
   pub fn media_upload_state_key(media_id: &MediaId) -> BucketKey<MediaUploadState> {
     media_id.to_bucket_key()
   }
+}
+
+pub fn schema() -> RootSchema {
+  merge_schemas([schema_for!(MediaDownloadSpec),
+                 schema_for!(MediaDownloadState),
+                 schema_for!(MediaUploadSpec),
+                 schema_for!(MediaUploadState)].into_iter())
 }

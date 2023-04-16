@@ -5,7 +5,7 @@ pub use chrono::{DateTime, Utc};
 pub mod instance;
 pub mod media;
 pub mod task;
-pub mod ws;
+pub mod rt;
 
 pub type Timestamp = DateTime<Utc>;
 
