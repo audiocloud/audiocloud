@@ -7,31 +7,31 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail};
-use async_nats::Client;
-use async_nats::jetstream::{Context, kv};
 use async_nats::jetstream::kv::Operation;
+use async_nats::jetstream::{kv, Context};
+use async_nats::Client;
 use async_stream::stream;
 use bytes::Bytes;
-use futures::{FutureExt, pin_mut, Stream, StreamExt};
+use futures::channel::oneshot;
+use futures::{pin_mut, FutureExt, Stream, StreamExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::spawn;
-use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tokio_stream::StreamMap;
 use tracing::{debug, trace, warn};
 use wildmatch::WildMatch;
 
-use api::{BucketKey, BucketName, Events, instance, media, Request, task};
-use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::spec::DriverServiceSpec;
 use api::instance::spec::InstanceSpec;
+use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
-use api::task::DesiredTaskPlayState;
 use api::task::spec::TaskSpec;
+use api::task::DesiredTaskPlayState;
+use api::{instance, media, task, BucketKey, BucketName, Events, Request};
 
 pub type WatchStream<K, T> = Pin<Box<dyn Stream<Item = (K, Option<T>)> + Send>>;
 
@@ -251,7 +251,9 @@ pub fn serve_request_json<Req, Res>(client: Client, request: Request<Req, Res>) 
   })
 }
 
-pub type EventStream<T> = Pin<Box<dyn Stream<Item = (String, T)> + Send>>;
+pub type EventStream<E> = Pin<Box<dyn Stream<Item = (String, E)> + Send>>;
+
+pub type EventStreamMap<K, E> = StreamMap<K, EventStream<E>>;
 
 pub fn subscribe_to_events_json<Evt>(client: Client, events: Events<Evt>) -> EventStream<Evt>
   where Evt: DeserializeOwned + Send + 'static

@@ -7,11 +7,12 @@ use std::time::{Duration, Instant};
 use anyhow::anyhow;
 use byteorder::ReadBytesExt;
 use chrono::Utc;
+use futures::channel::{mpsc, oneshot};
+use futures::SinkExt;
 use regex::Regex;
 use serde_json::json;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{mpsc, oneshot};
+use tokio::spawn;
 use tracing::{debug, warn};
 
 use api::instance::driver::config::serial::{SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher};
@@ -281,22 +282,26 @@ pub async fn run_serial_driver(instance_id: String,
 
 fn run_serial_driver_sync(instance_id: String,
                           config: SerialDriverConfig,
-                          mut rx_cmd: Receiver<InstanceDriverCommand>,
-                          tx_evt: Sender<InstanceDriverEvent>,
+                          mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
+                          mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
                           scripting_engine: ScriptingEngine)
                           -> Result {
   let mut driver = SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone())?;
-  let _ = tx_evt.blocking_send(InstanceDriverEvent::Connected { connected: true });
+  spawn({
+    let mut tx_evt = tx_evt.clone();
+    async move { tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await }
+  });
 
   loop {
     let mut start = Instant::now();
 
-    while let Ok(cmd) = rx_cmd.try_recv() {
-      match cmd {
-        | InstanceDriverCommand::SetParameters(parameters, tx_one) => driver.set_parameters(parameters, tx_one)?,
-        | InstanceDriverCommand::Terminate => return Ok(()),
-      }
-    }
+    // TODO: fix this
+    // while let Ok(cmd) = rx_cmd.() {
+    //   match cmd {
+    //     | InstanceDriverCommand::SetParameters(parameters, tx_one) => driver.set_parameters(parameters, tx_one)?,
+    //     | InstanceDriverCommand::Terminate => return Ok(()),
+    //   }
+    // }
 
     match driver.poll(Instant::now() + Duration::from_millis(25)) {
       | Ok(events) =>

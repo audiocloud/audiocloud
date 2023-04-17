@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
 use tokio::select;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use tokio_stream::StreamMap;
 use tracing::{error, info, instrument, warn};
 
@@ -31,7 +31,7 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
   let mut instance_specs = WatchStreamMap::<String, InstanceSpec>::new();
 
   // TODO: we can make this faster by spawning request handlers and piping response to tx_internal.
-  let (tx_internal, mut rx_internal) = mpsc::channel::<Internal>(0x100);
+  let (mut tx_internal, mut rx_internal) = mpsc::channel::<Internal>(0x100);
 
   let mut tx_maybe_rtc: Option<mpsc::Sender<ToRtcSocket>> = None;
 
@@ -43,7 +43,7 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
       Some((instance_id, (_, spec))) = instance_specs.next(), if !instance_specs.is_empty() => {
         let _ = tx_internal.send(Event(RtEvent::SetInstanceSpec { instance_id, spec })).await;
       },
-      Some(internal) = rx_internal.recv() => {
+      Some(internal) = rx_internal.next() => {
         match internal {
           | Event(event) => {
               let event = match serde_json::to_string(&event) {

@@ -2,9 +2,10 @@ use std::io::Write;
 
 use anyhow::bail;
 use byteorder::{WriteBytesExt, LE};
+use futures::channel::mpsc;
+use futures::{SinkExt, StreamExt};
 use rosc::{encoder, OscBundle, OscMessage, OscPacket, OscTime, OscType};
 use serde_json::{json, Value};
-use tokio::sync::mpsc;
 use tokio::{net, select};
 
 use api::instance::driver::config::osc::OscDriverConfig;
@@ -36,7 +37,7 @@ pub async fn run_osc_driver(instance_id: String,
 async fn run_tcp_osc_driver(instance_id: String,
                             config: OscDriverConfig,
                             mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                            tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                            mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
                             scripting: ScriptingEngine)
                             -> Result {
   use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -51,7 +52,7 @@ async fn run_tcp_osc_driver(instance_id: String,
       _ = tcp_rx.read(&mut buf[..]) => {
         // just ignore the data
       },
-      Some(cmd) = rx_cmd.recv() => {
+      Some(cmd) = rx_cmd.next() => {
         match cmd {
           | InstanceDriverCommand::SetParameters(req, complete) => {
             let Ok(serialized) = serialize_changes_to_bundle(&config, req.changes, &scripting).await else {

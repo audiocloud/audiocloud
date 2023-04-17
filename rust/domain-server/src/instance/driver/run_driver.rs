@@ -1,5 +1,5 @@
 use anyhow::bail;
-use tokio::sync::{mpsc, oneshot};
+use futures::channel::{mpsc, oneshot};
 use tracing::instrument;
 
 use api::instance::driver::config::InstanceDriverConfig;

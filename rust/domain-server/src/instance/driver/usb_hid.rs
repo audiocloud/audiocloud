@@ -4,11 +4,10 @@ use std::time::{Duration, Instant};
 
 use anyhow::anyhow;
 use chrono::Utc;
+use futures::channel::{mpsc, oneshot};
 use hidapi::{HidApi, HidDevice};
 use lazy_static::lazy_static;
 use serde_json::json;
-use tokio::sync::mpsc::{Receiver, Sender};
-use tokio::sync::{mpsc, oneshot};
 use tracing::{info, instrument, trace, warn};
 
 use api::instance::driver::config::usb_hid::{UsbHidDriverConfig, UsbHidReportConfig};
@@ -341,28 +340,29 @@ pub async fn run_usb_driver(instance_id: String,
 #[instrument(skip_all, fields(instance_id))]
 fn run_usb_driver_sync(instance_id: String,
                        config: UsbHidDriverConfig,
-                       mut rx_cmd: Receiver<InstanceDriverCommand>,
-                       tx_evt: Sender<InstanceDriverEvent>,
+                       mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
+                       tx_evt: mpsc::Sender<InstanceDriverEvent>,
                        scripting_engine: ScriptingEngine)
                        -> Result {
   let mut instance = UsbHidDriver::new(&instance_id, config.clone(), scripting_engine)?;
   let read_duration = Duration::from_millis(config.read_duration_ms as u64);
-  let _ = tx_evt.blocking_send(InstanceDriverEvent::Connected { connected: true });
+  // let _ = tx_evt.blocking_send(InstanceDriverEvent::Connected { connected: true });
 
   loop {
-    while let Ok(cmd) = rx_cmd.try_recv() {
-      match cmd {
-        | InstanceDriverCommand::SetParameters(parameters, done) => {
-          instance.set_parameters(parameters, done);
-        }
-        | InstanceDriverCommand::Terminate => {
-          return Ok(());
-        }
-      }
-    }
+    // TODO: sync land
+    // while let Ok(cmd) = rx_cmd.try_recv() {
+    //   match cmd {
+    //     | InstanceDriverCommand::SetParameters(parameters, done) => {
+    //       instance.set_parameters(parameters, done);
+    //     }
+    //     | InstanceDriverCommand::Terminate => {
+    //       return Ok(());
+    //     }
+    //   }
+    // }
 
     for event in instance.poll(Instant::now() + read_duration)? {
-      tx_evt.blocking_send(event)?;
+      // tx_evt.blocking_send(event)?;
     }
   }
 }

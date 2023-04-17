@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use lazy_static::lazy_static;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
+use futures::{SinkExt, StreamExt};
 use tokio::{select, spawn};
 use webrtc::api::interceptor_registry::register_default_interceptors;
 use webrtc::api::media_engine::MediaEngine;
@@ -66,7 +67,7 @@ fn new_rtc_socket() -> (mpsc::Sender<ToRtcSocket>, mpsc::Receiver<FromRtcSocket>
   (tx_to_rtc_socket, rx_from_rtc_socket)
 }
 
-async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRtcSocket>) -> Result {
+async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, mut tx: mpsc::Sender<FromRtcSocket>) -> Result {
   let (tx_internal, mut rx_internal) = mpsc::channel::<Internal>(0xff);
 
   let Ok(pc) = WEBRTC_API.new_peer_connection(default_peer_connection_configuration()).await else { return Err(anyhow!("Failed to create peer connection")) };
@@ -77,7 +78,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
       Box::new(move |candidate| {
         let candidate = serde_json::to_string(&candidate).unwrap();
 
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
         Box::pin(async move {
           let _ = tx_internal.send(Internal::IceCandidate(candidate)).await;
         })
@@ -88,7 +89,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
       let tx_internal = tx_internal.clone();
       Box::new(move |state| {
         let connected = matches!(&state, RTCPeerConnectionState::Connected);
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
 
         Box::pin(async move {
           let _ = tx_internal.send(Internal::ConnectionStateChanged(connected)).await;
@@ -99,7 +100,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
   dc.on_message({
       let tx_internal = tx_internal.clone();
       Box::new(move |msg| {
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
 
         Box::pin(async move {
           let _ = tx_internal.send(Internal::Message(msg.data)).await;
@@ -111,7 +112,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
 
   loop {
     select! {
-      Some(internal) = rx_internal.recv() => {
+      Some(internal) = rx_internal.next() => {
         match internal {
           | Internal::IceCandidate(candidate) => {
             tx.send(FromRtcSocket::IceCandidate(candidate)).await.map_err(|_| anyhow!("Failed to send ice candidate, web socket down?"))?;
@@ -129,7 +130,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
           }
         }
       },
-      Some(rx) = rx.recv(), if !upstream_informed => {
+      Some(rx) = rx.next(), if !upstream_informed => {
         match rx {
           | ToRtcSocket::Accept(response) => {
             let response = serde_json::from_str::<RTCSessionDescription>(&response)?;

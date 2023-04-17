@@ -1,4 +1,5 @@
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
+use futures::{SinkExt, StreamExt};
 use tracing::{debug, trace};
 
 use api::instance::driver::events::InstanceDriverEvent;
@@ -13,12 +14,12 @@ use super::Result;
 
 pub async fn run_mock_driver(_instance_id: String,
                              mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                             tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                             mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
                              _scripting_engine: ScriptingEngine)
                              -> Result {
   let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
 
-  while let Some(cmd) = rx_cmd.recv().await {
+  while let Some(cmd) = rx_cmd.next().await {
     match cmd {
       | InstanceDriverCommand::SetParameters(params, ok) => {
         for change in params.changes {

@@ -7,7 +7,7 @@ use governor::middleware::NoOpMiddleware;
 use governor::state::keyed::DashMapStateStore;
 use governor::{Quota, RateLimiter};
 use nonzero_ext::nonzero;
-use tokio::sync::{mpsc, oneshot};
+use futures::channel::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::{select, spawn};
 use tokio_stream::wrappers::ReceiverStream;
@@ -32,7 +32,7 @@ pub struct DriverService {
   instances:              HashMap<String, InstanceDriver>,
   watch_instance_specs:   WatchStream<String, InstanceSpec>,
   watch_instance_power:   WatchStream<String, InstancePowerState>,
-  instance_driver_events: StreamMap<String, ReceiverStream<InstanceDriverEvent>>,
+  instance_driver_events: StreamMap<String, mpsc::Receiver<InstanceDriverEvent>>,
   set_parameter_req:      StreamMap<String, RequestStream<Vec<SetInstanceParameter>, SetInstanceParameterResponse>>,
   scripting_engine:       ScriptingEngine,
   respawn_limiter:        RateLimiter<String, DashMapStateStore<String>, QuantaClock, NoOpMiddleware>,
@@ -180,7 +180,7 @@ impl DriverService {
             let received_connected = false;
             let terminate_requested = 0;
 
-            self.instance_driver_events.insert(instance_id.clone(), ReceiverStream::new(rx_evt));
+            self.instance_driver_events.insert(instance_id.clone(), rx_evt);
             self.set_parameter_req.insert(instance_id.clone(),
                                           self.service.serve_set_instance_parameters_requests(&instance_id));
 
@@ -222,13 +222,13 @@ impl DriverService {
     let _ = self.service.set_instance_connection_state(&instance_id, connection_state).await;
   }
 
-  fn handle_set_parameter_request(&self,
+  fn handle_set_parameter_request(&mut self,
                                   instance_id: String,
                                   changes: Vec<SetInstanceParameter>,
                                   response: oneshot::Sender<SetInstanceParameterResponse>) {
     if let Some(driver) = self.instances
-                              .get(&instance_id)
-                              .and_then(|instance_driver| instance_driver.running.as_ref())
+                              .get_mut(&instance_id)
+                              .and_then(|instance_driver| instance_driver.running.as_mut())
     {
       let _ = driver.tx_cmd
                     .try_send(InstanceDriverCommand::SetParameters(SetInstanceParametersRequest { instance_id, changes }, response));

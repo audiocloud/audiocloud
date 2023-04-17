@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
+use futures::channel::mpsc;
+use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::{Body, Url};
 use serde_json::json;
-use tokio::sync::mpsc;
 use tracing::warn;
 
 use api::instance::driver::config::http::HttpDriverConfig;
@@ -24,12 +25,12 @@ lazy_static! {
 pub async fn run_http_driver(instance_id: String,
                              config: HttpDriverConfig,
                              mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                             tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                             mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
                              scripting_engine: ScriptingEngine)
                              -> Result {
   let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
 
-  while let Some(cmd) = rx_cmd.recv().await {
+  while let Some(cmd) = rx_cmd.next().await {
     match cmd {
       | InstanceDriverCommand::SetParameters(parameters, tx_done) => {
         let base_url = &config.base_url;

@@ -4,7 +4,7 @@ use std::time::Duration;
 use chrono::Utc;
 use futures::StreamExt;
 use tokio::select;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
@@ -117,7 +117,7 @@ impl RunDomainTask {
         Some((_, maybe_new_control)) = self.watch_control.next() => {
           self.set_desired_play_state(maybe_new_control);
         },
-        Some(external_task) = self.rx_external.recv() => {
+        Some(external_task) = self.rx_external.next() => {
           self.external_task_completed(external_task);
         },
         _ = self.timer.tick() => {
