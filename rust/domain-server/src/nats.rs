@@ -279,7 +279,7 @@ pub struct Bucket<Key, Content> {
 impl<Key, Content> Bucket<Key, Content> where Content: DeserializeOwned + Send + 'static
 {
   pub async fn new(js: &Context, name: &BucketName<Content>, ttl: Duration) -> anyhow::Result<Self> {
-    let store = if cfg!(debug) {
+    let store = if cfg!(debug_assertions) {
       js.create_key_value(default_bucket_config(name.name, ttl)).await.map_err(nats_err)?
     } else {
       js.get_key_value(name.name).await.map_err(nats_err)?
