@@ -25,9 +25,9 @@ use super::Result;
 
 pub struct InstanceService {
   nats:                  Nats,
-  watch_specs:           WatchStream<InstanceSpec>,
-  watch_power_control:   WatchStream<InstancePowerControl>,
-  watch_play_control:    WatchStream<InstancePlayControl>,
+  watch_specs:           WatchStream<String, InstanceSpec>,
+  watch_power_control:   WatchStream<String, InstancePowerControl>,
+  watch_play_control:    WatchStream<String, InstancePlayControl>,
   media_instance_events: StreamMap<String, EventStream<InstanceDriverEvent>>,
   tx_internal:           mpsc::Sender<InternalEvent>,
   rx_internal:           mpsc::Receiver<InternalEvent>,

@@ -103,22 +103,22 @@ pub struct GetTaskListResponse {
 pub mod buckets {
   use crate::task::spec::TaskSpec;
   use crate::task::DesiredTaskPlayState;
-  use crate::{BucketKey, BucketName, IntoBucketKey};
+  use crate::{BucketKey, BucketName};
 
   pub const TASK_SPEC: BucketName<TaskSpec> = BucketName::new("audiocloud_task_spec");
   pub const TASK_CONTROL: BucketName<DesiredTaskPlayState> = BucketName::new("audiocloud_task_control");
   pub const TASK_STATE: BucketName<()> = BucketName::new("audiocloud_task_state");
 
-  pub fn task_spec_key(task_id: impl ToString) -> BucketKey<TaskSpec> {
-    task_id.to_bucket_key()
+  pub fn task_spec_key(task_id: impl ToString) -> BucketKey<String, TaskSpec> {
+    task_id.to_string().into()
   }
 
-  pub fn task_control_key(task_id: impl ToString) -> BucketKey<DesiredTaskPlayState> {
-    task_id.to_bucket_key()
+  pub fn task_control_key(task_id: impl ToString) -> BucketKey<String, DesiredTaskPlayState> {
+    task_id.to_string().into()
   }
 
-  pub fn task_state_key(task_id: impl ToString) -> BucketKey<()> {
-    task_id.to_bucket_key()
+  pub fn task_state_key(task_id: impl ToString) -> BucketKey<String, ()> {
+    task_id.to_string().into()
   }
 }
 

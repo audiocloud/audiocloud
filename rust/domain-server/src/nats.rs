@@ -1,7 +1,8 @@
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use std::pin::Pin;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -18,6 +19,7 @@ use tokio::spawn;
 use tokio::sync::oneshot;
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
+use tokio_stream::StreamMap;
 use tracing::{debug, trace, warn};
 use wildmatch::WildMatch;
 
@@ -25,19 +27,23 @@ use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::spec::DriverServiceSpec;
 use api::instance::spec::InstanceSpec;
 use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
-use api::media::spec::{MediaDownloadSpec, MediaUploadSpec};
+use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
 use api::{instance, media, task, BucketKey, BucketName, Events, Request};
 
-pub type WatchStream<T> = Pin<Box<dyn Stream<Item = (String, Option<T>)> + Send>>;
+pub type WatchStream<K, T> = Pin<Box<dyn Stream<Item = (K, Option<T>)> + Send>>;
 
-pub fn watch_bucket_as_json<T>(store: kv::Store, control: BucketKey<T>) -> WatchStream<T>
-  where T: DeserializeOwned + Send + 'static
+pub type WatchStreamMap<K, T> = StreamMap<K, WatchStream<K, T>>;
+
+pub fn watch_bucket_as_json<K, T>(store: kv::Store, control: BucketKey<K, T>) -> WatchStream<K, T>
+  where T: DeserializeOwned + Send + 'static,
+        K: FromStr + Send + 'static,
+        K: ToString
 {
   Box::pin(stream! {
-    let key = control.key.clone();
+    let key = control.key.clone().to_string();
 
     let Ok(stream) = store.watch_with_history(&key).await else { return; };
 
@@ -52,7 +58,8 @@ pub fn watch_bucket_as_json<T>(store: kv::Store, control: BucketKey<T>) -> Watch
             | kv::Operation::Put => {
               match serde_json::from_slice(&entry.value) {
                 | Ok(value) => {
-                  yield (entry.key, Some(value));
+                  let Ok(key) = K::from_str(&entry.key) else { continue; };
+                  yield (key, Some(value));
                 }
                 | Err(err) => {
                   warn!(name, key, ?err, "Error deserializing JSON: {err}");
@@ -60,7 +67,8 @@ pub fn watch_bucket_as_json<T>(store: kv::Store, control: BucketKey<T>) -> Watch
               }
             }
             | kv::Operation::Delete | kv::Operation::Purge => {
-              yield (entry.key, None);
+              let Ok(key) = K::from_str(&entry.key) else { continue; };
+              yield (key, None);
             }
           }
         }
@@ -92,20 +100,20 @@ pub fn json_err(err: serde_json::Error) -> anyhow::Error {
 pub struct Nats {
   pub client:                    Client,
   pub jetstream:                 Context,
-  pub driver_spec:               Bucket<DriverServiceSpec>,
-  pub instance_power_state:      Bucket<InstancePowerState>,
-  pub instance_play_state:       Bucket<InstancePlayState>,
-  pub instance_connection_state: Bucket<InstanceConnectionState>,
-  pub instance_spec:             Bucket<InstanceSpec>,
-  pub instance_power_ctrl:       Bucket<InstancePowerControl>,
-  pub instance_play_ctrl:        Bucket<InstancePlayControl>,
-  pub media_download_spec:       Bucket<MediaDownloadSpec>,
-  pub media_download_state:      Bucket<MediaDownloadState>,
-  pub media_upload_spec:         Bucket<MediaUploadSpec>,
-  pub media_upload_state:        Bucket<MediaUploadState>,
-  pub task_spec:                 Bucket<TaskSpec>,
-  pub task_state:                Bucket<()>,
-  pub task_ctrl:                 Bucket<DesiredTaskPlayState>,
+  pub driver_spec:               Bucket<String, DriverServiceSpec>,
+  pub instance_power_state:      Bucket<String, InstancePowerState>,
+  pub instance_play_state:       Bucket<String, InstancePlayState>,
+  pub instance_connection_state: Bucket<String, InstanceConnectionState>,
+  pub instance_spec:             Bucket<String, InstanceSpec>,
+  pub instance_power_ctrl:       Bucket<String, InstancePowerControl>,
+  pub instance_play_ctrl:        Bucket<String, InstancePlayControl>,
+  pub media_download_spec:       Bucket<MediaId, MediaDownloadSpec>,
+  pub media_download_state:      Bucket<MediaId, MediaDownloadState>,
+  pub media_upload_spec:         Bucket<MediaId, MediaUploadSpec>,
+  pub media_upload_state:        Bucket<MediaId, MediaUploadState>,
+  pub task_spec:                 Bucket<String, TaskSpec>,
+  pub task_state:                Bucket<String, ()>,
+  pub task_ctrl:                 Bucket<String, DesiredTaskPlayState>,
 }
 
 impl Nats {
@@ -262,25 +270,27 @@ pub fn subscribe_to_events_json<Evt>(client: Client, events: Events<Evt>) -> Eve
 }
 
 #[derive(Clone)]
-pub struct Bucket<T> {
-  pub store: Arc<kv::Store>,
-  _marker:   PhantomData<T>,
+pub struct Bucket<Key, Content> {
+  pub store:       Arc<kv::Store>,
+  _marker_key:     PhantomData<Key>,
+  _marker_content: PhantomData<Content>,
 }
 
-impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
+impl<Key, Content> Bucket<Key, Content> where Content: DeserializeOwned + Send + 'static
 {
-  pub async fn new(js: &Context, name: &BucketName<T>, ttl: Duration) -> anyhow::Result<Self> {
+  pub async fn new(js: &Context, name: &BucketName<Content>, ttl: Duration) -> anyhow::Result<Self> {
     let store = if cfg!(debug) {
       js.create_key_value(default_bucket_config(name.name, ttl)).await.map_err(nats_err)?
     } else {
       js.get_key_value(name.name).await.map_err(nats_err)?
     };
 
-    Ok(Self { store:   Arc::new(store),
-              _marker: PhantomData, })
+    Ok(Self { store:           Arc::new(store),
+              _marker_key:     PhantomData,
+              _marker_content: PhantomData, })
   }
 
-  pub async fn scan(&self, filter: &str) -> anyhow::Result<HashMap<String, T>> {
+  pub async fn scan(&self, filter: &str) -> anyhow::Result<HashMap<String, Content>> {
     let matcher = WildMatch::new(filter);
     let mut rv = HashMap::new();
     let mut keys = self.store.keys().await.map_err(nats_err)?;
@@ -297,8 +307,8 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
     Ok(rv)
   }
 
-  pub async fn put(&self, key: BucketKey<T>, value: T) -> anyhow::Result<u64>
-    where T: Serialize + Debug
+  pub async fn put(&self, key: BucketKey<Key, Content>, value: Content) -> anyhow::Result<u64>
+    where Content: Serialize + Debug
   {
     debug!(?value, "Update {}[{}]", self.store.name, key.key);
 
@@ -308,7 +318,7 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
     Ok(revision)
   }
 
-  pub async fn get(&self, key: BucketKey<T>) -> anyhow::Result<Option<T>> {
+  pub async fn get(&self, key: BucketKey<Key, Content>) -> anyhow::Result<Option<Content>> {
     let entry = self.store.entry(&key.key).await.map_err(nats_err)?;
     if let Some(entry) = entry {
       match entry.operation {
@@ -320,32 +330,40 @@ impl<T> Bucket<T> where T: DeserializeOwned + Send + 'static
     }
   }
 
-  pub async fn delete(&self, key: BucketKey<T>) -> anyhow::Result<()> {
+  pub async fn delete(&self, key: BucketKey<Key, Content>) -> anyhow::Result<()> {
     self.store.delete(&key.key).await.map_err(nats_err)?;
 
     Ok(())
   }
 
-  pub fn watch(&self, key: BucketKey<T>) -> WatchStream<T> {
+  pub fn watch(&self, key: BucketKey<Key, Content>) -> WatchStream<Key, Content>
+    where Key: FromStr + Send + Display + 'static
+  {
     watch_bucket_as_json(self.store.as_ref().clone(), key)
   }
 
-  pub fn watch_all(&self) -> WatchStream<T> {
+  pub fn watch_all(&self) -> WatchStream<Key, Content>
+    where Key: FromStr + Send + ToString + 'static
+  {
     watch_bucket_as_json(self.store.as_ref().clone(), BucketKey::all())
   }
 
-  pub async fn modify(&self, key: BucketKey<T>, modification: impl Fn(&mut T) -> ()) -> anyhow::Result<()>
-    where T: Default,
-          T: DeserializeOwned,
-          T: Serialize
+  pub async fn modify(&self,
+                      key: BucketKey<Key, Content>,
+                      max_attempts: usize,
+                      modification: impl Fn(&mut Content) -> ())
+                      -> anyhow::Result<()>
+    where Content: Default,
+          Content: DeserializeOwned,
+          Content: Serialize
   {
     let store = self.store.as_ref().clone();
 
-    for attempts in 1..=10 {
+    for attempts in 1..=max_attempts {
       let entry = store.entry(&key.key).await.map_err(nats_err)?;
 
       let (mut value, revision) = match entry {
-        | None => (T::default(), None),
+        | None => (Content::default(), None),
         | Some(entry) => (serde_json::from_slice(&entry.value)?, Some(entry.revision)),
       };
 

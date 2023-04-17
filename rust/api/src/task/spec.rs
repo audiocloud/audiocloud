@@ -4,6 +4,7 @@ use derive_more::Display;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use crate::media::spec::MediaId;
 
 use crate::task::InstanceAllocationRequest;
 use crate::Timestamp;
@@ -96,7 +97,7 @@ pub enum NodeId {
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceSpec {
-  pub media_id:     String,
+  pub media_id:     MediaId,
   pub start_at:     u64,
   pub source_url:   String,
   pub num_channels: usize,

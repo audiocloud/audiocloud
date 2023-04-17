@@ -95,12 +95,13 @@ pub async fn download_file(id: MediaId,
   }
 
   // move the file to the final location
-  let persistent_path = media_root.join(&id.to_string());
-  let app_path = media_root.join(&id.app_id);
+  let folder_path = id.to_folder_path(media_root.clone());
 
-  if !app_path.try_exists()? {
-    tokio::fs::create_dir_all(&app_path).await?;
+  if !folder_path.try_exists()? {
+    tokio::fs::create_dir_all(&folder_path).await?;
   }
+
+  let persistent_path = id.to_path(media_root.clone());
 
   spawn_blocking(move || temp_file.persist(&persistent_path)).await??;
 

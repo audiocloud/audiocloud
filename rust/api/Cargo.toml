@@ -7,6 +7,7 @@ edition = "2021"
 thiserror = "1"
 derive_more = "0.99"
 anyhow = "1"
+cuid2 = "0.1"
 
 [dependencies.schemars]
 version = "0.8"

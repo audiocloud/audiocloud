@@ -323,12 +323,12 @@ async fn set_instance_play(nats: Nats, id: String, play: InstancePlayCommand) ->
     | InstancePlayCommand::Stop => InstancePlayControl { desired: DesiredInstancePlayState::Stop,
                                                          until:   Utc::now(), },
     | InstancePlayCommand::Delete => {
-      nats.instance_play_ctrl.delete(id.to_bucket_key()).await?;
+      nats.instance_play_ctrl.delete(id.into_bucket_key()).await?;
       return Ok(());
     }
   };
 
-  let revision = nats.instance_play_ctrl.put(id.to_bucket_key(), play).await?;
+  let revision = nats.instance_play_ctrl.put(id.into_bucket_key(), play).await?;
 
   println!("Play state updated with revision {revision}");
 
@@ -343,12 +343,12 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
     | InstancePowerCommand::Off => InstancePowerControl { desired: DesiredInstancePowerState::Off,
                                                           until:   Utc::now(), },
     | InstancePowerCommand::Delete => {
-      nats.instance_power_ctrl.delete(id.to_bucket_key()).await?;
+      nats.instance_power_ctrl.delete(id.into_bucket_key()).await?;
       return Ok(());
     }
   };
 
-  let revision = nats.instance_power_ctrl.put(id.to_bucket_key(), power).await?;
+  let revision = nats.instance_power_ctrl.put(id.into_bucket_key(), power).await?;
 
   println!("Power state updated with revision {revision}");
 
@@ -357,7 +357,7 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
 
 async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result {
   let spec = if include_spec {
-    nats.instance_spec.get(id.to_bucket_key()).await?
+    nats.instance_spec.get(id.into_bucket_key()).await?
   } else {
     None
   };
@@ -419,7 +419,7 @@ async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String
     spec.driver = InstanceDriverConfig::Mock;
   }
 
-  let revision = nats.instance_spec.put(id.to_bucket_key(), spec).await?;
+  let revision = nats.instance_spec.put(id.into_bucket_key(), spec).await?;
 
   println!("Instance spec updated with revision {revision}");
 

@@ -19,7 +19,7 @@ pub struct TasksServer {
   host_id:        String,
   get_task_list:  RequestStream<GetTaskListRequest, GetTaskListResponse>,
   set_task_graph: RequestStream<SetTaskGraphRequest, SetTaskGraphResponse>,
-  watch_specs:    WatchStream<TaskSpec>,
+  watch_specs:    WatchStream<String, TaskSpec>,
   tasks:          HashMap<String, Task>,
   timer:          Interval,
   nats:           Nats,

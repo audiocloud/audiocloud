@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::convert::identity;
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::time::Duration;
 
 use chrono::Utc;
@@ -25,8 +24,8 @@ pub struct MediaService {
   nats:                 Nats,
   media_root:           PathBuf,
   native_sample_rate:   u32,
-  watch_download_specs: WatchStream<MediaDownloadSpec>,
-  watch_upload_specs:   WatchStream<MediaUploadSpec>,
+  watch_download_specs: WatchStream<MediaId, MediaDownloadSpec>,
+  watch_upload_specs:   WatchStream<MediaId, MediaUploadSpec>,
   downloads:            HashMap<MediaId, Download>,
   uploads:              HashMap<MediaId, Upload>,
   tx_internal:          mpsc::Sender<InternalEvent>,
@@ -58,14 +57,10 @@ impl MediaService {
     loop {
       select! {
         Some((media_id, maybe_download_spec)) = self.watch_download_specs.next() => {
-          if let Ok(media_id) = MediaId::from_str(&media_id) {
             self.media_download_spec_changed(media_id, maybe_download_spec).await;
-          }
         },
         Some((media_id, maybe_upload_spec)) = self.watch_upload_specs.next() => {
-          if let Ok(media_id) = MediaId::from_str(&media_id) {
             self.media_upload_spec_changed(media_id, maybe_upload_spec).await;
-          }
         },
         Some(event) = self.rx_internal.recv() => {
           let _ = self.internal_event(event).await;

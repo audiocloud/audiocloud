@@ -4,8 +4,8 @@ pub use chrono::{DateTime, Utc};
 
 pub mod instance;
 pub mod media;
-pub mod task;
 pub mod rt;
+pub mod task;
 
 pub type Timestamp = DateTime<Utc>;
 
@@ -46,31 +46,31 @@ impl<Evt> Events<Evt> {
 }
 
 #[derive(Clone)]
-pub struct BucketKey<Ctrl> {
-  pub phantom_ctrl: PhantomData<Ctrl>,
-  pub key:          String,
+pub struct BucketKey<Key, Content> {
+  pub phantom_key:     PhantomData<Key>,
+  pub phantom_content: PhantomData<Content>,
+  pub key:             String,
 }
 
-pub trait IntoBucketKey<T> {
-  fn to_bucket_key(&self) -> BucketKey<T>;
-}
-
-impl<T, Ctrl> IntoBucketKey<Ctrl> for T where T: ToString
-{
-  fn to_bucket_key(&self) -> BucketKey<Ctrl> {
-    BucketKey::new(self)
-  }
-}
-
-impl<Ctrl> BucketKey<Ctrl> {
+impl<Key, Content> BucketKey<Key, Content> {
   pub fn all() -> Self {
-    BucketKey { phantom_ctrl: Default::default(),
-                key:          "*".to_string(), }
+    BucketKey { phantom_key:     Default::default(),
+                phantom_content: Default::default(),
+                key:             "*".to_string(), }
   }
 
   pub fn new<T: ToString>(key: &T) -> Self {
-    Self { phantom_ctrl: Default::default(),
-           key:          key.to_string(), }
+    Self { phantom_key:     Default::default(),
+           phantom_content: Default::default(),
+           key:             key.to_string(), }
+  }
+}
+
+impl<Key, Content> From<String> for BucketKey<Key, Content> {
+  fn from(value: String) -> Self {
+    BucketKey { phantom_key:     Default::default(),
+                phantom_content: Default::default(),
+                key:             value, }
   }
 }
 

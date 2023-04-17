@@ -1,62 +1,24 @@
 use std::net::SocketAddr;
-use std::sync::Arc;
 
 use axum::extract::ws::{Message, WebSocket};
 use futures::{SinkExt, StreamExt};
-use lazy_static::lazy_static;
 use tokio::select;
 use tokio::sync::mpsc;
 use tokio_stream::StreamMap;
 use tracing::{error, info, instrument, warn};
-use webrtc::api::interceptor_registry::register_default_interceptors;
-use webrtc::api::media_engine::MediaEngine;
-use webrtc::api::{APIBuilder, API};
-use webrtc::data_channel::data_channel_init::RTCDataChannelInit;
-use webrtc::data_channel::RTCDataChannel;
-use webrtc::ice_transport::ice_candidate::RTCIceCandidateInit;
-use webrtc::ice_transport::ice_server::RTCIceServer;
-use webrtc::interceptor::registry::Registry;
-use webrtc::peer_connection::configuration::RTCConfiguration;
-use webrtc::peer_connection::peer_connection_state::RTCPeerConnectionState;
-use webrtc::peer_connection::RTCPeerConnection;
-use webrtc::peer_connection::sdp::session_description::RTCSessionDescription;
 
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::SetInstanceParameterResponse;
 use api::instance::spec::InstanceSpec;
 use api::rt::{RtCommand, RtEvent, RtRequest};
 
-use crate::nats::{EventStream, WatchStream};
+use crate::nats::{EventStream, WatchStreamMap};
+use crate::rtc_socket::{FromRtcSocket, ToRtcSocket};
 use crate::service::Service;
-
-lazy_static! {
-  static ref WEBRTC_API: API = {
-    // Create a MediaEngine object to configure the supported codec
-    let mut m = MediaEngine::default();
-
-    // Register default codecs
-    m.register_default_codecs().expect("Registering default codecs");
-
-    // Create a InterceptorRegistry. This is the user configurable RTP/RTCP Pipeline.
-    // This provides NACKs, RTCP Reports and other features. If you use `webrtc.NewPeerConnection`
-    // this is enabled by default. If you are manually managing You MUST create a InterceptorRegistry
-    // for each PeerConnection.
-    let mut registry = Registry::new();
-
-    // Use the default set of Interceptors
-    registry = register_default_interceptors(registry, &mut m).expect("Registering default interceptors");
-
-    // Create the API object with the MediaEngine
-    APIBuilder::new()
-        .with_media_engine(m)
-        .with_interceptor_registry(registry)
-        .build()
-  };
-}
 
 enum Internal {
   Event(RtEvent),
-  DetachPeerConnection,
+  Rtc(FromRtcSocket),
 }
 
 #[instrument(skip(service, web_socket))]
@@ -66,13 +28,12 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
   let (mut tx, mut rx) = web_socket.split();
 
   let mut instance_events = StreamMap::<String, EventStream<InstanceDriverEvent>>::new();
-  let mut instance_specs = StreamMap::<String, WatchStream<InstanceSpec>>::new();
+  let mut instance_specs = WatchStreamMap::<String, InstanceSpec>::new();
 
   // TODO: we can make this faster by spawning request handlers and piping response to tx_internal.
   let (tx_internal, mut rx_internal) = mpsc::channel::<Internal>(0x100);
 
-  let mut rtc_pc: Option<RTCPeerConnection> = None;
-  let mut rtc_dc: Option<Arc<RTCDataChannel>> = None;
+  let mut tx_maybe_rtc: Option<mpsc::Sender<ToRtcSocket>> = None;
 
   loop {
     select! {
@@ -98,10 +59,8 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
                 break;
               }
             }
-          | DetachPeerConnection => {
-            if let (Some(pc), Some(dc)) = (rtc_pc.take(), rtc_dc.take()) {
-              // TODO: spawn a task to detach peer connection.
-            }
+          | Rtc(event) => {
+            // TODO: ...
           }
         }
       },
@@ -152,7 +111,7 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
                        .await;
           }
           | RtCommand::SetInstanceParameters(request) => {
-            let response = match service.set_instance_parameters(request).await {
+            let response = match service.set_instance_parameters(&request.instance_id, request.changes).await {
               | Err(err) => {
                 error!(?err, "failed to set instance command: {err}");
                 SetInstanceParameterResponse::RpcFailure
@@ -168,7 +127,7 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
               let stream = service.subscribe_to_instance_events(&instance_id);
               instance_events.insert(instance_id.clone(), stream);
 
-              let stream = service.subscribe_to_instance_specs(&instance_id);
+              let stream = service.watch_instance_specs(&instance_id);
               instance_specs.insert(instance_id.clone(), stream);
 
               true
@@ -187,77 +146,14 @@ pub async fn handle_socket(service: Service, web_socket: WebSocket, from: Socket
                        .await;
           },
           | RtCommand::CreatePeerConnection => {
-            rtc_pc = match WEBRTC_API.new_peer_connection(default_rtc_configuration()).await {
-              | Ok(pc) => {
-                let tx_detach = tx_internal.clone();
-                let mut once = false;
-
-                pc.on_peer_connection_state_change(Box::new(move |state| {
-                  if state == RTCPeerConnectionState::Connected && !once {
-                    let _ = tx_detach.try_send(DetachPeerConnection);
-                    once = true;
-                  }
-
-                  Box::pin(async {})
-                }));
-
-                match pc.create_data_channel("data", default_data_channel_init()).await {
-                  | Ok(dc) => {
-                    let mut gather_complete = pc.gathering_complete_promise().await;
-                    let _ = gather_complete.recv().await;
-
-                    let Ok(offer) = pc.create_offer(None).await else { continue; };
-                    let Ok(_) = pc.set_local_description(offer.clone()).await else { continue; };
-
-                    let _ = tx_internal.send(Event(RtEvent::OfferPeerConnection { offer: serde_json::to_string(&offer).unwrap() })).await;
-
-                    rtc_dc = Some(dc)
-                  },
-                  | Err(err) => {
-                    warn!(?err, "failed to create data channel: {err}");
-                    continue;
-                  }
-                }
-
-                Some(pc)
-              },
-              | Err(err) => {
-                warn!(?err, "failed to create peer connection: {err}");
-                None
-              }
-            }
+            // TODO: ...
           },
           | RtCommand::OfferPeerConnectionCandidate { candidate } => {
-            if let Some(pc) = &rtc_pc {
-              if let Ok(parsed) = serde_json::from_str::<RTCIceCandidateInit>(&candidate) {
-                let _ = pc.add_ice_candidate(parsed).await;
-              }
-            }
           }
           | RtCommand::AcceptPeerConnection { offer } => {
-            if let Ok(parsed) = serde_json::from_str::<RTCSessionDescription>(&offer) {
-              if let Some(pc) = &rtc_pc {
-                let _ = pc.set_remote_description(parsed).await;
-              }
-            }
           }
         }
       }
     }
   }
-}
-
-fn default_rtc_configuration() -> RTCConfiguration {
-  let ice_servers = vec![RTCIceServer { urls: vec!["stun:stun.l.google.com:19302".to_owned()],
-                                        ..Default::default() }];
-
-  RTCConfiguration { ice_servers,
-                     ..Default::default() }
-}
-
-fn default_data_channel_init() -> Option<RTCDataChannelInit> {
-  Some(RTCDataChannelInit { ordered: Some(true),
-                            max_packet_life_time: Some(0),
-                            max_retransmits: Some(5),
-                            ..Default::default() })
 }

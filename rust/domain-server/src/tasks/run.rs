@@ -12,13 +12,14 @@ use tracing::{debug, instrument};
 use api::instance::spec::{instance_spec_key, InstanceSpec};
 use api::instance::state::{instance_connection_state_key, instance_play_state_key, instance_power_state_key};
 use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
+use api::media::spec::MediaId;
 use api::media::state::{media_download_state_key, MediaDownloadState};
 use api::task::buckets::{task_control_key, task_spec_key};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
 use async_audio_engine::GraphPlayer;
 
-use crate::nats::{Nats, WatchStream};
+use crate::nats::{Nats, WatchStream, WatchStreamMap};
 use crate::tasks::Result;
 
 pub struct RunDomainTask {
@@ -27,15 +28,15 @@ pub struct RunDomainTask {
   timer: Interval,
   tx_external: mpsc::Sender<ExternalTask>,
   rx_external: mpsc::Receiver<ExternalTask>,
-  watch_spec: WatchStream<TaskSpec>,
-  watch_control: WatchStream<DesiredTaskPlayState>,
-  watch_instance_specs: StreamMap<String, WatchStream<InstanceSpec>>,
-  watch_instance_connection_state: StreamMap<String, WatchStream<InstanceConnectionState>>,
-  watch_instance_power_states: StreamMap<String, WatchStream<InstancePowerState>>,
-  watch_instance_play_states: StreamMap<String, WatchStream<InstancePlayState>>,
-  watch_download_states: StreamMap<String, WatchStream<MediaDownloadState>>,
+  watch_spec: WatchStream<String, TaskSpec>,
+  watch_control: WatchStream<String, DesiredTaskPlayState>,
+  watch_instance_specs: WatchStreamMap<String, InstanceSpec>,
+  watch_instance_connection_state: WatchStreamMap<String, InstanceConnectionState>,
+  watch_instance_power_states: WatchStreamMap<String, InstancePowerState>,
+  watch_instance_play_states: WatchStreamMap<String, InstancePlayState>,
+  watch_download_states: WatchStreamMap<MediaId, MediaDownloadState>,
   instances: HashMap<String, TaskInstance>,
-  media: HashMap<String, TaskMedia>,
+  media: HashMap<MediaId, TaskMedia>,
   desired_play_state: DesiredTaskPlayState,
   player: Option<GraphPlayer>,
   nats: Nats,
@@ -169,7 +170,9 @@ impl RunDomainTask {
                                              self.nats.instance_play_state.watch(instance_play_state_key(&instance_id)));
 
       self.watch_instance_connection_state.insert(instance_id.clone(),
-                                                  self.nats.instance_connection_state.watch(instance_connection_state_key(&instance_id)));
+                                                  self.nats
+                                                      .instance_connection_state
+                                                      .watch(instance_connection_state_key(&instance_id)));
     }
   }
 
@@ -219,7 +222,7 @@ impl RunDomainTask {
     self.update_play_state();
   }
 
-  fn download_state_updated(&mut self, media_id: String, state: Option<MediaDownloadState>) {
+  fn download_state_updated(&mut self, media_id: MediaId, state: Option<MediaDownloadState>) {
     self.media.entry(media_id).or_default().state = state;
 
     self.update_play_state();
@@ -321,7 +324,7 @@ impl RunDomainTask {
     (missing_instances, unready_instances)
   }
 
-  fn get_missing_or_unready_media(&self) -> (HashSet<String>, HashSet<String>) {
+  fn get_missing_or_unready_media(&self) -> (HashSet<MediaId>, HashSet<MediaId>) {
     let mut missing_media = HashSet::new();
     let mut downloading_media = HashSet::new();
 

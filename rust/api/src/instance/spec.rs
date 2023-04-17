@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::instance::driver::config::InstanceDriverConfig;
 use crate::instance::model::InstanceModel;
 use crate::instance::{DesiredInstancePlayState, DesiredInstancePowerState, InstancePlayStateTransition};
-use crate::{BucketKey, IntoBucketKey};
+use crate::BucketKey;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -115,8 +115,8 @@ fn default_position_report() -> String {
   "position".to_owned()
 }
 
-pub fn instance_spec_key<T: ToString>(instance_id: &T) -> BucketKey<InstanceSpec> {
-  instance_id.to_bucket_key()
+pub fn instance_spec_key<T: ToString>(instance_id: &T) -> BucketKey<String, InstanceSpec> {
+  instance_id.to_string().into()
 }
 
 pub fn schema() -> RootSchema {
