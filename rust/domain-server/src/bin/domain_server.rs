@@ -58,6 +58,9 @@ struct Arguments {
   /// Native (default) sample rate.
   #[clap(long, env, default_value = "192000")]
   pub native_sample_rate:      u32,
+  /// Reset the key value database before starting
+  #[clap(long)]
+  pub reset_kv_database:       bool,
 }
 
 enum InternalEvent {
@@ -85,7 +88,7 @@ async fn main() -> Result {
 
   debug!(url = &args.nats_url, "Connecting to NATS");
   let nats = async_nats::connect(&args.nats_url).await?;
-  let service = Nats::new(nats).await?;
+  let service = Nats::new(nats, args.reset_kv_database).await?;
   let service = Service { nats: service.clone() };
 
   let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");

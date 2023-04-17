@@ -3,10 +3,11 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::anyhow;
+use async_nats::Client;
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
 use futures::StreamExt;
-use tracing::instrument;
+use tracing::{info, instrument};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -19,7 +20,6 @@ use api::media::buckets::{media_upload_spec_key, media_upload_state_key};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::media_download_state_key;
 use api::task::spec::PlayId;
-use api::IntoBucketKey;
 use domain_server::nats::Nats;
 
 const LOG_DEFAULTS: &'static str = "warn";
@@ -36,14 +36,27 @@ struct Arguments {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+  /// Instance spec, power and play management
   Instance {
     #[clap(subcommand)]
     command: InstanceCommand,
   },
+  /// Media downloads and uploads management
   Media {
     #[clap(subcommand)]
     command: MediaCommand,
   },
+  /// Key-value database management
+  KV {
+    #[clap(subcommand)]
+    command: KVCommand,
+  },
+}
+
+#[derive(Debug, Subcommand)]
+enum KVCommand {
+  /// Reset the key value database
+  Reset,
 }
 
 #[derive(Debug, Subcommand)]
@@ -195,12 +208,27 @@ async fn main() -> anyhow::Result<()> {
 
   let args = Arguments::parse();
   let client = async_nats::connect(&args.nats_url).await?;
-  let nats = Nats::new(client).await?;
 
   match args.command {
-    | Command::Instance { command } => instance_command(nats, command).await,
-    | Command::Media { command } => media_command(nats, command).await,
+    | Command::Instance { command } => instance_command(Nats::new(client, false).await?, command).await,
+    | Command::Media { command } => media_command(Nats::new(client, false).await?, command).await,
+    | Command::KV { command } => kv_command(client, command).await,
   }
+}
+
+#[instrument(err)]
+async fn kv_command(client: Client, command: KVCommand) -> Result {
+  match command {
+    | KVCommand::Reset => kv_reset(client).await,
+  }
+}
+
+async fn kv_reset(client: Client) -> Result {
+  Nats::new(client, true).await?;
+
+  info!("KV database fully reset");
+
+  Ok(())
 }
 
 #[instrument(err, skip(nats))]
@@ -241,7 +269,7 @@ async fn create_media_download(nats: Nats, id: MediaId, url: String, sha256: Str
                                  size: size.unwrap_or_default(),
                                  sha256 };
 
-  let revision = nats.media_download_spec.put(id.to_bucket_key(), spec).await?;
+  let revision = nats.media_download_spec.put((&id).into(), spec).await?;
 
   println!("Download created with revision {revision}");
 
@@ -323,12 +351,12 @@ async fn set_instance_play(nats: Nats, id: String, play: InstancePlayCommand) ->
     | InstancePlayCommand::Stop => InstancePlayControl { desired: DesiredInstancePlayState::Stop,
                                                          until:   Utc::now(), },
     | InstancePlayCommand::Delete => {
-      nats.instance_play_ctrl.delete(id.into_bucket_key()).await?;
+      nats.instance_play_ctrl.delete(id.into()).await?;
       return Ok(());
     }
   };
 
-  let revision = nats.instance_play_ctrl.put(id.into_bucket_key(), play).await?;
+  let revision = nats.instance_play_ctrl.put(id.into(), play).await?;
 
   println!("Play state updated with revision {revision}");
 
@@ -343,12 +371,12 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
     | InstancePowerCommand::Off => InstancePowerControl { desired: DesiredInstancePowerState::Off,
                                                           until:   Utc::now(), },
     | InstancePowerCommand::Delete => {
-      nats.instance_power_ctrl.delete(id.into_bucket_key()).await?;
+      nats.instance_power_ctrl.delete(id.into()).await?;
       return Ok(());
     }
   };
 
-  let revision = nats.instance_power_ctrl.put(id.into_bucket_key(), power).await?;
+  let revision = nats.instance_power_ctrl.put(id.into(), power).await?;
 
   println!("Power state updated with revision {revision}");
 
@@ -357,7 +385,7 @@ async fn set_instance_power(nats: Nats, id: String, power: InstancePowerCommand)
 
 async fn describe_instance(nats: Nats, id: String, include_spec: bool) -> Result {
   let spec = if include_spec {
-    nats.instance_spec.get(id.into_bucket_key()).await?
+    nats.instance_spec.get(id.clone().into()).await?
   } else {
     None
   };
@@ -419,7 +447,7 @@ async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String
     spec.driver = InstanceDriverConfig::Mock;
   }
 
-  let revision = nats.instance_spec.put(id.into_bucket_key(), spec).await?;
+  let revision = nats.instance_spec.put(id.into(), spec).await?;
 
   println!("Instance spec updated with revision {revision}");
 

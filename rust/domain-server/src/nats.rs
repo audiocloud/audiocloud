@@ -7,12 +7,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, bail};
-use async_nats::jetstream::kv::Operation;
-use async_nats::jetstream::{kv, Context};
 use async_nats::Client;
+use async_nats::jetstream::{Context, kv};
+use async_nats::jetstream::kv::Operation;
 use async_stream::stream;
 use bytes::Bytes;
-use futures::{pin_mut, FutureExt, Stream, StreamExt};
+use futures::{FutureExt, pin_mut, Stream, StreamExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::spawn;
@@ -23,15 +23,15 @@ use tokio_stream::StreamMap;
 use tracing::{debug, trace, warn};
 use wildmatch::WildMatch;
 
+use api::{BucketKey, BucketName, Events, instance, media, Request, task};
+use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::driver::spec::DriverServiceSpec;
 use api::instance::spec::InstanceSpec;
-use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
-use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
-use api::{instance, media, task, BucketKey, BucketName, Events, Request};
+use api::task::spec::TaskSpec;
 
 pub type WatchStream<K, T> = Pin<Box<dyn Stream<Item = (K, Option<T>)> + Send>>;
 
@@ -117,7 +117,7 @@ pub struct Nats {
 }
 
 impl Nats {
-  pub async fn new(client: Client) -> anyhow::Result<Self> {
+  pub async fn new(client: Client, recreate: bool) -> anyhow::Result<Self> {
     let forever = Duration::default();
     let one_minute = Duration::from_secs(60);
     let three_days = Duration::from_secs(3 * 24 * 60 * 60);
@@ -127,20 +127,20 @@ impl Nats {
 
     Ok(Self { client:                    client.clone(),
               jetstream:                 async_nats::jetstream::new(client),
-              driver_spec:               Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever).await?,
-              instance_connection_state: Bucket::new(js, &instance::buckets::INSTANCE_CONNECTION_STATE, one_minute).await?,
-              instance_power_state:      Bucket::new(js, &instance::buckets::INSTANCE_POWER_STATE, forever).await?,
-              instance_play_state:       Bucket::new(js, &instance::buckets::INSTANCE_PLAY_STATE, forever).await?,
-              instance_spec:             Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever).await?,
-              instance_power_ctrl:       Bucket::new(js, &instance::buckets::INSTANCE_POWER_CONTROL, forever).await?,
-              instance_play_ctrl:        Bucket::new(js, &instance::buckets::INSTANCE_PLAY_CONTROL, forever).await?,
-              media_download_spec:       Bucket::new(js, &media::buckets::DOWNLOAD_SPEC, three_days).await?,
-              media_upload_spec:         Bucket::new(js, &media::buckets::UPLOAD_SPEC, three_days).await?,
-              media_download_state:      Bucket::new(js, &media::buckets::DOWNLOAD_STATE, three_days).await?,
-              media_upload_state:        Bucket::new(js, &media::buckets::UPLOAD_STATE, three_days).await?,
-              task_spec:                 Bucket::new(js, &task::buckets::TASK_SPEC, forever).await?,
-              task_state:                Bucket::new(js, &task::buckets::TASK_STATE, forever).await?,
-              task_ctrl:                 Bucket::new(js, &task::buckets::TASK_CONTROL, forever).await?, })
+              driver_spec:               Bucket::new(js, &instance::driver::buckets::DRIVER_SPEC, forever, recreate).await?,
+              instance_connection_state: Bucket::new(js, &instance::buckets::INSTANCE_CONNECTION_STATE, one_minute, recreate).await?,
+              instance_power_state:      Bucket::new(js, &instance::buckets::INSTANCE_POWER_STATE, forever, recreate).await?,
+              instance_play_state:       Bucket::new(js, &instance::buckets::INSTANCE_PLAY_STATE, forever, recreate).await?,
+              instance_spec:             Bucket::new(js, &instance::buckets::INSTANCE_SPEC, forever, recreate).await?,
+              instance_power_ctrl:       Bucket::new(js, &instance::buckets::INSTANCE_POWER_CONTROL, forever, recreate).await?,
+              instance_play_ctrl:        Bucket::new(js, &instance::buckets::INSTANCE_PLAY_CONTROL, forever, recreate).await?,
+              media_download_spec:       Bucket::new(js, &media::buckets::DOWNLOAD_SPEC, three_days, recreate).await?,
+              media_upload_spec:         Bucket::new(js, &media::buckets::UPLOAD_SPEC, three_days, recreate).await?,
+              media_download_state:      Bucket::new(js, &media::buckets::DOWNLOAD_STATE, three_days, recreate).await?,
+              media_upload_state:        Bucket::new(js, &media::buckets::UPLOAD_STATE, three_days, recreate).await?,
+              task_spec:                 Bucket::new(js, &task::buckets::TASK_SPEC, forever, recreate).await?,
+              task_state:                Bucket::new(js, &task::buckets::TASK_STATE, forever, recreate).await?,
+              task_ctrl:                 Bucket::new(js, &task::buckets::TASK_CONTROL, forever, recreate).await?, })
   }
 
   pub fn subscribe_to_events<Evt>(&self, events: Events<Evt>) -> EventStream<Evt>
@@ -278,8 +278,9 @@ pub struct Bucket<Key, Content> {
 
 impl<Key, Content> Bucket<Key, Content> where Content: DeserializeOwned + Send + 'static
 {
-  pub async fn new(js: &Context, name: &BucketName<Content>, ttl: Duration) -> anyhow::Result<Self> {
-    let store = if cfg!(debug_assertions) {
+  pub async fn new(js: &Context, name: &BucketName<Content>, ttl: Duration, recreate: bool) -> anyhow::Result<Self> {
+    let store = if recreate {
+      let _ = js.delete_key_value(name.name).await;
       js.create_key_value(default_bucket_config(name.name, ttl)).await.map_err(nats_err)?
     } else {
       js.get_key_value(name.name).await.map_err(nats_err)?
