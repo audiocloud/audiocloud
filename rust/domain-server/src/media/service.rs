@@ -11,17 +11,17 @@ use tokio::time::timeout;
 use tokio::{select, spawn};
 use tracing::{debug, info, instrument, warn};
 
-use api::media::buckets::{media_download_state_key, media_upload_spec_key, media_upload_state_key};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaSpec, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 
 use crate::media::{download, upload};
-use crate::nats::{Nats, WatchStream};
+use crate::nats::WatchStream;
+use crate::service::Service;
 
 use super::Result;
 
 pub struct MediaService {
-  nats:                 Nats,
+  service:              Service,
   media_root:           PathBuf,
   native_sample_rate:   u32,
   watch_download_specs: WatchStream<MediaId, MediaDownloadSpec>,
@@ -33,16 +33,16 @@ pub struct MediaService {
 }
 
 impl MediaService {
-  pub fn new(nats: Nats, media_root: PathBuf, native_sample_rate: u32) -> Self {
-    let watch_download_specs = nats.media_download_spec.watch_all();
-    let watch_upload_specs = nats.media_upload_spec.watch_all();
+  pub fn new(service: Service, media_root: PathBuf, native_sample_rate: u32) -> Self {
+    let watch_download_specs = service.watch_all_media_download_specs();
+    let watch_upload_specs = service.watch_all_media_upload_specs();
 
     let downloads = HashMap::new();
     let uploads = HashMap::new();
 
     let (tx_internal, rx_internal) = mpsc::channel(0xff);
 
-    Self { nats,
+    Self { service,
            media_root,
            native_sample_rate,
            watch_download_specs,
@@ -87,9 +87,8 @@ impl MediaService {
   }
 
   async fn create_or_update_download_if_not_completed(&mut self, media_id: MediaId, spec: MediaDownloadSpec) {
-    let maybe_state = self.nats
-                          .media_download_state
-                          .get(media_download_state_key(&media_id))
+    let maybe_state = self.service
+                          .get_media_download_state(&media_id)
                           .await
                           .ok()
                           .and_then(identity)
@@ -140,9 +139,8 @@ impl MediaService {
   }
 
   async fn create_or_update_upload_if_not_completed(&mut self, media_id: MediaId, spec: MediaUploadSpec) {
-    let is_url_new = self.nats
-                         .media_upload_spec
-                         .get(media_upload_spec_key(&media_id))
+    let is_url_new = self.service
+                         .get_media_upload_spec(&media_id)
                          .await
                          .ok()
                          .and_then(identity)
@@ -185,10 +183,7 @@ impl MediaService {
           download.state.progress = progress;
           download.state.updated_at = Utc::now();
 
-          let _ = self.nats
-                      .media_download_state
-                      .put(media_download_state_key(&media_id), download.state.clone())
-                      .await?;
+          let _ = self.service.set_media_download_state(&media_id, download.state.clone()).await?;
         },
       | InternalEvent::DownloadComplete { media_id, result } => match result {
         | Ok(spec) =>
@@ -200,10 +195,7 @@ impl MediaService {
 
             info!(%media_id, "Download completed");
 
-            let _ = self.nats
-                        .media_download_state
-                        .put(media_download_state_key(&media_id), download.state)
-                        .await?;
+            let _ = self.service.set_media_download_state(&media_id, download.state).await?;
           },
         | Err(err) =>
           if let Some(mut download) = self.downloads.remove(&media_id) {
@@ -214,10 +206,7 @@ impl MediaService {
 
             info!(%media_id, ?err, "Download failed: {err}");
 
-            let _ = self.nats
-                        .media_download_state
-                        .put(media_download_state_key(&media_id), download.state)
-                        .await?;
+            let _ = self.service.set_media_download_state(&media_id, download.state).await?;
           },
       },
       | InternalEvent::UploadProgress { media_id, progress } =>
@@ -225,10 +214,7 @@ impl MediaService {
           upload.state.progress = progress;
           upload.state.updated_at = Utc::now();
 
-          let _ = self.nats
-                      .media_upload_state
-                      .put(media_upload_state_key(&media_id), upload.state.clone())
-                      .await?;
+          let _ = self.service.set_media_upload_state(&media_id, upload.state.clone()).await?;
         },
       | InternalEvent::UploadComplete { media_id, result } => match result {
         | Ok(_) =>
@@ -240,10 +226,7 @@ impl MediaService {
 
             info!(%media_id, "Upload completed");
 
-            let _ = self.nats
-                        .media_upload_state
-                        .put(media_upload_state_key(&media_id), upload.state)
-                        .await?;
+            let _ = self.service.set_media_upload_state(&media_id, upload.state).await?;
           },
         | Err(err) =>
           if let Some(mut upload) = self.uploads.remove(&media_id) {
@@ -254,10 +237,7 @@ impl MediaService {
 
             info!(%media_id, ?err, "Upload failed: {err}");
 
-            let _ = self.nats
-                        .media_upload_state
-                        .put(media_upload_state_key(&media_id), upload.state)
-                        .await?;
+            let _ = self.service.set_media_upload_state(&media_id, upload.state).await?;
           },
       },
     }

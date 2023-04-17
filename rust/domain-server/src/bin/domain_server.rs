@@ -8,8 +8,8 @@ use clap::Parser;
 use futures::FutureExt;
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::{select, spawn};
 use tokio::sync::mpsc;
+use tokio::{select, spawn};
 use tower_http::cors;
 use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
@@ -20,8 +20,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 use domain_server::instance::driver::scripting::new_scripting_engine;
 use domain_server::media::service::MediaService;
 use domain_server::nats::Nats;
-use domain_server::Result;
 use domain_server::service::Service;
+use domain_server::Result;
 
 const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
 
@@ -85,8 +85,8 @@ async fn main() -> Result {
 
   debug!(url = &args.nats_url, "Connecting to NATS");
   let nats = async_nats::connect(&args.nats_url).await?;
-  let nats = Nats::new(nats).await?;
-  let service = Service { nats: nats.clone() };
+  let service = Nats::new(nats).await?;
+  let service = Service { nats: service.clone() };
 
   let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
   let router = Router::new().fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true));
@@ -101,8 +101,9 @@ async fn main() -> Result {
     if args.enable_instance_drivers {
       let tx_internal = tx_internal.clone();
       info!("Starting instance driver service: {}", args.driver_host_name);
-      let service =
-        domain_server::instance::driver::server::DriverService::new(nats.clone(), scripting_engine.clone(), args.driver_host_name.clone());
+      let service = domain_server::instance::driver::server::DriverService::new(service.clone(),
+                                                                                scripting_engine.clone(),
+                                                                                args.driver_host_name.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance driver service exited: {res:?}");
                            let _ = tx_internal.send(InstanceDriversFinished).await;
@@ -115,7 +116,7 @@ async fn main() -> Result {
     if args.enable_instances {
       let tx_internal = tx_internal.clone();
       info!("Starting instances service");
-      let service = domain_server::instance::service::InstanceService::new(nats.clone());
+      let service = domain_server::instance::service::InstanceService::new(service.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance service exited: {res:?}");
                            let _ = tx_internal.send(InstancesFinished).await;
@@ -141,13 +142,13 @@ async fn main() -> Result {
 
   let create_media = || {
     if args.enable_media {
-      let nats = nats.clone();
+      let service = service.clone();
       let args = args.clone();
       let tx_internal = tx_internal.clone();
       spawn(async move {
               info!("Starting media service");
-              MediaService::new(nats.clone(), args.media_root.clone(), args.native_sample_rate).run()
-                                                                                               .await
+              MediaService::new(service.clone(), args.media_root.clone(), args.native_sample_rate).run()
+                                                                                                  .await
             }.then(|res| async move {
                warn!("Media service exited: {res:?}");
                let _ = tx_internal.send(MediaFinished).await;
@@ -158,13 +159,14 @@ async fn main() -> Result {
 
   let create_rest_api = || {
     if args.enable_api {
+      let service = service.clone();
       let bind = args.rest_api_bind;
       let tx_internal = tx_internal.clone();
       info!("REST API listening on {bind}");
       spawn(async move {
               let router = router.layer(cors::CorsLayer::permissive())
                                  .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
-                                 .with_state(service);
+                                 .with_state(service.clone());
 
               Ok::<_, anyhow::Error>(axum::Server::bind(&bind).serve(router.into_make_service_with_connect_info::<SocketAddr>())
                                                               .await?)

@@ -5,26 +5,26 @@ use chrono::Utc;
 use futures::future::join_all;
 use tokio::sync::mpsc;
 use tokio::time::Interval;
-use tokio::{select, time};
+use tokio::{select, spawn, time};
 use tokio_stream::{StreamExt, StreamMap};
 use tracing::{error, instrument, trace};
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
-use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
-use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse};
+use api::instance::driver::events::InstanceDriverEvent;
+use api::instance::driver::requests::{SetInstanceParameter, SetInstanceParameterResponse};
 use api::instance::spec::InstanceSpec;
-use api::instance::state::{instance_play_state_key, instance_power_state_key};
 use api::instance::{
   DesiredInstancePlayState, DesiredInstancePowerState, InstancePlayState, InstancePlayStateTransition, InstancePowerState,
 };
 
-use crate::nats::{EventStream, Nats, WatchStream};
+use crate::nats::{EventStream, WatchStream};
 use crate::request_tracker::RequestTracker;
+use crate::service::Service;
 
 use super::Result;
 
 pub struct InstanceService {
-  nats:                  Nats,
+  service:               Service,
   watch_specs:           WatchStream<String, InstanceSpec>,
   watch_power_control:   WatchStream<String, InstancePowerControl>,
   watch_play_control:    WatchStream<String, InstancePlayControl>,
@@ -36,10 +36,10 @@ pub struct InstanceService {
 }
 
 impl InstanceService {
-  pub fn new(nats: Nats) -> Self {
-    let watch_specs = nats.instance_spec.watch_all();
-    let watch_power_control = nats.instance_power_ctrl.watch_all();
-    let watch_play_control = nats.instance_play_ctrl.watch_all();
+  pub fn new(service: Service) -> Self {
+    let watch_specs = service.watch_all_instance_specs();
+    let watch_power_control = service.watch_all_instance_power_controls();
+    let watch_play_control = service.watch_all_instance_play_controls();
     let media_instance_events = StreamMap::new();
 
     let instances = HashMap::new();
@@ -48,7 +48,7 @@ impl InstanceService {
 
     let (tx_internal, rx_internal) = mpsc::channel(0xff);
 
-    Self { nats,
+    Self { service,
            timer,
            instances,
            watch_specs,
@@ -90,7 +90,7 @@ impl InstanceService {
         let entry = self.instances.entry(instance_id.clone()).or_default();
 
         if entry.power_set_success(&instance_id, desired) {
-          entry.update(&instance_id, &self.nats, &self.tx_internal).await;
+          entry.update(&instance_id, &self.service, &self.tx_internal).await;
         }
       }
     }
@@ -106,25 +106,25 @@ impl InstanceService {
       }
       | Some(spec) => {
         if spec.media.is_some() && !self.media_instance_events.contains_key(&instance_id) {
-          self.media_instance_events.insert(instance_id.clone(),
-                                            self.nats.subscribe_to_events(instance_driver_events(&instance_id)));
+          self.media_instance_events
+              .insert(instance_id.clone(), self.service.subscribe_to_instance_events(&instance_id));
         }
 
         if spec.power.is_some() {
-          if let Ok(Some(actual_power)) = self.nats.instance_power_state.get(instance_power_state_key(&instance_id)).await {
-            entry.persisted_power_state = Some(actual_power);
+          if let Ok(actual_power) = self.service.get_instance_power_state(&instance_id).await {
+            entry.persisted_power_state = actual_power;
           }
         }
 
         if spec.media.is_some() {
-          if let Ok(Some(actual_play)) = self.nats.instance_play_state.get(instance_play_state_key(&instance_id)).await {
-            entry.persisted_play_state = Some(actual_play);
+          if let Ok(actual_play) = self.service.get_instance_play_state(&instance_id).await {
+            entry.persisted_play_state = actual_play;
           }
         }
       }
     }
 
-    entry.update(&instance_id, &self.nats, &self.tx_internal).await;
+    entry.update(&instance_id, &self.service, &self.tx_internal).await;
   }
 
   #[instrument(skip(self))]
@@ -136,7 +136,7 @@ impl InstanceService {
 
     if let Some(power_control) = &entry.power_control {
       if entry.power_request.set_desired(power_control.desired) {
-        entry.update(&instance_id, &self.nats, &self.tx_internal).await;
+        entry.update(&instance_id, &self.service, &self.tx_internal).await;
       }
     }
   }
@@ -147,7 +147,7 @@ impl InstanceService {
 
     if let Some(play_control) = &entry.play_control {
       if entry.play_request.set_desired(play_control.desired) {
-        entry.update(&instance_id, &self.nats, &self.tx_internal).await;
+        entry.update(&instance_id, &self.service, &self.tx_internal).await;
       }
     }
   }
@@ -155,7 +155,7 @@ impl InstanceService {
   async fn timer_tick(&mut self) {
     join_all(self.instances
                  .iter_mut()
-                 .map(|(id, instance)| instance.update(id, &self.nats, &self.tx_internal))).await;
+                 .map(|(id, instance)| instance.update(id, &self.service, &self.tx_internal))).await;
   }
 
   async fn media_instance_event(&mut self, instance_id: String, event: InstanceDriverEvent) {
@@ -188,7 +188,7 @@ impl InstanceService {
       }
 
       if needs_update {
-        entry.update(&instance_id, &self.nats, &self.tx_internal).await;
+        entry.update(&instance_id, &self.service, &self.tx_internal).await;
       }
     }
   }
@@ -207,16 +207,16 @@ struct Instance {
 }
 
 impl Instance {
-  pub async fn update(&mut self, id: &str, nats: &Nats, tx_internal: &mpsc::Sender<InternalEvent>) -> bool {
-    let power_is_fulfilled = self.update_power(id, nats, tx_internal).await;
+  pub async fn update(&mut self, id: &str, service: &Service, tx_internal: &mpsc::Sender<InternalEvent>) -> bool {
+    let power_is_fulfilled = self.update_power(id, service, tx_internal).await;
     if power_is_fulfilled {
-      self.update_play(id, nats).await
+      self.update_play(id, service).await
     } else {
       false
     }
   }
 
-  async fn update_power(&mut self, id: &str, nats: &Nats, tx_internal: &mpsc::Sender<InternalEvent>) -> bool {
+  async fn update_power(&mut self, id: &str, service: &Service, tx_internal: &mpsc::Sender<InternalEvent>) -> bool {
     let mut desired = self.power_request.get_desired();
 
     let idle_ms = self.idle_ms();
@@ -250,22 +250,26 @@ impl Instance {
                                                   channel:   command.channel,
                                                   value:     command.value, }];
 
-        let subject = set_instance_parameters_request(&power_spec.power_controller);
         let desired = self.power_request.get_desired();
         let instance_id = id.to_owned();
 
         let tx_internal = tx_internal.clone();
-        nats.request_and_forget(subject, command, move |response| match response {
-              | Ok(SetInstanceParameterResponse::Success) => {
-                let _ = tx_internal.try_send(InternalEvent::InstancePowerSetSuccess { instance_id, desired });
-              }
-              | Ok(other) => {
-                error!(instance_id, "Failed to set power state for instance: {other}");
-              }
-              | Err(err) => {
-                error!(instance_id, ?err, "Failed to set power state for instance: {err}");
-              }
-            });
+        let service = service.clone();
+
+        spawn(async move {
+          match service.set_instance_parameters(&instance_id, command).await {
+            | Ok(SetInstanceParameterResponse::Success) => {
+              let _ = tx_internal.send(InternalEvent::InstancePowerSetSuccess { instance_id, desired })
+                                 .await;
+            }
+            | Ok(other) => {
+              error!(instance_id, "Failed to set power state for instance: {other}");
+            }
+            | Err(err) => {
+              error!(instance_id, ?err, "Failed to set power state for instance: {err}");
+            }
+          }
+        });
       }
 
       self.power_request.update_requested_now();
@@ -273,9 +277,9 @@ impl Instance {
 
     let actual = self.power_request.get_actual();
     if self.persisted_power_state.as_ref() != Some(&actual) {
-      if let Ok(_) = nats.instance_power_state.put(instance_power_state_key(&id), actual).await {
-        let _ = nats.publish_event(instance_driver_events(id), InstanceDriverEvent::PowerStateChanged { state: actual })
-                    .await;
+      if let Ok(_) = service.set_instance_power_state(id, actual).await {
+        let _ = service.publish_instance_driver_event(id, InstanceDriverEvent::PowerStateChanged { state: actual })
+                       .await;
 
         self.persisted_power_state = Some(actual);
       }
@@ -291,7 +295,7 @@ impl Instance {
                       })
   }
 
-  async fn update_play(&mut self, id: &str, nats: &Nats) -> bool {
+  async fn update_play(&mut self, id: &str, service: &Service) -> bool {
     let mut desired = self.play_request.get_desired();
 
     if let Some(control) = self.play_control.as_ref() {
@@ -311,18 +315,24 @@ impl Instance {
                                                   channel:   command.channel,
                                                   value:     command.value, }];
 
-        let subject = set_instance_parameters_request(id);
         let instance_id = id.to_owned();
+        let service = service.clone();
+        let id = id.to_owned();
 
-        nats.request_and_forget(subject, command, move |res| match res {
-              | Ok(SetInstanceParameterResponse::Success) => {}
-              | Ok(other) => {
-                error!(instance_id, "Failed to set play state for instance: {other}");
-              }
-              | Err(err) => {
-                error!(instance_id, ?err, "Failed to set play state for instance: {err}");
-              }
-            });
+        spawn(async move {
+          match service.set_instance_parameters(&id, command).await {
+            | Ok(SetInstanceParameterResponse::Success) => {
+              // the instance will send a report that indicates changed play state, so we don't
+              // have to report back here
+            }
+            | Ok(other) => {
+              error!(instance_id, "Failed to set play state for instance: {other}");
+            }
+            | Err(err) => {
+              error!(instance_id, ?err, "Failed to set play state for instance: {err}");
+            }
+          }
+        });
 
         self.play_request.update_requested_now();
       }
@@ -330,9 +340,9 @@ impl Instance {
 
     let actual = self.play_request.get_actual();
     if self.persisted_play_state.as_ref() != Some(&actual) {
-      if let Ok(_) = nats.instance_play_state.put(instance_play_state_key(&id), actual.clone()).await {
-        let _ = nats.publish_event(instance_driver_events(id), InstanceDriverEvent::PlayStateChanged { state: actual })
-                    .await;
+      if let Ok(_) = service.set_instance_play_state(id, actual.clone()).await {
+        let _ = service.publish_instance_driver_event(id, InstanceDriverEvent::PlayStateChanged { state: actual })
+                       .await;
 
         self.persisted_play_state = Some(actual);
       }

@@ -4,6 +4,8 @@ use api::instance::control::{instance_play_control_key, instance_power_control_k
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse};
 use api::instance::spec::{instance_spec_key, InstanceSpec};
+use api::instance::state::{instance_connection_state_key, instance_play_state_key, instance_power_state_key};
+use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::buckets::{media_download_spec_key, media_upload_spec_key, media_upload_state_key};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::{media_download_state_key, MediaDownloadState, MediaUploadState};
@@ -35,6 +37,10 @@ impl Service {
     self.nats.instance_spec.watch(instance_spec_key(&instance_id))
   }
 
+  pub fn watch_all_instance_specs(&self) -> WatchStream<String, InstanceSpec> {
+    self.nats.instance_spec.watch_all()
+  }
+
   pub async fn set_instance_spec(&self, instance_id: &str, spec: InstanceSpec) -> Result {
     self.nats.instance_spec.put(instance_spec_key(&instance_id), spec).await?;
 
@@ -45,10 +51,31 @@ impl Service {
     self.nats.instance_power_ctrl.watch(instance_power_control_key(&instance_id))
   }
 
+  pub fn watch_all_instance_power_controls(&self) -> WatchStream<String, InstancePowerControl> {
+    self.nats.instance_power_ctrl.watch_all()
+  }
+
+  pub async fn get_instance_power_state(&self, instance_id: &str) -> Result<Option<InstancePowerState>> {
+    Ok(self.nats.instance_power_state.get(instance_power_state_key(&instance_id)).await?)
+  }
+
   pub async fn set_instance_power_control(&self, instance_id: &str, power: InstancePowerControl) -> Result {
     self.nats
         .instance_power_ctrl
         .put(instance_power_control_key(&instance_id), power)
+        .await?;
+
+    Ok(())
+  }
+
+  pub fn watch_all_instance_power_states(&self) -> WatchStream<String, InstancePowerState> {
+    self.nats.instance_power_state.watch_all()
+  }
+
+  pub async fn set_instance_power_state(&self, instance_id: &str, power: InstancePowerState) -> Result {
+    self.nats
+        .instance_power_state
+        .put(instance_power_state_key(&instance_id), power)
         .await?;
 
     Ok(())
@@ -67,6 +94,42 @@ impl Service {
     self.nats.instance_play_ctrl.watch(instance_play_control_key(&instance_id))
   }
 
+  pub fn watch_all_instance_play_controls(&self) -> WatchStream<String, InstancePlayControl> {
+    self.nats.instance_play_ctrl.watch_all()
+  }
+
+  pub fn watch_instance_play_state(&self, instance_id: &str) -> WatchStream<String, InstancePlayState> {
+    self.nats.instance_play_state.watch(instance_play_state_key(&instance_id))
+  }
+
+  pub async fn get_instance_play_state(&self, instance_id: &str) -> Result<Option<InstancePlayState>> {
+    Ok(self.nats.instance_play_state.get(instance_play_state_key(&instance_id)).await?)
+  }
+
+  pub async fn set_instance_play_state(&self, instance_id: &str, play: InstancePlayState) -> Result {
+    self.nats
+        .instance_play_state
+        .put(instance_play_state_key(&instance_id), play)
+        .await?;
+
+    Ok(())
+  }
+
+  pub fn watch_instance_connection_state(&self, instance_id: &str) -> WatchStream<String, InstanceConnectionState> {
+    self.nats
+        .instance_connection_state
+        .watch(instance_connection_state_key(&instance_id))
+  }
+
+  pub async fn set_instance_connection_state(&self, instance_id: &str, state: InstanceConnectionState) -> Result {
+    self.nats
+        .instance_connection_state
+        .put(instance_connection_state_key(&instance_id), state)
+        .await?;
+
+    Ok(())
+  }
+
   pub async fn set_instance_parameters(&self,
                                        instance_id: &str,
                                        request: Vec<SetInstanceParameter>)
@@ -74,7 +137,9 @@ impl Service {
     self.nats.request(set_instance_parameters_request(&instance_id), request).await
   }
 
-  pub fn serve_instance_parameters(&self, instance_id: &str) -> RequestStream<Vec<SetInstanceParameter>, SetInstanceParameterResponse> {
+  pub fn serve_set_instance_parameters_requests(&self,
+                                                instance_id: &str)
+                                                -> RequestStream<Vec<SetInstanceParameter>, SetInstanceParameterResponse> {
     self.nats.serve_requests(set_instance_parameters_request(instance_id))
   }
 
@@ -105,6 +170,10 @@ impl Service {
     self.nats.media_upload_spec.watch(BucketKey::all())
   }
 
+  pub async fn get_media_upload_spec(&self, media_id: &MediaId) -> Result<Option<MediaUploadSpec>> {
+    Ok(self.nats.media_upload_spec.get(media_upload_spec_key(&media_id)).await?)
+  }
+
   pub async fn set_media_upload_spec(&self, media_id: &MediaId, spec: MediaUploadSpec) -> Result {
     self.nats.media_upload_spec.put(media_upload_spec_key(&media_id), spec).await?;
 
@@ -119,5 +188,9 @@ impl Service {
     self.nats.media_upload_state.put(media_upload_state_key(&media_id), state).await?;
 
     Ok(())
+  }
+
+  pub async fn get_media_download_state(&self, media_id: &MediaId) -> Result<Option<MediaDownloadState>> {
+    Ok(self.nats.media_download_state.get(media_download_state_key(&media_id)).await?)
   }
 }

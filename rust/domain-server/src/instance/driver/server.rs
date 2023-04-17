@@ -14,22 +14,20 @@ use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
 use tracing::{error, info, warn};
 
-use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
-use api::instance::driver::requests::{
-  set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse, SetInstanceParametersRequest,
-};
+use api::instance::driver::events::InstanceDriverEvent;
+use api::instance::driver::requests::{SetInstanceParameter, SetInstanceParameterResponse, SetInstanceParametersRequest};
 use api::instance::spec::InstanceSpec;
-use api::instance::state::instance_connection_state_key;
 use api::instance::{InstanceConnectionState, InstancePowerState};
 
 use crate::instance::driver::scripting::ScriptingEngine;
-use crate::nats::{Nats, RequestStream, WatchStream};
+use crate::nats::{RequestStream, WatchStream};
+use crate::service::Service;
 
 use super::run_driver::{run_driver_server, InstanceDriverCommand};
 use super::Result;
 
 pub struct DriverService {
-  nats:                   Nats,
+  service:                Service,
   host:                   String,
   instances:              HashMap<String, InstanceDriver>,
   watch_instance_specs:   WatchStream<String, InstanceSpec>,
@@ -41,9 +39,9 @@ pub struct DriverService {
 }
 
 impl DriverService {
-  pub fn new(nats: Nats, scripting_engine: ScriptingEngine, host: String) -> Self {
-    let watch_instance_specs = nats.instance_spec.watch_all();
-    let watch_instance_power = nats.instance_power_state.watch_all();
+  pub fn new(service: Service, scripting_engine: ScriptingEngine, host: String) -> Self {
+    let watch_instance_specs = service.watch_all_instance_specs();
+    let watch_instance_power = service.watch_all_instance_power_states();
     let instance_driver_events = StreamMap::new();
     let set_parameter_req = StreamMap::new();
     let instances = HashMap::new();
@@ -51,7 +49,7 @@ impl DriverService {
                                            DashMapStateStore::new(),
                                            &QuantaClock::default());
 
-    Self { nats,
+    Self { service,
            host,
            instances,
            watch_instance_specs,
@@ -115,7 +113,7 @@ impl DriverService {
                                .map(|running| running.handle.is_finished() && running.received_connected)
                                .unwrap_or(false);
 
-      let nats = self.nats.clone();
+      let nats = self.service.clone();
       let instance_id = instance_id.clone();
 
       spawn(async move {
@@ -125,9 +123,7 @@ impl DriverService {
           InstanceConnectionState::Disconnected
         };
 
-        nats.instance_connection_state
-            .put(instance_connection_state_key(&instance_id), connection_state)
-            .await
+        nats.set_instance_connection_state(&instance_id, connection_state).await
       });
     }
   }
@@ -186,7 +182,7 @@ impl DriverService {
 
             self.instance_driver_events.insert(instance_id.clone(), ReceiverStream::new(rx_evt));
             self.set_parameter_req.insert(instance_id.clone(),
-                                          self.nats.serve_requests(set_instance_parameters_request(&instance_id)));
+                                          self.service.serve_set_instance_parameters_requests(&instance_id));
 
             driver.running = Some(RunningInstanceDriver { tx_cmd,
                                                           handle,
@@ -207,7 +203,7 @@ impl DriverService {
       | _ => {}
     }
 
-    if let Err(err) = self.nats.publish_event(instance_driver_events(&instance_id), event).await {
+    if let Err(err) = self.service.publish_instance_driver_event(&instance_id, event).await {
       error!(?err, "Failed to publish driver event: {err}");
     }
   }
@@ -223,10 +219,7 @@ impl DriverService {
       running.received_connected = connected;
     }
 
-    let _ = self.nats
-                .instance_connection_state
-                .put(instance_connection_state_key(&instance_id), connection_state)
-                .await;
+    let _ = self.service.set_instance_connection_state(&instance_id, connection_state).await;
   }
 
   fn handle_set_parameter_request(&self,
