@@ -52,6 +52,9 @@ features = ["json", "stream", "deflate", "brotli", "gzip", "rustls-tls"]
 [dependencies.async-nats]
 git = "https://github.com/nats-io/nats.rs"
 
+[dependencies.flume]
+git = "https://github.com/zesterer/flume"
+
 [dependencies.clap]
 version = "4"
 features = ["color", "derive", "env"]

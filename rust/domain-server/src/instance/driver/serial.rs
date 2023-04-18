@@ -7,12 +7,10 @@ use std::time::{Duration, Instant};
 use anyhow::anyhow;
 use byteorder::ReadBytesExt;
 use chrono::Utc;
-use futures::channel::{mpsc, oneshot};
 use futures::SinkExt;
 use regex::Regex;
 use serde_json::json;
 use serialport::{available_ports, FlowControl, SerialPort, SerialPortType};
-use tokio::spawn;
 use tracing::{debug, warn};
 
 use api::instance::driver::config::serial::{SerialDriverConfig, SerialFlowControl, SerialReportConfig, SerialReportMatcher};
@@ -31,7 +29,7 @@ pub struct SerialDriver {
   config:      SerialDriverConfig,
   port:        Box<dyn SerialPort>,
   changes:     HashMap<(String, usize), f64>,
-  notify_done: Vec<oneshot::Sender<SetInstanceParameterResponse>>,
+  notify_done: Vec<flume::Sender<SetInstanceParameterResponse>>,
   scripting:   ScriptingEngine,
   regex_cache: HashMap<String, Regex>,
 }
@@ -112,7 +110,7 @@ impl SerialDriver {
 
   fn set_parameters(&mut self,
                     parameters: SetInstanceParametersRequest,
-                    notify: oneshot::Sender<SetInstanceParameterResponse>)
+                    notify: flume::Sender<SetInstanceParameterResponse>)
                     -> Result<()> {
     for parameter in parameters.changes {
       let SetInstanceParameter { parameter, channel, value } = parameter;
@@ -268,8 +266,8 @@ fn handle_line_with_pattern(instance_id: &str,
 
 pub async fn run_serial_driver(instance_id: String,
                                config: SerialDriverConfig,
-                               rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                               tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                               rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                               tx_evt: flume::Sender<InstanceDriverEvent>,
                                scripting_engine: ScriptingEngine)
                                -> Result {
   let handle = async_thread::spawn(move || run_serial_driver_sync(instance_id, config, rx_cmd, tx_evt, scripting_engine));
@@ -282,26 +280,22 @@ pub async fn run_serial_driver(instance_id: String,
 
 fn run_serial_driver_sync(instance_id: String,
                           config: SerialDriverConfig,
-                          mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                          mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                          mut rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                          mut tx_evt: flume::Sender<InstanceDriverEvent>,
                           scripting_engine: ScriptingEngine)
                           -> Result {
   let mut driver = SerialDriver::new(&instance_id, config.clone(), scripting_engine.clone())?;
-  spawn({
-    let mut tx_evt = tx_evt.clone();
-    async move { tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await }
-  });
+  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true });
 
   loop {
     let mut start = Instant::now();
 
-    // TODO: fix this
-    // while let Ok(cmd) = rx_cmd.() {
-    //   match cmd {
-    //     | InstanceDriverCommand::SetParameters(parameters, tx_one) => driver.set_parameters(parameters, tx_one)?,
-    //     | InstanceDriverCommand::Terminate => return Ok(()),
-    //   }
-    // }
+    while let Ok(cmd) = rx_cmd.try_recv() {
+      match cmd {
+        | InstanceDriverCommand::SetParameters(parameters, tx_one) => driver.set_parameters(parameters, tx_one)?,
+        | InstanceDriverCommand::Terminate => return Ok(()),
+      }
+    }
 
     match driver.poll(Instant::now() + Duration::from_millis(25)) {
       | Ok(events) =>

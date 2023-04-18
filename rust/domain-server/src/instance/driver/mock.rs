@@ -1,5 +1,4 @@
-use futures::channel::mpsc;
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use tracing::{debug, trace};
 
 use api::instance::driver::events::InstanceDriverEvent;
@@ -13,20 +12,20 @@ use super::Result;
 // TODO: in the future we will use the scripting engine
 
 pub async fn run_mock_driver(_instance_id: String,
-                             mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                             mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                             rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                             tx_evt: flume::Sender<InstanceDriverEvent>,
                              _scripting_engine: ScriptingEngine)
                              -> Result {
-  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
+  let _ = tx_evt.send_async(InstanceDriverEvent::Connected { connected: true }).await;
 
-  while let Some(cmd) = rx_cmd.next().await {
+  while let Ok(cmd) = rx_cmd.recv_async().await {
     match cmd {
       | InstanceDriverCommand::SetParameters(params, ok) => {
         for change in params.changes {
           trace!(channel = change.channel, value = change.value, "Set");
         }
 
-        let _ = ok.send(SetInstanceParameterResponse::Success);
+        let _ = ok.send_async(SetInstanceParameterResponse::Success).await;
       }
       | InstanceDriverCommand::Terminate => {
         debug!("Terminate");

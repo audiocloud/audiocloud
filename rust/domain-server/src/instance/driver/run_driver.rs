@@ -1,5 +1,4 @@
 use anyhow::bail;
-use futures::channel::{mpsc, oneshot};
 use tracing::instrument;
 
 use api::instance::driver::config::InstanceDriverConfig;
@@ -16,7 +15,7 @@ use super::Result;
 
 #[derive(Debug)]
 pub enum InstanceDriverCommand {
-  SetParameters(SetInstanceParametersRequest, oneshot::Sender<SetInstanceParameterResponse>),
+  SetParameters(SetInstanceParametersRequest, flume::Sender<SetInstanceParameterResponse>),
   Terminate,
 }
 
@@ -24,8 +23,8 @@ pub enum InstanceDriverCommand {
 pub async fn run_driver_server(instance_id: String,
                                config: InstanceDriverConfig,
                                scripting_engine: ScriptingEngine,
-                               rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                               tx_evt: mpsc::Sender<InstanceDriverEvent>)
+                               rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                               tx_evt: flume::Sender<InstanceDriverEvent>)
                                -> Result {
   match config {
     | InstanceDriverConfig::USBHID(usb_hid) => {
