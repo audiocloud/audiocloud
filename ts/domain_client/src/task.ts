@@ -55,6 +55,9 @@ export type InstanceAllocationRequest = z.infer<
   ReturnType<typeof InstanceAllocationRequest>
 >;
 
+export const MediaId = memoizeOne(() => z.string());
+export type MediaId = z.infer<ReturnType<typeof MediaId>>;
+
 export const MidSideMode = memoizeOne(() =>
   z.enum(["encodeToMidSide", "decodeToLeftRight"])
 );
@@ -80,7 +83,7 @@ export type OutputId = z.infer<ReturnType<typeof OutputId>>;
 
 export const SourceSpec = memoizeOne(() =>
   z.object({
-    mediaId: z.string(),
+    mediaId: z.lazy(MediaId),
     numChannels: z.number().int(),
     sourceUrl: z.string(),
     startAt: z.number().int(),

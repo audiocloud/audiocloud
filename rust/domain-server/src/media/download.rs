@@ -9,7 +9,8 @@ use sha2::Digest;
 use tempfile::NamedTempFile;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
-use tokio::sync::mpsc::Sender;
+use futures::channel::mpsc;
+use futures::SinkExt;
 use tokio::task::{block_in_place, spawn_blocking};
 
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaSpec};
@@ -23,7 +24,7 @@ pub async fn download_file(id: MediaId,
                            spec: MediaDownloadSpec,
                            media_root: PathBuf,
                            native_sample_rate: u32,
-                           sender: Sender<InternalEvent>)
+                           mut sender: mpsc::Sender<InternalEvent>)
                            -> Result<MediaSpec> {
   // create a temp file
   let mut temp_file = block_in_place(|| NamedTempFile::new())?;

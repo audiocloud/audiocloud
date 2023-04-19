@@ -7,10 +7,8 @@ use governor::middleware::NoOpMiddleware;
 use governor::state::keyed::DashMapStateStore;
 use governor::{Quota, RateLimiter};
 use nonzero_ext::nonzero;
-use tokio::sync::{mpsc, oneshot};
 use tokio::task::JoinHandle;
 use tokio::{select, spawn};
-use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamMap;
 use tracing::{error, info, warn};
 
@@ -19,6 +17,7 @@ use api::instance::driver::requests::{SetInstanceParameter, SetInstanceParameter
 use api::instance::spec::InstanceSpec;
 use api::instance::{InstanceConnectionState, InstancePowerState};
 
+use crate::instance::driver::flume_utils::{flume_stream, from_oneshot, FlumeStream};
 use crate::instance::driver::scripting::ScriptingEngine;
 use crate::nats::{RequestStream, WatchStream};
 use crate::service::Service;
@@ -32,7 +31,7 @@ pub struct DriverService {
   instances:              HashMap<String, InstanceDriver>,
   watch_instance_specs:   WatchStream<String, InstanceSpec>,
   watch_instance_power:   WatchStream<String, InstancePowerState>,
-  instance_driver_events: StreamMap<String, ReceiverStream<InstanceDriverEvent>>,
+  instance_driver_events: StreamMap<String, FlumeStream<InstanceDriverEvent>>,
   set_parameter_req:      StreamMap<String, RequestStream<Vec<SetInstanceParameter>, SetInstanceParameterResponse>>,
   scripting_engine:       ScriptingEngine,
   respawn_limiter:        RateLimiter<String, DashMapStateStore<String>, QuantaClock, NoOpMiddleware>,
@@ -69,7 +68,7 @@ impl DriverService {
           self.handle_instance_driver_event(instance_id, event).await;
         },
         Some((instance_id, (_, request, response))) = self.set_parameter_req.next(), if !self.set_parameter_req.is_empty() => {
-          self.handle_set_parameter_request(instance_id, request, response);
+          self.handle_set_parameter_request(instance_id, request, from_oneshot(response));
         },
         Some((instance_id, maybe_new_spec)) = self.watch_instance_specs.next() => {
           self.handle_maybe_instance_spec(instance_id, maybe_new_spec).await;
@@ -168,8 +167,8 @@ impl DriverService {
           let can_respawn = can_respawn && self.respawn_limiter.check_key(&instance_id).is_ok();
 
           if can_respawn {
-            let (tx_cmd, rx_cmd) = mpsc::channel(0xff);
-            let (tx_evt, rx_evt) = mpsc::channel(0xff);
+            let (tx_cmd, rx_cmd) = flume::bounded(0xff);
+            let (tx_evt, rx_evt) = flume::bounded(0xff);
 
             let handle = spawn(run_driver_server(instance_id.clone(),
                                                  spec.driver.clone(),
@@ -180,7 +179,7 @@ impl DriverService {
             let received_connected = false;
             let terminate_requested = 0;
 
-            self.instance_driver_events.insert(instance_id.clone(), ReceiverStream::new(rx_evt));
+            self.instance_driver_events.insert(instance_id.clone(), flume_stream(rx_evt));
             self.set_parameter_req.insert(instance_id.clone(),
                                           self.service.serve_set_instance_parameters_requests(&instance_id));
 
@@ -222,13 +221,13 @@ impl DriverService {
     let _ = self.service.set_instance_connection_state(&instance_id, connection_state).await;
   }
 
-  fn handle_set_parameter_request(&self,
+  fn handle_set_parameter_request(&mut self,
                                   instance_id: String,
                                   changes: Vec<SetInstanceParameter>,
-                                  response: oneshot::Sender<SetInstanceParameterResponse>) {
+                                  response: flume::Sender<SetInstanceParameterResponse>) {
     if let Some(driver) = self.instances
-                              .get(&instance_id)
-                              .and_then(|instance_driver| instance_driver.running.as_ref())
+                              .get_mut(&instance_id)
+                              .and_then(|instance_driver| instance_driver.running.as_mut())
     {
       let _ = driver.tx_cmd
                     .try_send(InstanceDriverCommand::SetParameters(SetInstanceParametersRequest { instance_id, changes }, response));
@@ -247,7 +246,7 @@ struct InstanceDriver {
 }
 
 struct RunningInstanceDriver {
-  tx_cmd:              mpsc::Sender<InstanceDriverCommand>,
+  tx_cmd:              flume::Sender<InstanceDriverCommand>,
   handle:              JoinHandle<Result>,
   received_connected:  bool,
   terminate_requested: u32,

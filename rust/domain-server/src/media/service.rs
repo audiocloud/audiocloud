@@ -4,8 +4,8 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use chrono::Utc;
-use futures::StreamExt;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
+use futures::{SinkExt, StreamExt};
 use tokio::task::JoinHandle;
 use tokio::time::timeout;
 use tokio::{select, spawn};
@@ -62,7 +62,7 @@ impl MediaService {
         Some((media_id, maybe_upload_spec)) = self.watch_upload_specs.next() => {
             self.media_upload_spec_changed(media_id, maybe_upload_spec).await;
         },
-        Some(event) = self.rx_internal.recv() => {
+        Some(event) = self.rx_internal.next() => {
           let _ = self.internal_event(event).await;
         }
       }
@@ -107,7 +107,7 @@ impl MediaService {
     let state = MediaDownloadState::default();
 
     let task = spawn({
-      let tx_internal = self.tx_internal.clone();
+      let mut tx_internal = self.tx_internal.clone();
       let media_root = self.media_root.clone();
       let native_sample_rate = self.native_sample_rate;
       let media_id = media_id.clone();
@@ -160,7 +160,7 @@ impl MediaService {
     let state = MediaUploadState::default();
 
     let task = spawn({
-      let tx_internal = self.tx_internal.clone();
+      let mut tx_internal = self.tx_internal.clone();
       let media_root = self.media_root.clone();
       let media_id = media_id.clone();
 

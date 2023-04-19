@@ -1,17 +1,31 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use anyhow::anyhow;
+use futures::channel::mpsc;
+use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
-use tokio::sync::mpsc;
+use tokio::time::sleep;
 use tokio::{select, spawn};
+use tracing::warn;
 use webrtc::api::interceptor_registry::register_default_interceptors;
 use webrtc::api::media_engine::MediaEngine;
 use webrtc::api::{APIBuilder, API};
 use webrtc::data_channel::data_channel_init::RTCDataChannelInit;
+use webrtc::data_channel::RTCDataChannel;
 use webrtc::ice_transport::ice_candidate::RTCIceCandidateInit;
+use webrtc::ice_transport::ice_connection_state::RTCIceConnectionState;
 use webrtc::ice_transport::ice_server::RTCIceServer;
 use webrtc::interceptor::registry::Registry;
 use webrtc::peer_connection::configuration::RTCConfiguration;
 use webrtc::peer_connection::peer_connection_state::RTCPeerConnectionState;
 use webrtc::peer_connection::sdp::session_description::RTCSessionDescription;
+use webrtc::peer_connection::RTCPeerConnection;
+
+use api::rt::RtRequest;
+
+use crate::rt_socket::run_socket;
+use crate::service::Service;
 
 use super::Result;
 
@@ -43,6 +57,7 @@ lazy_static! {
 pub enum ToRtcSocket {
   IceCandidate(String),
   Accept(String),
+  Detach,
 }
 
 pub enum FromRtcSocket {
@@ -57,16 +72,16 @@ enum Internal {
   Message(bytes::Bytes),
 }
 
-fn new_rtc_socket() -> (mpsc::Sender<ToRtcSocket>, mpsc::Receiver<FromRtcSocket>) {
+pub fn new_rtc_socket(service: Service) -> (mpsc::Sender<ToRtcSocket>, mpsc::Receiver<FromRtcSocket>) {
   let (tx_to_rtc_socket, rx_to_rtc_socket) = mpsc::channel(0xff);
   let (tx_from_rtc_socket, rx_from_rtc_socket) = mpsc::channel(0xff);
 
-  spawn(rtc_socket(rx_to_rtc_socket, tx_from_rtc_socket));
+  spawn(rtc_socket(service, rx_to_rtc_socket, tx_from_rtc_socket));
 
   (tx_to_rtc_socket, rx_from_rtc_socket)
 }
 
-async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRtcSocket>) -> Result {
+async fn rtc_socket(service: Service, mut rx: mpsc::Receiver<ToRtcSocket>, mut tx: mpsc::Sender<FromRtcSocket>) -> Result {
   let (tx_internal, mut rx_internal) = mpsc::channel::<Internal>(0xff);
 
   let Ok(pc) = WEBRTC_API.new_peer_connection(default_peer_connection_configuration()).await else { return Err(anyhow!("Failed to create peer connection")) };
@@ -77,7 +92,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
       Box::new(move |candidate| {
         let candidate = serde_json::to_string(&candidate).unwrap();
 
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
         Box::pin(async move {
           let _ = tx_internal.send(Internal::IceCandidate(candidate)).await;
         })
@@ -88,7 +103,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
       let tx_internal = tx_internal.clone();
       Box::new(move |state| {
         let connected = matches!(&state, RTCPeerConnectionState::Connected);
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
 
         Box::pin(async move {
           let _ = tx_internal.send(Internal::ConnectionStateChanged(connected)).await;
@@ -99,7 +114,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
   dc.on_message({
       let tx_internal = tx_internal.clone();
       Box::new(move |msg| {
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
 
         Box::pin(async move {
           let _ = tx_internal.send(Internal::Message(msg.data)).await;
@@ -111,7 +126,7 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
 
   loop {
     select! {
-      Some(internal) = rx_internal.recv() => {
+      Some(internal) = rx_internal.next() => {
         match internal {
           | Internal::IceCandidate(candidate) => {
             tx.send(FromRtcSocket::IceCandidate(candidate)).await.map_err(|_| anyhow!("Failed to send ice candidate, web socket down?"))?;
@@ -125,11 +140,17 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
             }
           },
           | Internal::Message(message) => {
-            // TODO: implement me
+            // until we are detached, rq all messages
+            let mut tx_internal = tx_internal.clone();
+
+            spawn(async move {
+              let _ = sleep(Duration::from_millis(100));
+              let _ = tx_internal.send(Internal::Message(message)).await;
+            });
           }
         }
       },
-      Some(rx) = rx.recv(), if !upstream_informed => {
+      Some(rx) = rx.next(), if !upstream_informed => {
         match rx {
           | ToRtcSocket::Accept(response) => {
             let response = serde_json::from_str::<RTCSessionDescription>(&response)?;
@@ -139,12 +160,52 @@ async fn rtc_socket(mut rx: mpsc::Receiver<ToRtcSocket>, tx: mpsc::Sender<FromRt
             let candidate  = serde_json::from_str::<RTCIceCandidateInit>(&candidate)?;
             pc.add_ice_candidate(candidate).await?;
           }
+          | ToRtcSocket::Detach => {
+            // detach
+            spawn(detached_socket(service, pc, dc, rx_internal));
+
+            break;
+          }
         }
       }
     }
   }
 
   Ok(())
+}
+
+async fn detached_socket(service: Service, pc: RTCPeerConnection, dc: Arc<RTCDataChannel>, mut rx_internal: mpsc::Receiver<Internal>) {
+  let (tx_rt_evt, mut rx_rt_evt) = mpsc::channel(0xff);
+  let (mut tx_rt_cmd, rx_rt_cmd) = mpsc::channel(0xff);
+
+  spawn(run_socket(service, rx_rt_cmd, tx_rt_evt));
+
+  while pc.ice_connection_state() == RTCIceConnectionState::Checking {
+    select! {
+      Some(evt) = rx_rt_evt.next() => {
+        let Ok(msg) = rmp_serde::to_vec_named(&evt) else { continue };
+        if let Err(err) = dc.send(&bytes::Bytes::from(msg)).await {
+          warn!(?err, "Failed to send message to peer: {err}");
+          break;
+        }
+      },
+      Some(evt) = rx_internal.next() => {
+        match evt {
+          | Internal::IceCandidate(_) => {},
+          | Internal::ConnectionStateChanged(connected) => {
+            if !connected {
+              break;
+            }
+          },
+          | Internal::Message(message) => {
+            let Ok(decoded) = rmp_serde::decode::from_slice::<RtRequest>(&message) else { continue };
+            let _ = tx_rt_cmd.send(decoded).await;
+          },
+        }
+      },
+      _ = sleep(Duration::from_secs(1)) => {}
+    }
+  }
 }
 
 fn default_peer_connection_configuration() -> RTCConfiguration {

@@ -7,5 +7,6 @@ pub mod serial;
 pub mod server;
 pub mod usb_hid;
 pub mod osc;
+pub mod flume_utils;
 
 pub type Result<T = ()> = super::Result<T>;

@@ -333,6 +333,12 @@ export const RtCommand = memoizeOne(() =>
       instanceId: z.string(),
       type: z.literal("unsubscribeFromInstanceEvents"),
     }),
+    z.object({ type: z.literal("createPeerConnection") }),
+    z.object({ offer: z.string(), type: z.literal("acceptPeerConnection") }),
+    z.object({
+      candidate: z.string(),
+      type: z.literal("offerPeerConnectionCandidate"),
+    }),
   ])
 );
 export type RtCommand = z.infer<ReturnType<typeof RtCommand>>;
@@ -373,6 +379,11 @@ export const RtEvent = memoizeOne(() =>
       requestId: z.string(),
       success: z.boolean(),
       type: z.literal("unsubscribeFromInstanceEvents"),
+    }),
+    z.object({ offer: z.string(), type: z.literal("offerPeerConnection") }),
+    z.object({
+      candidate: z.string(),
+      type: z.literal("offerPeerConnectionCandidate"),
     }),
   ])
 );

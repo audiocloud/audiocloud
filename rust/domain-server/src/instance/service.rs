@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use chrono::Utc;
+use futures::channel::mpsc;
 use futures::future::join_all;
-use tokio::sync::mpsc;
+use futures::{SinkExt, StreamExt};
 use tokio::time::Interval;
 use tokio::{select, spawn, time};
-use tokio_stream::{StreamExt, StreamMap};
+use tokio_stream::StreamMap;
 use tracing::{error, instrument, trace};
 
 use api::instance::control::{InstancePlayControl, InstancePowerControl};
@@ -74,7 +75,7 @@ impl InstanceService {
         Some((_, (instance_id, event))) = self.media_instance_events.next() => {
           self.media_instance_event(instance_id, event).await;
         },
-        Some(internal_update) = self.rx_internal.recv() => {
+        Some(internal_update) = self.rx_internal.next() => {
           self.internal_update(internal_update).await;
         }
         _ = self.timer.tick() => {
@@ -253,7 +254,7 @@ impl Instance {
         let desired = self.power_request.get_desired();
         let instance_id = id.to_owned();
 
-        let tx_internal = tx_internal.clone();
+        let mut tx_internal = tx_internal.clone();
         let service = service.clone();
 
         spawn(async move {

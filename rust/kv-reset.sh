@@ -5,6 +5,6 @@ set -o nounset
 set -o pipefail
 set -o xtrace
 
-export NATS_URL=10.1.0.10:4222
+export NATS_URL=${NATS_URL:-10.1.0.10:4222}
 
-./target/debug/ac --nats-url=${NATS_URL} kv reset
+cargo run --bin ac -- kv reset

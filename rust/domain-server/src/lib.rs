@@ -6,7 +6,8 @@ pub mod rest_api;
 pub mod rtc_socket;
 pub mod service;
 pub mod tasks;
-mod ws_socket;
+pub mod ws_socket;
+pub mod rt_socket;
 
 pub type Result<T = ()> = anyhow::Result<T>;
 

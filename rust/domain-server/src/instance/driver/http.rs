@@ -1,16 +1,17 @@
 use std::str::FromStr;
 
+use futures::StreamExt;
 use lazy_static::lazy_static;
-use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::{Body, Url};
+use reqwest::header::{HeaderName, HeaderValue};
 use serde_json::json;
-use tokio::sync::mpsc;
 use tracing::warn;
 
 use api::instance::driver::config::http::HttpDriverConfig;
 use api::instance::driver::config::http::HttpMethod;
 use api::instance::driver::events::InstanceDriverEvent;
 use api::instance::driver::requests::SetInstanceParameterResponse;
+use api::instance::driver::requests::SetInstanceParameterResponse::EncodingError;
 
 use crate::instance::driver::run_driver::InstanceDriverCommand;
 use crate::instance::Result;
@@ -23,16 +24,19 @@ lazy_static! {
 
 pub async fn run_http_driver(instance_id: String,
                              config: HttpDriverConfig,
-                             mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                             tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                             rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                             tx_evt: flume::Sender<InstanceDriverEvent>,
                              scripting_engine: ScriptingEngine)
                              -> Result {
-  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
+  use SetInstanceParameterResponse::*;
 
-  while let Some(cmd) = rx_cmd.recv().await {
+  let _ = tx_evt.send_async(InstanceDriverEvent::Connected { connected: true }).await;
+
+  while let Ok(cmd) = rx_cmd.recv_async().await {
     match cmd {
       | InstanceDriverCommand::SetParameters(parameters, tx_done) => {
         let base_url = &config.base_url;
+        let mut error = None;
 
         for p in parameters.changes {
           let Some(parameter_config) = config.parameters.get(&p.parameter) else { continue; };
@@ -71,8 +75,10 @@ pub async fn run_http_driver(instance_id: String,
           }
 
           for (header, value) in &parameter_config.headers {
-            let Ok(value) = HeaderValue::from_str(value) else { continue; };
-            request.headers_mut().insert(HeaderName::from_str(header.as_str())?, value);
+            let Ok(value) = HeaderValue::from_str(value) else { error = Some(EncodingError); continue };
+            let Ok(name) = HeaderName::from_str(header.as_str()) else { error = Some(EncodingError); continue };
+
+            request.headers_mut().insert(name, value);
           }
 
           if let Err(err) = HTTP_CLIENT.execute(request).await {
@@ -80,9 +86,9 @@ pub async fn run_http_driver(instance_id: String,
           }
         }
 
-        let _ = tx_done.send(SetInstanceParameterResponse::Success);
+        let _ = tx_done.send_async(error.unwrap_or(Success)).await;
       }
-      | InstanceDriverCommand::Terminate => return Ok(()),
+      | InstanceDriverCommand::Terminate => break,
     }
   }
 

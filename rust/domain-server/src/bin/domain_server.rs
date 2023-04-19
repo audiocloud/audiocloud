@@ -5,10 +5,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use axum::Router;
 use clap::Parser;
-use futures::FutureExt;
+use futures::{FutureExt, SinkExt, StreamExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use tokio::sync::mpsc;
+use futures::channel::mpsc;
 use tokio::{select, spawn};
 use tower_http::cors;
 use tower_http::services::ServeDir;
@@ -102,7 +102,7 @@ async fn main() -> Result {
 
   let create_instance_drivers = || {
     if args.enable_instance_drivers {
-      let tx_internal = tx_internal.clone();
+      let mut tx_internal = tx_internal.clone();
       info!("Starting instance driver service: {}", args.driver_host_name);
       let service = domain_server::instance::driver::server::DriverService::new(service.clone(),
                                                                                 scripting_engine.clone(),
@@ -117,7 +117,7 @@ async fn main() -> Result {
 
   let create_instances = || {
     if args.enable_instances {
-      let tx_internal = tx_internal.clone();
+      let mut tx_internal = tx_internal.clone();
       info!("Starting instances service");
       let service = domain_server::instance::service::InstanceService::new(service.clone());
       spawn(service.run().then(|res| async move {
@@ -131,7 +131,7 @@ async fn main() -> Result {
 
   let create_tasks = || {
     if args.enable_tasks {
-      let tx_internal = tx_internal.clone();
+      let mut tx_internal = tx_internal.clone();
       spawn(async move {
               error!("Tasks service is not yet implemented");
               Err::<(), _>(anyhow!("Tasks service is not yet implemented"))
@@ -147,7 +147,7 @@ async fn main() -> Result {
     if args.enable_media {
       let service = service.clone();
       let args = args.clone();
-      let tx_internal = tx_internal.clone();
+      let mut tx_internal = tx_internal.clone();
       spawn(async move {
               info!("Starting media service");
               MediaService::new(service.clone(), args.media_root.clone(), args.native_sample_rate).run()
@@ -164,7 +164,7 @@ async fn main() -> Result {
     if args.enable_api {
       let service = service.clone();
       let bind = args.rest_api_bind;
-      let tx_internal = tx_internal.clone();
+      let mut tx_internal = tx_internal.clone();
       info!("REST API listening on {bind}");
       spawn(async move {
               let router = router.layer(cors::CorsLayer::permissive())
@@ -187,7 +187,7 @@ async fn main() -> Result {
   create_rest_api();
 
   spawn({
-    let tx_internal = tx_internal.clone();
+    let mut tx_internal = tx_internal.clone();
 
     async move {
       let _ = scripting_handle.join().await;
@@ -197,10 +197,10 @@ async fn main() -> Result {
 
   loop {
     select! {
-      Some(internal) = rx_internal.recv() => {
+      Some(internal) = rx_internal.next() => {
         match internal {
           InstanceDriversFinished => {
-            let tx_internal = tx_internal.clone();
+            let mut tx_internal = tx_internal.clone();
             let instance_drivers_respawn_limit = instance_drivers_respawn_limit.clone();
             spawn(async move {
               let _ = instance_drivers_respawn_limit.until_ready().await;
@@ -208,7 +208,7 @@ async fn main() -> Result {
             });
           },
           InstancesFinished => {
-            let tx_internal = tx_internal.clone();
+            let mut tx_internal = tx_internal.clone();
             let instances_respawn_limit = instances_respawn_limit.clone();
             spawn(async move {
               let _ = instances_respawn_limit.until_ready().await;
@@ -216,7 +216,7 @@ async fn main() -> Result {
             });
           },
           TasksFinished => {
-            let tx_internal = tx_internal.clone();
+            let mut tx_internal = tx_internal.clone();
             let tasks_respawn_limit = tasks_respawn_limit.clone();
             spawn(async move {
               let _ = tasks_respawn_limit.until_ready().await;
@@ -224,7 +224,7 @@ async fn main() -> Result {
             });
           },
           MediaFinished => {
-            let tx_internal = tx_internal.clone();
+            let mut tx_internal = tx_internal.clone();
             let media_respawn_limit = media_respawn_limit.clone();
             spawn(async move {
               let _ = media_respawn_limit.until_ready().await;
