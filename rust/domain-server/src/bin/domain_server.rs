@@ -5,10 +5,10 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use axum::Router;
 use clap::Parser;
+use futures::channel::mpsc;
 use futures::{FutureExt, SinkExt, StreamExt};
 use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
-use futures::channel::mpsc;
 use tokio::{select, spawn};
 use tower_http::cors;
 use tower_http::services::ServeDir;
@@ -98,7 +98,7 @@ async fn main() -> Result {
 
   let (tx_internal, mut rx_internal) = mpsc::channel(0xff);
 
-  let (scripting_engine, mut scripting_handle) = new_scripting_engine();
+  let (scripting_engine, scripting_handle) = new_scripting_engine();
 
   let create_instance_drivers = || {
     if args.enable_instance_drivers {
@@ -191,7 +191,7 @@ async fn main() -> Result {
 
     async move {
       let _ = scripting_handle.join().await;
-      let _ = tx_internal.send(InternalEvent::ScriptingFinished).await;
+      let _ = tx_internal.send(ScriptingFinished).await;
     }
   });
 

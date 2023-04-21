@@ -34,7 +34,7 @@ pub async fn run_osc_driver(instance_id: String,
   }
 }
 
-async fn run_tcp_osc_driver(instance_id: String,
+async fn run_tcp_osc_driver(_instance_id: String,
                             config: OscDriverConfig,
                             mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
                             mut tx_evt: mpsc::Sender<InstanceDriverEvent>,

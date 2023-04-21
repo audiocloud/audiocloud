@@ -71,11 +71,7 @@ pub struct TaskEvent {
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum DesiredTaskPlayState {
   Idle,
-  Play {
-    play_id: PlayId,
-    from:    f64,
-    to:      f64, // TODO: more..
-  },
+  Play { play_id: PlayId, from: f64, to: f64 },
 }
 
 impl Default for DesiredTaskPlayState {

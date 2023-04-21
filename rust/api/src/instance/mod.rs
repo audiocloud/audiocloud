@@ -6,6 +6,7 @@ use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
 use crate::task::spec::PlayId;
+use crate::task::DesiredTaskPlayState;
 use crate::Timestamp;
 
 pub mod control;
@@ -155,6 +156,16 @@ pub enum InstancePlayState {
   Playing { play_id: PlayId, duration: f64 },
 }
 
+impl From<DesiredTaskPlayState> for InstancePlayState {
+  fn from(value: DesiredTaskPlayState) -> Self {
+    match value {
+      | DesiredTaskPlayState::Idle => Self::Idle,
+      | DesiredTaskPlayState::Play { play_id, from, to } => Self::Playing { play_id,
+                                                                            duration: to - from },
+    }
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum InstancePlayStateTransition {
@@ -175,6 +186,16 @@ impl Default for InstancePlayState {
 pub enum DesiredInstancePlayState {
   Stop,
   Play { play_id: PlayId, duration: f64 },
+}
+
+impl From<DesiredTaskPlayState> for DesiredInstancePlayState {
+  fn from(value: DesiredTaskPlayState) -> Self {
+    match value {
+      | DesiredTaskPlayState::Idle => Self::Stop,
+      | DesiredTaskPlayState::Play { play_id, from, to } => Self::Play { play_id,
+                                                                         duration: to - from },
+    }
+  }
 }
 
 impl Default for DesiredInstancePlayState {

@@ -1,6 +1,4 @@
-
-
-use crate::nats::{Nats, WatchStream};
+use crate::nats::Nats;
 
 pub mod instance;
 pub mod media;

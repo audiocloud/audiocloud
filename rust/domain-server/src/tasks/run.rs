@@ -2,21 +2,23 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use chrono::Utc;
+use futures::channel::mpsc;
 use futures::StreamExt;
 use tokio::select;
-use futures::channel::mpsc;
 use tokio::time::Interval;
 use tokio_stream::StreamMap;
 use tracing::{debug, instrument};
 
+use api::instance::control::{InstancePlayControl, InstancePowerControl};
 use api::instance::spec::{instance_spec_key, InstanceSpec};
 use api::instance::state::{instance_connection_state_key, instance_play_state_key, instance_power_state_key};
-use api::instance::{InstanceConnectionState, InstancePlayState, InstancePowerState};
+use api::instance::{DesiredInstancePlayState, DesiredInstancePowerState, InstanceConnectionState, InstancePlayState, InstancePowerState};
 use api::media::spec::MediaId;
 use api::media::state::{media_download_state_key, MediaDownloadState};
 use api::task::buckets::{task_control_key, task_spec_key};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
+use api::BucketKey;
 use async_audio_engine::GraphPlayer;
 
 use crate::nats::{Nats, WatchStream, WatchStreamMap};
@@ -92,36 +94,36 @@ impl RunDomainTask {
     while Utc::now() < self.spec.to {
       select! {
         Some((instance_id, (_, maybe_instance_spec_update))) = self.watch_instance_specs.next(), if !self.watch_instance_specs.is_empty() => {
-          self.instance_spec_updated(instance_id, maybe_instance_spec_update);
+          self.instance_spec_updated(instance_id, maybe_instance_spec_update).await;
         },
         Some((instance_id, (_, maybe_instance_power_state_update))) = self.watch_instance_power_states.next(), if !self.watch_instance_power_states.is_empty() => {
-          self.instance_power_state_updated(instance_id, maybe_instance_power_state_update);
+          self.instance_power_state_updated(instance_id, maybe_instance_power_state_update).await;
         },
         Some((instance_id, (_, maybe_instance_connection_state_update))) = self.watch_instance_connection_state.next(), if !self.watch_instance_connection_state.is_empty() => {
-          self.instance_connection_state_updated(instance_id, maybe_instance_connection_state_update);
+          self.instance_connection_state_updated(instance_id, maybe_instance_connection_state_update).await;
         },
         Some((instance_id, (_, maybe_instance_play_state_update))) = self.watch_instance_play_states.next(), if !self.watch_instance_play_states.is_empty() => {
-          self.instance_play_state_updated(instance_id, maybe_instance_play_state_update);
+          self.instance_play_state_updated(instance_id, maybe_instance_play_state_update).await;
         },
         Some((media_id, (_, maybe_download_state_update))) = self.watch_download_states.next(), if !self.watch_download_states.is_empty() => {
-          self.download_state_updated(media_id, maybe_download_state_update);
+          self.download_state_updated(media_id, maybe_download_state_update).await;
         },
         Some((_, maybe_new_spec)) = self.watch_spec.next() => {
           if let Some(new_spec) = maybe_new_spec {
-            self.set_spec(new_spec);
+            self.set_spec(new_spec).await;
           } else {
             // we are done, go..
             break;
           }
         },
         Some((_, maybe_new_control)) = self.watch_control.next() => {
-          self.set_desired_play_state(maybe_new_control);
+          self.set_desired_play_state(maybe_new_control).await;
         },
         Some(external_task) = self.rx_external.next() => {
           self.external_task_completed(external_task);
         },
         _ = self.timer.tick() => {
-          self.timer_tick();
+          self.timer_tick().await;
         }
       }
     }
@@ -133,17 +135,25 @@ impl RunDomainTask {
     Ok(())
   }
 
-  fn set_spec(&mut self, new_spec: TaskSpec) {
+  async fn set_spec(&mut self, new_spec: TaskSpec) {
     if &self.spec == &new_spec {
       return;
     }
 
     self.resubscribe_instances();
     self.resubscribe_media();
+
+    for instance in self.instances.values_mut() {
+      instance.play_control = None;
+      instance.power_control = None;
+    }
+
+    self.update_instance_power_play_state().await;
   }
 
-  fn set_desired_play_state(&mut self, new_control: Option<DesiredTaskPlayState>) {
-    let new_control = new_control.unwrap_or_default();
+  async fn set_desired_play_state(&mut self, new_control: Option<DesiredTaskPlayState>) {
+    self.desired_play_state = new_control.unwrap_or_default();
+    self.update_instance_power_play_state().await;
   }
 
   fn resubscribe_instances(&mut self) {
@@ -198,47 +208,100 @@ impl RunDomainTask {
     }
   }
 
-  fn instance_spec_updated(&mut self, instance_id: String, spec: Option<InstanceSpec>) {
+  async fn instance_spec_updated(&mut self, instance_id: String, spec: Option<InstanceSpec>) {
     self.instances.entry(instance_id).or_default().spec = spec;
 
-    self.update_play_state();
+    self.update_instance_power_play_state().await;
   }
 
-  fn instance_power_state_updated(&mut self, instance_id: String, spec: Option<InstancePowerState>) {
+  async fn instance_power_state_updated(&mut self, instance_id: String, spec: Option<InstancePowerState>) {
     self.instances.entry(instance_id).or_default().power_state = spec;
 
-    self.update_play_state();
+    self.update_instance_power_play_state().await;
   }
 
-  fn instance_connection_state_updated(&mut self, instance_id: String, spec: Option<InstanceConnectionState>) {
+  async fn instance_connection_state_updated(&mut self, instance_id: String, spec: Option<InstanceConnectionState>) {
     self.instances.entry(instance_id).or_default().connection_state = spec;
 
-    self.update_play_state();
+    self.update_instance_power_play_state().await;
   }
 
-  fn instance_play_state_updated(&mut self, instance_id: String, spec: Option<InstancePlayState>) {
+  async fn instance_play_state_updated(&mut self, instance_id: String, spec: Option<InstancePlayState>) {
     self.instances.entry(instance_id).or_default().play_state = spec;
 
-    self.update_play_state();
+    self.update_instance_power_play_state().await;
   }
 
-  fn download_state_updated(&mut self, media_id: MediaId, state: Option<MediaDownloadState>) {
+  async fn download_state_updated(&mut self, media_id: MediaId, state: Option<MediaDownloadState>) {
     self.media.entry(media_id).or_default().state = state;
 
-    self.update_play_state();
+    self.update_instance_power_play_state().await;
   }
 
   fn external_task_completed(&mut self, external: ExternalTask) {
     match external {}
   }
 
-  fn update_play_state(&mut self) {
+  async fn propagate_instance_power_control(&mut self) {
+    let desired = DesiredInstancePowerState::On;
+
+    for (instance_id, instance) in &mut self.instances {
+      let Some(spec) = instance.spec.as_ref() else { continue };
+      let Some(_) = spec.power.as_ref() else { continue }; // only interested in instances with media spec
+
+      if instance.power_control
+                 .as_ref()
+                 .map(|power_control| &power_control.desired != &desired)
+                 .unwrap_or(true)
+      {
+        let control = InstancePowerControl { desired: desired.clone(),
+                                             until:   self.spec.to, };
+
+        let _ = self.nats
+                    .instance_power_ctrl
+                    .put(BucketKey::new(instance_id), control.clone())
+                    .await;
+
+        instance.power_control = Some(control);
+      }
+    }
+  }
+
+  async fn propagate_instance_play_control(&mut self) {
+    let desired = DesiredInstancePlayState::from(self.desired_play_state.clone());
+
+    for (instance_id, instance) in &mut self.instances {
+      let Some(spec) = instance.spec.as_ref() else { continue };
+      let Some(_) = spec.media.as_ref() else { continue }; // only interested in instances with media spec
+
+      if instance.play_control
+                 .as_ref()
+                 .map(|play_control| &play_control.desired != &desired)
+                 .unwrap_or(true)
+      {
+        let control = InstancePlayControl { desired: desired.clone(),
+                                            until:   self.spec.to, };
+
+        let _ = self.nats.instance_play_ctrl.put(BucketKey::new(instance_id), control.clone()).await;
+
+        instance.play_control = Some(control);
+      }
+    }
+  }
+
+  async fn update_instance_power_play_state(&mut self) {
     let should_play = self.desired_play_state.is_playing();
     let is_playing = self.player.is_some();
 
     let (missing_instances, unready_instances) = self.get_missing_or_unready_instances();
     let (missing_media, unready_media) = self.get_missing_or_unready_media();
     let is_ready = missing_instances.is_empty() && unready_instances.is_empty() && missing_media.is_empty() && unready_media.is_empty();
+
+    // we are OK, we can propagate
+    if missing_instances.is_empty() {
+      self.propagate_instance_power_control().await;
+      self.propagate_instance_play_control().await;
+    }
 
     if should_play && is_ready {
       if !is_playing {
@@ -279,44 +342,25 @@ impl RunDomainTask {
         continue;
       }
 
-      if spec.media.is_some() {
-        let power_state = match instance.power_state.as_ref() {
-          | None =>
-            if spec.power.is_some() {
-              unready_instances.insert(instance_id.clone());
-              continue;
-            } else {
-              &InstancePowerState::On
-            },
-          | Some(state) => state,
-        };
-
-        if !power_state.is_on() {
-          unready_instances.insert(instance_id.clone());
-          continue;
-        }
-
-        let play_state = match instance.play_state.as_ref() {
-          | None => {
-            if spec.media.is_some() {
-              unready_instances.insert(instance_id.clone());
-            }
+      if spec.power.is_some() {
+        match (instance.power_control.as_ref(), instance.power_state.as_ref()) {
+          | (Some(power_control), Some(power_state)) if power_state == &power_control.desired => {}
+          | (None, None) => {}
+          | _ => {
+            unready_instances.insert(instance_id.clone());
             continue;
           }
-          | Some(state) => state,
-        };
+        }
+      }
 
-        match &self.desired_play_state {
-          | DesiredTaskPlayState::Idle =>
-            if play_state != &InstancePlayState::Idle {
-              unready_instances.insert(instance_id.clone());
-            },
-          | DesiredTaskPlayState::Play { play_id, .. } => match play_state {
-            | InstancePlayState::Playing { play_id: instance_play_id, .. } if play_id == instance_play_id => {}
-            | _ => {
-              unready_instances.insert(instance_id.clone());
-            }
-          },
+      if spec.media.is_some() {
+        match (instance.play_control.as_ref(), instance.play_state.as_ref()) {
+          | (Some(play_control), Some(play_state)) if play_state == &play_control.desired => {}
+          | (None, None) => {}
+          | _ => {
+            unready_instances.insert(instance_id.clone());
+            continue;
+          }
         }
       }
     }
@@ -359,7 +403,9 @@ impl RunDomainTask {
     }
   }
 
-  fn timer_tick(&mut self) {}
+  async fn timer_tick(&mut self) {
+    self.update_instance_power_play_state().await;
+  }
 }
 
 #[derive(Default)]
@@ -368,6 +414,8 @@ struct TaskInstance {
   connection_state: Option<InstanceConnectionState>,
   power_state:      Option<InstancePowerState>,
   play_state:       Option<InstancePlayState>,
+  power_control:    Option<InstancePowerControl>,
+  play_control:     Option<InstancePlayControl>,
 }
 
 #[derive(Default)]
