@@ -38,7 +38,6 @@ sha2 = "0.10"
 tempfile = "3"
 hex = "0.4"
 tokio-util = "0.7"
-webrtc = "0.7"
 
 [dependencies.boa_engine]
 version = "0.16"

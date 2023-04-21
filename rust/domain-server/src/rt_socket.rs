@@ -71,10 +71,6 @@ async fn handle_request(service: &Service,
       let success = events_removed.is_some() || specs_removed.is_some();
       RtEvent::UnsubscribeFromInstanceEvents { request_id, success }
     }
-    | RtCommand::CreatePeerConnection | RtCommand::AcceptPeerConnection { .. } | RtCommand::OfferPeerConnectionCandidate { .. } => {
-      warn!("{command:?} not implemented");
-      return;
-    }
   };
 
   if let Err(err) = tx.send(response).await {

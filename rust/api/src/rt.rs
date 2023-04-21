@@ -34,27 +34,15 @@ pub enum RtCommand {
   SubscribeToInstanceEvents { instance_id: String },
   #[serde(rename_all = "camelCase")]
   UnsubscribeFromInstanceEvents { instance_id: String },
-  #[serde(rename_all = "camelCase")]
-  CreatePeerConnection,
-  #[serde(rename_all = "camelCase")]
-  AcceptPeerConnection { offer: String },
-  #[serde(rename_all = "camelCase")]
-  OfferPeerConnectionCandidate { candidate: String },
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum RtEvent {
   #[serde(rename_all = "camelCase")]
-  SetInstancePowerControl {
-    success:    bool,
-    request_id: String,
-  },
+  SetInstancePowerControl { success: bool, request_id: String },
   #[serde(rename_all = "camelCase")]
-  SetInstancePlayControl {
-    success:    bool,
-    request_id: String,
-  },
+  SetInstancePlayControl { success: bool, request_id: String },
   #[serde(rename_all = "camelCase")]
   SetInstanceSpec {
     instance_id: String,
@@ -71,22 +59,9 @@ pub enum RtEvent {
     event:       InstanceDriverEvent,
   },
   #[serde(rename_all = "camelCase")]
-  SubscribeToInstanceEvents {
-    success:    bool,
-    request_id: String,
-  },
+  SubscribeToInstanceEvents { success: bool, request_id: String },
   #[serde(rename_all = "camelCase")]
-  UnsubscribeFromInstanceEvents {
-    success:    bool,
-    request_id: String,
-  },
-  OfferPeerConnection {
-    offer: String,
-  },
-  #[serde(rename_all = "camelCase")]
-  OfferPeerConnectionCandidate {
-    candidate: String,
-  },
+  UnsubscribeFromInstanceEvents { success: bool, request_id: String },
 }
 
 pub fn schema() -> RootSchema {
