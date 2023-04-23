@@ -93,5 +93,5 @@ features = ["derive"]
 [dependencies.api]
 path = "../api"
 
-[dependencies.async-audio-engine]
-path = "../async-audio-engine"
+[dependencies.audio-engine]
+path = "../audio-engine"

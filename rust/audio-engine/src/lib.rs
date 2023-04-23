@@ -1,18 +1,12 @@
 use std::collections::HashMap;
-use std::future::ready;
 use std::slice::{from_raw_parts, from_raw_parts_mut};
-use std::sync::Arc;
-use std::time::Duration;
+use std::sync::{Arc, RwLock};
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail};
-use async_trait::async_trait;
-use futures::executor::block_on;
-use futures::stream::FuturesUnordered;
-use futures::stream::StreamExt;
 use itertools::Itertools;
+use rayon::prelude::*;
 use rtrb::{Consumer, Producer};
-use tokio::sync::RwLock;
-use tokio::time::{timeout_at, Instant};
 
 use api::task::spec::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
 
@@ -125,7 +119,6 @@ pub struct NodeInfo {
 }
 
 #[allow(unused_variables)]
-#[async_trait]
 pub trait Node: Send {
   /// Returns the linking information about the node - latency, number of inputs and outputs
   ///
@@ -140,7 +133,7 @@ pub trait Node: Send {
   /// # Parameters
   /// * `play`: The play head position and play session information
   /// * `accumulated_latency`: The latency of all nodes before this one
-  async fn prepare_to_play(&mut self, play: PlayHead, accumulated_latency: usize) -> Result {
+  fn prepare_to_play(&mut self, play: PlayHead, accumulated_latency: usize) -> Result {
     Ok(())
   }
 
@@ -150,7 +143,7 @@ pub trait Node: Send {
   /// * `play`: The play head position and play session information
   /// * `inputs`: The input buffers, the node will read from these
   /// * `outputs`: The output buffers, the node will write to these
-  async fn process(&mut self, play: PlayHead, device_buffers: DeviceBuffers, inputs: &mut InputPads, outputs: &mut OutputPads) -> Result {
+  fn process(&mut self, play: PlayHead, device_buffers: DeviceBuffers, inputs: &mut InputPads, outputs: &mut OutputPads) -> Result {
     Ok(())
   }
 
@@ -158,7 +151,7 @@ pub trait Node: Send {
   ///
   /// # Parameters
   /// * `play`: The play head position and play session information
-  async fn stop(&mut self, play: PlayHead) -> Result {
+  fn stop(&mut self, play: PlayHead) -> Result {
     Ok(())
   }
 }
@@ -194,6 +187,7 @@ pub struct DeviceBuffers {
 }
 
 unsafe impl Send for DeviceBuffers {}
+unsafe impl Sync for DeviceBuffers {}
 
 impl DeviceBuffers {
   pub fn get_input_plane(&self, plane: usize) -> &[f32] {
@@ -208,19 +202,19 @@ impl DeviceBuffers {
 }
 
 impl GraphPlayer {
-  pub async fn iterate_generation(&mut self, device_buffers: DeviceBuffers, deadline: Instant) -> Result {
+  pub fn iterate_generation(&mut self, device_buffers: DeviceBuffers, deadline: Instant) -> Result {
     let play_head = self.play_head.advance_position();
     let max_duration = Instant::now() - deadline;
 
     let now = Instant::now();
-    self.update_info_and_prepare(play_head).await?;
+    self.update_info_and_prepare(play_head)?;
 
     if now.elapsed() > max_duration / 10 {
       // our preparing phase went for way too long, we'll skip this generation
       return Ok(());
     }
 
-    self.process(play_head, device_buffers, deadline).await?;
+    self.process(play_head, device_buffers, deadline)?;
 
     Ok(())
   }
@@ -368,7 +362,7 @@ impl GraphPlayer {
            .set_delay(latency))
   }
 
-  async fn update_info_and_prepare(&mut self, play_head: PlayHead) -> Result {
+  fn update_info_and_prepare(&mut self, play_head: PlayHead) -> Result {
     let mut at_least_one_changed = false;
 
     // get all node info
@@ -386,23 +380,17 @@ impl GraphPlayer {
     }
 
     if at_least_one_changed {
-      self.prepare_to_play(play_head).await?;
+      self.prepare_to_play(play_head)?;
     }
 
     Ok(())
   }
 
-  async fn prepare_to_play(&mut self, play_head: PlayHead) -> Result {
+  fn prepare_to_play(&mut self, play_head: PlayHead) -> Result {
     for (id, err) in self.nodes
-                         .values_mut()
-                         .map(|n| async {
-                           let result = n.node.prepare_to_play(play_head, n.accumulated_latency).await;
-                           (n.id, result)
-                         })
-                         .collect::<FuturesUnordered<_>>()
-                         .filter_map(|(id, result)| ready(result.err().map(|err| (id, err))))
-                         .collect::<Vec<_>>()
-                         .await
+                         .par_iter_mut()
+                         .map(|(_, n)| (n.id, n.node.prepare_to_play(play_head, n.accumulated_latency)))
+                         .find_map_first(|(id, result)| result.err().map(|err| (id, err)))
     {
       bail!("Node {id} failed to prepare: {err}");
     }
@@ -441,7 +429,7 @@ impl GraphPlayer {
     }
   }
 
-  async fn process(&mut self, play_head: PlayHead, device_buffers: DeviceBuffers, deadline: Instant) -> Result {
+  fn process(&mut self, play_head: PlayHead, device_buffers: DeviceBuffers, deadline: Instant) -> Result {
     // we are assuming that latency and rank are already prepared here
     for (rank, groups) in self.nodes
                               .values_mut()
@@ -449,16 +437,18 @@ impl GraphPlayer {
                               .into_iter()
                               .sorted_by_key(|(rank, _)| *rank)
     {
-      for (id, err) in groups.into_iter()
-                             .map(|n| async {
+      let groups = groups.collect_vec();
+
+      // without spawn() this is not going to be multi-threaded.
+      for (id, err) in groups.into_par_iter()
+                             .map(|n| {
                                n.generation = play_head.generation;
-                               let result = n.node.process(play_head, device_buffers, &mut n.inputs, &mut n.outputs).await;
-                               (n.id, result)
+                               let id = n.id.clone();
+
+                               let result = n.node.process(play_head, device_buffers, &mut n.inputs, &mut n.outputs);
+                               (id, result)
                              })
-                             .collect::<FuturesUnordered<_>>()
-                             .filter_map(|(id, r)| ready(r.err().map(|err| (id, err))))
-                             .collect::<Vec<_>>()
-                             .await
+                             .find_map_first(|(id, res)| res.err().map(|err| (id, err)))
       {
         bail!("Rank {rank} node {id} failed to process: {err}");
       }
@@ -487,28 +477,28 @@ impl AudioEngine {
 }
 
 impl AudioEngine {
-  pub async fn with_player<R, F>(&self, id: &str, something: F) -> anyhow::Result<R>
+  pub fn with_player<R, F>(&self, id: &str, something: F) -> anyhow::Result<R>
     where F: FnOnce(&GraphPlayer) -> anyhow::Result<R>
   {
-    let players = self.players.read().await;
+    let players = self.players.read().expect("Failed to lock players for reading");
     match players.get(id) {
       | Some(player) => something(player),
       | None => bail!("Player {id} not found"),
     }
   }
 
-  pub async fn with_player_mut<R, F>(&self, id: &str, something: F) -> anyhow::Result<R>
+  pub fn with_player_mut<R, F>(&self, id: &str, something: F) -> anyhow::Result<R>
     where F: FnOnce(&mut GraphPlayer) -> anyhow::Result<R>
   {
-    let mut players = self.players.write().await;
+    let mut players = self.players.write().expect("Failed to lock players for writing");
     match players.get_mut(id) {
       | Some(player) => something(player),
       | None => bail!("Player {id} not found"),
     }
   }
 
-  pub async fn add_player(&self, id: &str, player: GraphPlayer) -> anyhow::Result<()> {
-    let mut players = self.players.write().await;
+  pub fn add_player(&self, id: &str, player: GraphPlayer) -> anyhow::Result<()> {
+    let mut players = self.players.write().expect("Failed to lock players for writing");
     if players.contains_key(id) {
       bail!("Player {id} already exists");
     }
@@ -518,8 +508,8 @@ impl AudioEngine {
     Ok(())
   }
 
-  pub async fn remove_player(&self, id: &str) -> anyhow::Result<()> {
-    let mut players = self.players.write().await;
+  pub fn remove_player(&self, id: &str) -> anyhow::Result<()> {
+    let mut players = self.players.write().expect("Failed to lock players for writing");
 
     players.remove(id);
 
@@ -529,20 +519,13 @@ impl AudioEngine {
   pub fn on_device_callback(&self, buffers: DeviceBuffers) -> anyhow::Result<()> {
     let duration_in_us = (buffers.buffer_size as f64 / self.sample_rate as f64 * 750_000.0).floor() as u64;
     let deadline = Instant::now() + Duration::from_micros(duration_in_us);
+    let mut players = self.players.write().expect("Failed to lock players for writing");
 
-    for (id, err) in block_on(async {
-      if let Ok(mut players) = timeout_at(deadline, self.players.write()).await {
-        players.iter_mut()
-               .filter(|(_, player)| player.ready_to_iterate)
-               .map(|(id, player)| async { (id.clone(), timeout_at(deadline, player.iterate_generation(buffers, deadline)).await) })
-               .collect::<FuturesUnordered<_>>()
-               .filter_map(|(id, res)| ready(res.err().map(|err| (id, anyhow::Error::from(err)))))
-               .collect::<Vec<_>>()
-               .await
-      } else {
-        vec![("timeout".to_string(), anyhow!("timed out locking players"))]
-      }
-    }) {
+    for (id, err) in players.par_iter_mut()
+                            .filter(|(_, player)| player.ready_to_iterate)
+                            .map(|(id, player)| (id.clone(), player.iterate_generation(buffers, deadline)))
+                            .find_map_first(|(id, res)| res.err().map(|err| (id, anyhow::Error::from(err))))
+    {
       bail!("Player {id} failed to process: {err}");
     }
 
@@ -561,14 +544,12 @@ pub struct GraphPlayerHandle {
   pub media_resolver: Box<dyn MediaResolver>,
 }
 
-#[async_trait]
 pub trait NodeResolver {
-  async fn resolve(&mut self, app_id: &str, graph_id: &str, node_id: NodeId, instance_id: &str) -> anyhow::Result<BoxedNode>;
+  fn resolve(&mut self, app_id: &str, graph_id: &str, node_id: NodeId, instance_id: &str) -> anyhow::Result<BoxedNode>;
 }
 
-#[async_trait]
 pub trait MediaResolver {
-  async fn resolve(&mut self, app_id: &str, graph_id: &str, node_id: NodeId, media_id: &str) -> anyhow::Result<MediaInfo>;
+  fn resolve(&mut self, app_id: &str, graph_id: &str, node_id: NodeId, media_id: &str) -> anyhow::Result<MediaInfo>;
 }
 
 pub struct MediaInfo {}
@@ -591,8 +572,7 @@ impl GraphPlayerHandle {
     engine.add_player(&player_id, GraphPlayer { nodes:            graph_nodes,
                                                 play_head:        PlayHead::default(),
                                                 must_prepare:     true,
-                                                ready_to_iterate: false, })
-          .await?;
+                                                ready_to_iterate: false, })?;
 
     Ok(Self { app_id,
               graph_id,

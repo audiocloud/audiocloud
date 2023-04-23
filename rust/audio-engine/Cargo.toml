@@ -1,5 +1,5 @@
 [package]
-name = "async-audio-engine"
+name = "audio-engine"
 version = "0.1.0"
 edition = "2021"
 
@@ -10,9 +10,9 @@ flume = "0.10"
 rtrb = "0.2"
 derive_more = "0.99"
 tinyvec = "1"
-async-trait = "0.1"
-futures = "0.3"
 itertools = "0.10"
+lru = "0.10"
+rayon = "1"
 
 [dependencies.symphonia]
 version = "0.5"
@@ -20,10 +20,6 @@ features = ["all-codecs", "all-formats"]
 
 [dependencies.r8brain-rs]
 git = "https://github.com/audiocloud/r8brain-rs"
-
-[dependencies.tokio]
-version = "1"
-features = ["full"]
 
 [dependencies.api]
 path = "../api"
