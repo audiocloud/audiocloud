@@ -1,6 +1,6 @@
-project(audio_engine_juce)
-
 cmake_minimum_required(VERSION 3.24)
+
+project(audio_engine_juce)
 
 set(JUCE_MODULES_ONLY ON)
 

@@ -38,6 +38,10 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=AudioToolbox");
     println!("cargo:rustc-link-lib=framework=Metal");
     println!("cargo:rustc-link-lib=iconv");
+  } else if target_os == "linux-gnueabihf" {
+    // dont panic
+  } else if target_os == "linux-gnu" {
+    // dont panic
   } else {
     panic!("Unsupported target OS: {}", target_os);
   }
