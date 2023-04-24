@@ -14,10 +14,6 @@ itertools = "0.10"
 lru = "0.10"
 rayon = "1"
 
-[dependencies.symphonia]
-version = "0.5"
-features = ["all-codecs", "all-formats"]
-
 [dependencies.r8brain-rs]
 git = "https://github.com/audiocloud/r8brain-rs"
 
@@ -27,3 +23,6 @@ path = "../api"
 [dev-dependencies.criterion]
 version = "0.4"
 features = ["async_tokio", "html_reports"]
+
+[build-dependencies]
+cmake = "0.1.50"

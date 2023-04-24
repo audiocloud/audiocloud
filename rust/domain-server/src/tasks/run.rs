@@ -19,7 +19,6 @@ use api::task::buckets::{task_control_key, task_spec_key};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
 use api::BucketKey;
-use async_audio_engine::GraphPlayer;
 
 use crate::nats::{Nats, WatchStream, WatchStreamMap};
 use crate::tasks::Result;
@@ -40,7 +39,7 @@ pub struct RunDomainTask {
   instances: HashMap<String, TaskInstance>,
   media: HashMap<MediaId, TaskMedia>,
   desired_play_state: DesiredTaskPlayState,
-  player: Option<GraphPlayer>,
+  player: Option<()>,
   nats: Nats,
 }
 

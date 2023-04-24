@@ -1,0 +1,3 @@
+[submodule "rust/audio-engine/JUCE"]
+	path = rust/audio-engine/JUCE
+	url = https://github.com/juce-framework/JUCE.git

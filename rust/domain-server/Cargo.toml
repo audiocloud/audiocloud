@@ -80,7 +80,7 @@ features = ["json", "ws", "headers", "tokio"]
 
 [dependencies.tokio]
 version = "1"
-features = ["macros", "rt-multi-thread", "fs", "process"]
+features = ["macros", "rt-multi-thread", "fs", "process", "signal"]
 
 [dependencies.chrono]
 version = "0.4"

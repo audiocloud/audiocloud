@@ -13,6 +13,7 @@ use api::task::spec::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
 pub type Result<T = ()> = anyhow::Result<T>;
 
 pub mod input_node;
+pub mod juce;
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct PlayHead {
@@ -62,10 +63,12 @@ pub struct ConnectionStart {
   pub producer: Producer<f64>,
 }
 
+#[derive(Default)]
 pub struct InputPad {
   pub receives: HashMap<OutputId, ConnectionEnd>,
 }
 
+#[derive(Default)]
 pub struct OutputPad {
   pub sends: HashMap<InputId, ConnectionStart>,
 }
@@ -533,19 +536,19 @@ impl AudioEngine {
   }
 }
 
-// TODO: how do we generate Nodes for Players? That's up to the user of the async library
-pub struct GraphPlayerHandle {
+// TODO: how do we generate Nodes for Players? That's up to the user of the library
+pub struct GraphPlayerHandle<NR: NodeResolver, MR: MediaResolver> {
   pub player_id:      String,
   pub graph_id:       String,
   pub app_id:         String,
   pub spec:           AudioGraphSpec,
   pub engine:         Arc<AudioEngine>,
-  pub node_resolver:  Box<dyn NodeResolver>,
-  pub media_resolver: Box<dyn MediaResolver>,
+  pub node_resolver:  NR,
+  pub media_resolver: MR,
 }
 
 pub trait NodeResolver {
-  fn resolve(&mut self, app_id: &str, graph_id: &str, node_id: NodeId, instance_id: &str) -> anyhow::Result<BoxedNode>;
+  fn resolve_instance(&mut self, app_id: &str, graph_id: &str, node_id: NodeId, instance_id: &str) -> anyhow::Result<BoxedNode>;
 }
 
 pub trait MediaResolver {
@@ -553,35 +556,3 @@ pub trait MediaResolver {
 }
 
 pub struct MediaInfo {}
-
-impl GraphPlayerHandle {
-  pub async fn new(engine: Arc<AudioEngine>,
-                   app_id: &str,
-                   graph_id: &str,
-                   spec: AudioGraphSpec,
-                   node_resolver: Box<dyn NodeResolver>,
-                   media_resolver: Box<dyn MediaResolver>)
-                   -> anyhow::Result<Self> {
-    let graph_id = graph_id.to_owned();
-    let app_id = app_id.to_owned();
-    let player_id = format!("{app_id}/{graph_id}");
-
-    // TODO: lookup nodes, media and then register with audio engine
-    let graph_nodes = HashMap::new();
-
-    engine.add_player(&player_id, GraphPlayer { nodes:            graph_nodes,
-                                                play_head:        PlayHead::default(),
-                                                must_prepare:     true,
-                                                ready_to_iterate: false, })?;
-
-    Ok(Self { app_id,
-              graph_id,
-              player_id,
-              engine,
-              spec,
-              node_resolver,
-              media_resolver })
-  }
-
-  async fn update(&mut self) {}
-}
