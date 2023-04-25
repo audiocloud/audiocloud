@@ -13,6 +13,7 @@ tinyvec = "1"
 itertools = "0.10"
 lru = "0.10"
 rayon = "1"
+lazy_static = "1"
 
 [dependencies.r8brain-rs]
 git = "https://github.com/audiocloud/r8brain-rs"

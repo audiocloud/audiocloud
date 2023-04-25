@@ -5,6 +5,8 @@ project(audio_engine_juce)
 set(JUCE_MODULES_ONLY ON)
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Support macOS down to High Sierra")
+set(NEEDS_CURL OFF)
+set(NEEDS_WEB_BROWSER OFF)
 
 add_subdirectory(JUCE)
 

@@ -1,12 +1,10 @@
-// TODO: currently this does nothing interesting
 #include <memory>
-#include <algorithm>
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 
-struct Mgr {
-    std::unique_ptr <juce::AudioDeviceManager> device_manager;
-    std::unique_ptr <juce::AudioIODevice> device;
+struct AudioMgr {
+    std::unique_ptr<juce::AudioDeviceManager> device_manager;
+    std::unique_ptr<juce::AudioIODevice> device;
 };
 
 struct RustAudioIoCallback : public juce::AudioIODeviceCallback {
@@ -39,13 +37,13 @@ struct RustAudioIoCallback : public juce::AudioIODeviceCallback {
 };
 
 extern "C" {
-Mgr *create_mgr(const char *type_name,
-                const char *input_name, const char *output_name,
-                const int input_channel_count, const int output_channel_count,
-                const int sample_rate,
-                const int buffer_size) {
+AudioMgr *create_audio_mgr(const char *type_name,
+                           const char *input_name, const char *output_name,
+                           const int input_channel_count, const int output_channel_count,
+                           const int sample_rate,
+                           const int buffer_size) {
     try {
-        std::cout << "create_mgr: " << type_name << " " << input_name << " " << output_name << std::endl;
+        std::cout << "create_audio_mgr: " << type_name << " " << input_name << " " << output_name << std::endl;
         std::cout << input_channel_count << " x " << output_channel_count << " @ " << sample_rate << "Hz" << std::endl;
 
         auto device_manager = std::make_unique<juce::AudioDeviceManager>();
@@ -83,7 +81,7 @@ Mgr *create_mgr(const char *type_name,
                 return nullptr;
             }
 
-            return new Mgr{
+            return new AudioMgr{
                     std::move(device_manager),
                     std::move(audio_device)
             };
@@ -91,13 +89,13 @@ Mgr *create_mgr(const char *type_name,
 
         std::cerr << "No device type found" << std::endl;
     } catch (...) {
-        std::cerr << "create_mgr: exception" << std::endl;
+        std::cerr << "create_audio_mgr: exception" << std::endl;
     }
 
     return nullptr;
 }
 
-void delete_mgr(Mgr *mgr) {
+void delete_audio_mgr(AudioMgr *mgr) {
     if (mgr->device->isOpen()) {
         mgr->device->close();
     }
@@ -105,7 +103,7 @@ void delete_mgr(Mgr *mgr) {
     delete mgr;
 }
 
-void mgr_start(Mgr *mgr, void (*rust_callback)(
+void audio_mgr_start(AudioMgr *mgr, void (*rust_callback)(
         void *data,
         const float *const *, int,
         float *const *, int,
@@ -120,7 +118,7 @@ void mgr_start(Mgr *mgr, void (*rust_callback)(
     }
 }
 
-uint32_t mgr_get_latency(Mgr *mgr) {
+uint32_t audio_mgr_get_latency(AudioMgr *mgr) {
     if (mgr && mgr->device) {
         return mgr->device->getInputLatencyInSamples() + mgr->device->getOutputLatencyInSamples();
     }
@@ -128,23 +126,61 @@ uint32_t mgr_get_latency(Mgr *mgr) {
     return 0;
 }
 
-void mgr_stop(Mgr *mgr) {
+void audio_mgr_stop(AudioMgr *mgr) {
     if (mgr && mgr->device) {
         mgr->device->stop();
     }
 }
 
-static std::unique_ptr <juce::AudioFormatManager> format_manager;
+static std::unique_ptr<juce::AudioFormatManager> format_manager;
 
-void engine_init() {
+void juce_engine_init() {
     juce::initialiseJuce_GUI();
     format_manager = std::make_unique<juce::AudioFormatManager>();
     format_manager->registerBasicFormats();
 }
 
-void engine_shutdown() {
+void juce_engine_shutdown() {
     format_manager.reset();
     juce::shutdownJuce_GUI();
+}
+
+juce::AudioFormatReaderSource *create_file_reader(const char *path) {
+    return new juce::AudioFormatReaderSource(format_manager->createReaderFor(juce::File(juce::String(path))), true);
+}
+
+void delete_file_reader(juce::AudioFormatReaderSource *reader) {
+    delete reader;
+}
+
+int64_t file_reader_get_total_length(juce::AudioFormatReaderSource *reader) {
+    return static_cast<int64_t>(reader->getTotalLength());
+}
+
+uint32_t file_reader_get_channels(juce::AudioFormatReaderSource *reader) {
+    return static_cast<uint32_t>(reader->getAudioFormatReader()->numChannels);
+}
+
+uint32_t file_reader_get_sample_rate(juce::AudioFormatReaderSource *reader) {
+    return static_cast<uint32_t>(reader->getAudioFormatReader()->sampleRate);
+}
+
+int64_t file_reader_set_read_position(juce::AudioFormatReaderSource *reader, int64_t pos) {
+    reader->setNextReadPosition(pos);
+    return static_cast<int64_t>(reader->getNextReadPosition());
+}
+
+int32_t file_reader_read_samples(juce::AudioFormatReaderSource *reader, float **buffers, int32_t num_channels,
+                                 int32_t num_samples) {
+    auto prevPos = reader->getNextReadPosition();
+    auto buf = juce::AudioBuffer<float>(buffers, num_channels, num_samples);
+    auto sourceChannels = juce::AudioSourceChannelInfo(buf);
+
+    reader->getNextAudioBlock(sourceChannels);
+
+    auto newPos = reader->getNextReadPosition();
+
+    return static_cast<int32_t>(newPos - prevPos);
 }
 
 }
