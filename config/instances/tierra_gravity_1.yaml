@@ -81,31 +81,31 @@ driver:
           bytes: [ 4, 5 ]
         rescale: [ [ -15, 15 ], [ 0, 0x7F ] ]
         default: 0
-        packing: uint16be
+        packing: uint16le
     makeUp:
       - position:
           bytes: [ 6, 7 ]
         rescale: [ [ 0, 15 ], [ 0, 0x7F ] ]
         default: 0
-        packing: uint16be
+        packing: uint16le
     ratio:
       - position:
           bytes: [ 8, 9 ]
         remap:
           type: linear
-          values: *frequencies
-        packing: uint16be
+          values: *vals
+        packing: uint16le
     attack:
       - position:
           bytes: [ 10, 11 ]
         rescale: [ [ 1, 6 ], [ 0, 5 ] ]
         default: 3
-        packing: uint16be
+        packing: uint16le
     release:
       - position:
           bytes: [ 12, 13 ]
         default: 2
-        packing: uint16be
+        packing: uint16le
     bypass:
       - position:
           bit: [ 14, 0 ]
