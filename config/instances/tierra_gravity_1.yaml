@@ -52,7 +52,7 @@ model:
       range:
         type: toggle
       channels: 1
-    bypass: *toggle
+    highpass: *toggle
 
   reports:
     gainReduction:
