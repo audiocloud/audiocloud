@@ -40,6 +40,12 @@ model:
         type: list
         values: &ratioList [ 4, 8, 12, 20 ]
       unit: n/a
+    amplifierMode: 
+      range:
+        type: list
+        values: &ampList [ "A", "D", "G"]
+      unit: n/a
+
 
   reports:
     gainReduction:
@@ -75,39 +81,53 @@ driver:
           bit: [ 4, 0 ]
     inputLevel:
       - position:
-          bitRange:
+          bytes:
             - [ 6, 7 ]
             - [ 20, 21 ]
         rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
-        packing: uint16be
+        packing: uint16le
     outputLevel:
       - position:
-          bitRange:
+          bytes:
             - [ 8, 9 ]
             - [ 18, 19 ]
         rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
-        packing: uint16be
+        packing: uint16le
     release:
       - position:
-          bitRange:
+          bytes:
             - [ 10, 11 ]
             - [ 24, 25 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
-        packing: uint16be
+        packing: uint16le
     attack:
       - position:
-          bitRange:
+          bytes:
             - [ 8, 9 ]
             - [ 18, 19 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
-        packing: uint16be
-
-    evenColorFrequency:
+        packing: uint16le
+    gainReductionDisable:
       - position:
-          byte: 24
+          bit:
+            - [ 14, 0 ]
+            - [ 28, 0 ]
+    ratio:
+      - position:
+          bytes:
+            - [ 16, 17 ]
+            - [ 26, 27 ]
         remap:
           type: linear
-          values: *frequencies
+          values: *ratioList
+        packing: uint16le
+    amplifierMode:
+      - position:
+          bytes: [ 30, 31 ]
+        remap:
+          type: linear
+          values: *ampList
+        packing: uint16le
 
   reports:
     gainReduction:
@@ -121,14 +141,7 @@ driver:
         position:
           bytes: [ 3, 4 ]
         transform: gainFactorToDb(value / 1024)
-    clip:
-      - page: 1
-        position:
-          byte: 5
-      - page: 1
-        position:
-          byte: 6
-    peakLevel:
+    volume:
       - page: 1
         packing: int16be
         position:
@@ -138,15 +151,4 @@ driver:
         packing: int16be
         position:
           bytes: [ 9, 10 ]
-        transform: Math.max(-36, value * 0.1)
-    rmsLevel:
-      - page: 1
-        packing: int16be
-        position:
-          bytes: [ 15, 16 ]
-        transform: Math.max(-36, value * 0.1)
-      - page: 1
-        packing: int16be
-        position:
-          bytes: [ 17, 18 ]
         transform: Math.max(-36, value * 0.1)
