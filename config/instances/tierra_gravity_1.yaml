@@ -77,7 +77,7 @@ driver:
     - page: 0
       size: 64
   parameters:
-    treshold:
+    threshold:
       - position:
           bytes: [ 4, 5 ]
         rescale: [ [ -15, 15 ], [ 0, 0x7F ] ]
