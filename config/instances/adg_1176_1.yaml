@@ -1,0 +1,154 @@
+host: better-pi
+#power:
+#  powerController: ppdu_r1_up_l
+#  driverNeedsPower: true
+#  powerOn:
+#    parameter: power
+#    channel: 2
+#    value: 1
+#  powerOff:
+#    parameter: power
+#    channel: 2
+#    value: 0
+#  warmUpMs: 1000
+#  coolDownMs: 2000
+#  idleMs: 300000
+model:
+  parameters:
+    linkPairs: &toggle
+      range:
+        type: toggle
+      channels: 1
+    inputLevel: &attenuation
+      range:
+        type: bounded
+        min: -60
+        max: 0
+      unit: dB
+      default: -24
+    outputLevel: *attenuation
+    release: &timing
+      range:
+        type: bounded
+        min: 1
+        max: 7
+      unit: ms
+    attack: *timing
+    gainReductionDisable: *toggle
+    ratio: 
+      range:
+        type: list
+        values: &ratioList [ 4, 8, 12, 20 ]
+      unit: n/a
+    amplifierMode: 
+      range:
+        type: list
+        values: &ampList [ "A", "D", "G"]
+      unit: n/a
+
+
+  reports:
+    gainReduction:
+      unit: dB
+      range:
+        type: bounded
+        min: -20
+        max: 3
+    volume:
+      unit: dB
+      range:
+        type: bounded
+        min: -20
+        max: 3
+######################################
+driver:
+  type: USBHID
+  vendorId: 1155
+  productId: 22354
+  serial_number: '205F305E5656'
+  pageMask: 0xF
+  parameterPages:
+    - page: 0
+      size: 64
+      header: [ 0x80, 0x00 ]
+  reportPages:
+    - page: 0
+      size: 64
+
+  parameters:
+    linkPairs:
+      - position:
+          bit: [ 4, 0 ]
+    inputLevel:
+      - position:
+          bytes:
+            - [ 6, 7 ]
+            - [ 20, 21 ]
+        rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
+        packing: uint16le
+    outputLevel:
+      - position:
+          bytes:
+            - [ 8, 9 ]
+            - [ 18, 19 ]
+        rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
+        packing: uint16le
+    release:
+      - position:
+          bytes:
+            - [ 10, 11 ]
+            - [ 24, 25 ]
+        rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
+        packing: uint16le
+    attack:
+      - position:
+          bytes:
+            - [ 8, 9 ]
+            - [ 18, 19 ]
+        rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
+        packing: uint16le
+    gainReductionDisable:
+      - position:
+          bit:
+            - [ 14, 0 ]
+            - [ 28, 0 ]
+    ratio:
+      - position:
+          bytes:
+            - [ 16, 17 ]
+            - [ 26, 27 ]
+        remap:
+          type: linear
+          values: *ratioList
+        packing: uint16le
+    amplifierMode:
+      - position:
+          bytes: [ 30, 31 ]
+        remap:
+          type: linear
+          values: *ampList
+        packing: uint16le
+
+  reports:
+    gainReduction:
+      - page: 1
+        packing: uint16le
+        position:
+          bytes: [ 1, 2 ]
+        transform: gainFactorToDb(value / 1024)
+      - page: 1
+        packing: uint16le
+        position:
+          bytes: [ 3, 4 ]
+        transform: gainFactorToDb(value / 1024)
+    volume:
+      - page: 1
+        packing: int16be
+        position:
+          bytes: [ 7, 8 ]
+        transform: Math.max(-36, value * 0.1)
+      - page: 1
+        packing: int16be
+        position:
+          bytes: [ 9, 10 ]
+        transform: Math.max(-36, value * 0.1)

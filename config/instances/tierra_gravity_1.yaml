@@ -1,0 +1,121 @@
+host: better-pi
+#power:
+#  powerController: ppdu_r1_up_l
+#  driverNeedsPower: true
+#  powerOn:
+#    parameter: power
+#    channel: 4
+#    value: 1
+#  powerOff:
+#    parameter: power
+#    channel: 4
+#    value: 0
+#  warmUpMs: 1000
+#  coolDownMs: 2000
+#  idleMs: 300000
+model:
+  parameters:
+    threshold:
+      range:
+        type: bounded
+        min: -15
+        max: 15
+      unit: dB
+      channels: 1
+    makeUp:
+      range:
+        type: bounded
+        max: 15
+      unit: dB
+      channels: 1
+    ratio:
+      range:
+        type: list
+        values: &vals [ 2, 4, 10]
+      unit: n/a
+      channels: 1
+    attack:
+      range:
+        type: bounded
+        min: 1
+        max: 6
+      unit: n/a
+      channels: 1
+    release:
+      range:
+        type: bounded
+        max: 4
+      unit: n/a
+      channels: 1
+    bypass: &toggle
+      range:
+        type: toggle
+      channels: 1
+    highpass: *toggle
+
+  reports:
+    gainReduction:
+      unit: dB
+      range:
+        type: bounded
+        min: 0
+        max: 20
+#############################################
+driver:
+  type: USBHID
+  vendorId: 1155
+  productId: 22354
+  serial_number: '205F305E5656' 
+  pageMask: 0xF
+  parameterPages:
+    - page: 0
+      size: 64
+      copyFromReportPage: 0
+      header: [ 0x80, 0x00 ]
+  reportPages:
+    - page: 0
+      size: 64
+  parameters:
+    threshold:
+      - position:
+          bytes: [ 4, 5 ]
+        rescale: [ [ -15, 15 ], [ 0, 0x7F ] ]
+        default: 0
+        packing: uint16le
+    makeUp:
+      - position:
+          bytes: [ 6, 7 ]
+        rescale: [ [ 0, 15 ], [ 0, 0x7F ] ]
+        default: 0
+        packing: uint16le
+    ratio:
+      - position:
+          bytes: [ 8, 9 ]
+        remap:
+          type: linear
+          values: *vals
+        packing: uint16le
+    attack:
+      - position:
+          bytes: [ 10, 11 ]
+        rescale: [ [ 1, 6 ], [ 0, 5 ] ]
+        default: 3
+        packing: uint16le
+    release:
+      - position:
+          bytes: [ 12, 13 ]
+        default: 2
+        packing: uint16le
+    bypass:
+      - position:
+          bit: [ 14, 0 ]
+    highpass:
+      - position:
+          bit: [ 14, 1 ]
+  reports:
+    gainReduction:
+      - page: 1
+        packing: uint16le
+        position:
+          bytes: [ 1, 2 ]
+        transform: gainFactorToDb(value / 4096)
