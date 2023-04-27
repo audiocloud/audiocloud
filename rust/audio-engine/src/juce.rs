@@ -2,33 +2,21 @@ use std::ffi::{c_char, c_void, CString};
 use std::ptr::null_mut;
 
 use anyhow::anyhow;
-use lazy_static::lazy_static;
 
 #[derive(Clone, Copy, Debug)]
 #[repr(transparent)]
-pub struct AudioMgr(*mut c_void);
+pub struct JuceAudioReaderPtr(*mut c_void);
 
-unsafe impl Send for AudioMgr {}
-unsafe impl Sync for AudioMgr {}
+unsafe impl Send for JuceAudioReaderPtr {}
+unsafe impl Sync for JuceAudioReaderPtr {}
 
-impl AudioMgr {
+impl JuceAudioReaderPtr {
   pub fn is_valid(&self) -> bool {
     self.0 != null_mut()
   }
 }
 
-#[derive(Clone, Copy, Debug)]
-#[repr(transparent)]
-pub struct AudioReader(*mut c_void);
-
-unsafe impl Send for AudioReader {}
-unsafe impl Sync for AudioReader {}
-
-impl AudioReader {
-  pub fn is_valid(&self) -> bool {
-    self.0 != null_mut()
-  }
-}
+type AudioMgrCallback = extern "C" fn(*mut c_void, *const *const f32, i32, *mut *mut f32, i32, i32);
 
 extern "C" {
   pub fn create_audio_mgr(type_name: *const c_char,
@@ -38,115 +26,62 @@ extern "C" {
                           output_channel_count: i32,
                           sample_rate: i32,
                           buffer_size: i32)
-                          -> AudioMgr;
+                          -> i32;
 
-  pub fn audio_mgr_start(mgr: AudioMgr,
-                         callback: extern "C" fn(*mut c_void, *const *const f32, i32, *mut *mut f32, i32, i32),
-                         user_data: *mut c_void);
+  pub fn audio_mgr_start(callback: AudioMgrCallback, user_data: *mut c_void);
 
-  pub fn audio_mgr_stop(mgr: AudioMgr);
+  pub fn audio_mgr_stop();
 
-  pub fn audio_mgr_latency(mgr: AudioMgr) -> u32;
+  pub fn audio_mgr_latency() -> u32;
 
-  pub fn delete_audio_mgr(mgr: AudioMgr);
+  fn create_file_reader(path: *const c_char) -> JuceAudioReaderPtr;
 
-  fn juce_engine_init();
+  fn delete_file_reader(reader: JuceAudioReaderPtr);
 
-  fn juce_engine_shutdown();
+  fn file_reader_get_total_length(reader: JuceAudioReaderPtr) -> i64;
 
-  fn create_file_reader(path: *const c_char) -> AudioReader;
+  fn file_reader_get_sample_rate(reader: JuceAudioReaderPtr) -> i32;
 
-  fn delete_file_reader(reader: AudioReader);
+  fn file_reader_get_channels(reader: JuceAudioReaderPtr) -> i32;
 
-  fn file_reader_get_total_length(reader: AudioReader) -> i64;
-
-  fn file_reader_get_sample_rate(reader: AudioReader) -> i32;
-
-  fn file_reader_get_channels(reader: AudioReader) -> i32;
-
-  fn file_reader_set_read_position(reader: AudioReader, position: i64) -> i64;
-
-  fn file_reader_read_samples(reader: AudioReader, buffer: *const *mut f32, num_channels: i32, num_samples: i32) -> i32;
-}
-
-pub struct JuceEngineGuard;
-
-impl JuceEngineGuard {
-  pub fn new() -> Self {
-    unsafe {
-      juce_engine_init();
-    }
-    Self
-  }
-}
-
-impl Drop for JuceEngineGuard {
-  fn drop(&mut self) {
-    unsafe {
-      juce_engine_shutdown();
-    }
-  }
-}
-
-lazy_static! {
-  pub static ref JUCE_GUARD: JuceEngineGuard = JuceEngineGuard::new();
-}
-
-pub fn assure_juce_init() {
-  let _ = &JUCE_GUARD;
-}
-
-#[cfg(test)]
-mod test {
-  use super::*;
-
-  #[test]
-  fn test_ffi() {
-    unsafe {
-      juce_engine_init();
-      juce_engine_shutdown();
-    }
-  }
+  fn file_reader_read_samples(reader: JuceAudioReaderPtr,
+                              buffer: *const *mut f32,
+                              num_channels: i32,
+                              start_pos: i64,
+                              num_samples: i32)
+                              -> i32;
 }
 
 pub struct JuceAudioReader {
-  reader: AudioReader,
+  reader_ptr: JuceAudioReaderPtr,
 }
 
 impl JuceAudioReader {
   pub fn new(path: &str) -> crate::Result<Self> {
-    assure_juce_init();
-
     let c_path = CString::new(path)?;
 
-    let reader = unsafe { create_file_reader(c_path.as_ptr()) };
+    let reader_ptr = unsafe { create_file_reader(c_path.as_ptr()) };
 
-    if !reader.is_valid() {
+    if !reader_ptr.is_valid() {
       return Err(anyhow!("Failed to create file reader"));
     }
 
-    Ok(Self { reader })
+    Ok(Self { reader_ptr })
   }
 
   pub fn get_sample_rate(&self) -> i32 {
-    unsafe { file_reader_get_sample_rate(self.reader) }
+    unsafe { file_reader_get_sample_rate(self.reader_ptr) }
   }
 
   pub fn get_channel_count(&self) -> i32 {
-    unsafe { file_reader_get_channels(self.reader) }
+    unsafe { file_reader_get_channels(self.reader_ptr) }
   }
 
   pub fn get_total_length(&self) -> i64 {
-    unsafe { file_reader_get_total_length(self.reader) }
+    unsafe { file_reader_get_total_length(self.reader_ptr) }
   }
 
-  pub fn set_read_position(&self, position: i64) -> i64 {
-    unsafe { file_reader_set_read_position(self.reader, position) }
-  }
-
-  pub fn read_samples(&self, buffers: &mut [&mut [f32]]) -> i32 {
-    let mut len = -1;
-    let mut count = 0;
+  pub fn read_samples(&self, buffers: &mut [&mut [f32]], pos: i64, len: i32) -> i32 {
     let mut slice_ptrs = [null_mut(),
                           null_mut(),
                           null_mut(),
@@ -156,20 +91,18 @@ impl JuceAudioReader {
                           null_mut(),
                           null_mut()];
 
-    for (dest, src) in slice_ptrs.iter_mut().zip(buffers.iter_mut()) {
-      len = src.len() as i32;
-      *dest = src.as_mut_ptr();
-      count += 1;
+    for (i, buffer) in buffers.iter_mut().enumerate() {
+      slice_ptrs[i] = buffer.as_mut_ptr();
     }
 
-    unsafe { file_reader_read_samples(self.reader, slice_ptrs.as_mut_ptr(), count, len) }
+    unsafe { file_reader_read_samples(self.reader_ptr, slice_ptrs.as_ptr(), buffers.len() as i32, pos, len as i32) }
   }
 }
 
 impl Drop for JuceAudioReader {
   fn drop(&mut self) {
     unsafe {
-      delete_file_reader(self.reader);
+      delete_file_reader(self.reader_ptr);
     }
   }
 }

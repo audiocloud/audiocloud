@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::ptr::{null, null_mut};
 use std::slice::{from_raw_parts, from_raw_parts_mut};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail};
+use dasp_sample::{FromSample, Sample};
 use itertools::Itertools;
 use rayon::prelude::*;
 use rtrb::{Consumer, Producer};
@@ -12,7 +14,8 @@ use api::task::spec::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
-pub mod input_node;
+pub mod buffer;
+pub mod juce_source_reader_node;
 pub mod juce;
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -73,14 +76,30 @@ pub struct OutputPad {
   pub sends: HashMap<InputId, ConnectionStart>,
 }
 
+impl OutputPad {
+  pub fn send<S>(&mut self, source: &[S])
+    where f64: FromSample<S>,
+          S: Copy
+  {
+    for (_, start) in self.sends.iter_mut() {
+      let Ok(chunk) = start.producer.write_chunk_uninit(source.len()) else { continue };
+      chunk.fill_from_iter(source.iter().map(|s| f64::from_sample(*s)));
+    }
+  }
+}
+
 pub type InputPads = HashMap<InputId, InputPad>;
 
 pub type OutputPads = HashMap<OutputId, OutputPad>;
 
 impl PlayHead {
   pub fn advance_position(self) -> Self {
+    self.advance_position_by(self.buffer_size as usize)
+  }
+
+  pub fn advance_position_by(self, len: usize) -> Self {
     let generation = self.generation + 1;
-    let position_end = self.position + self.buffer_size as u64;
+    let position_end = self.position + len as u64;
     let play_region = self.play_region;
 
     let position = if position_end > play_region.end {
@@ -106,6 +125,10 @@ impl PlayHead {
            generation,
            play_id,
            ..self }
+  }
+
+  pub fn playing_segment_size(&self) -> usize {
+    ((self.play_region.end - self.position) as i64).min(self.buffer_size as i64).max(0) as usize
   }
 }
 
@@ -145,8 +168,15 @@ pub trait Node: Send {
   /// # Parameters
   /// * `play`: The play head position and play session information
   /// * `inputs`: The input buffers, the node will read from these
-  /// * `outputs`: The output buffers, the node will write to these
-  fn process(&mut self, play: PlayHead, device_buffers: DeviceBuffers, inputs: &mut InputPads, outputs: &mut OutputPads) -> Result {
+  /// * `outputs`: The output buffers, the node will write to thesež
+  /// * `deadline`: The time at which the node must have finished processing
+  fn process(&mut self,
+             play: PlayHead,
+             device_buffers: DeviceBuffers,
+             inputs: &mut InputPads,
+             outputs: &mut OutputPads,
+             deadline: Instant)
+             -> Result {
     Ok(())
   }
 
@@ -187,6 +217,16 @@ pub struct DeviceBuffers {
   pub num_inputs:  usize,
   pub num_outputs: usize,
   pub buffer_size: usize,
+}
+
+impl Default for DeviceBuffers {
+  fn default() -> Self {
+    Self { inputs:      null(),
+           outputs:     null_mut(),
+           num_inputs:  0,
+           num_outputs: 0,
+           buffer_size: 0, }
+  }
 }
 
 unsafe impl Send for DeviceBuffers {}
@@ -448,7 +488,7 @@ impl GraphPlayer {
                                n.generation = play_head.generation;
                                let id = n.id.clone();
 
-                               let result = n.node.process(play_head, device_buffers, &mut n.inputs, &mut n.outputs);
+                               let result = n.node.process(play_head, device_buffers, &mut n.inputs, &mut n.outputs, deadline);
                                (id, result)
                              })
                              .find_map_first(|(id, res)| res.err().map(|err| (id, err)))
