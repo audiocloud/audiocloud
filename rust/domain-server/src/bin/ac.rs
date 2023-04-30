@@ -19,7 +19,7 @@ use api::instance::{DesiredInstancePlayState, DesiredInstancePowerState};
 use api::media::buckets::{media_upload_spec_key, media_upload_state_key};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::media_download_state_key;
-use api::task::spec::PlayId;
+use api::task::player::PlayId;
 use domain_server::nats::Nats;
 
 const LOG_DEFAULTS: &'static str = "warn";

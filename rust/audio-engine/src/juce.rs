@@ -19,20 +19,22 @@ impl JuceAudioReaderPtr {
 type AudioMgrCallback = extern "C" fn(*mut c_void, *const *const f32, i32, *mut *mut f32, i32, i32);
 
 extern "C" {
-  pub fn create_audio_mgr(type_name: *const c_char,
-                          input_name: *const c_char,
-                          output_name: *const c_char,
-                          input_channel_count: i32,
-                          output_channel_count: i32,
-                          sample_rate: i32,
-                          buffer_size: i32)
-                          -> i32;
+  pub fn create_audio_device(type_name: *const c_char,
+                             input_name: *const c_char,
+                             output_name: *const c_char,
+                             input_channel_count: i32,
+                             output_channel_count: i32,
+                             sample_rate: i32,
+                             buffer_size: i32)
+                             -> i32;
 
-  pub fn audio_mgr_start(callback: AudioMgrCallback, user_data: *mut c_void);
+  pub fn delete_audio_device(device_id: i32);
 
-  pub fn audio_mgr_stop();
+  pub fn start_audio_device(device_id: i32, callback: AudioMgrCallback, user_data: *mut c_void);
 
-  pub fn audio_mgr_latency() -> u32;
+  pub fn stop_audio_device(device_id: i32);
+
+  pub fn get_audio_device_latency(device_id: i32) -> i32;
 
   fn create_file_reader(path: *const c_char) -> JuceAudioReaderPtr;
 

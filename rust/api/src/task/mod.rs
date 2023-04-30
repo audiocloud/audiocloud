@@ -5,10 +5,15 @@ use schemars::{schema_for, JsonSchema};
 use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
+use graph::{AudioGraphSpec, modify::AudioGraphModification};
+use player::{GraphPlaybackEvent, PlayId};
+
 use crate::instance::driver::events::InstanceDriverEvent;
-use crate::task::spec::{AudioGraphModification, AudioGraphSpec, GraphPlaybackEvent, PlayId, TaskSpec};
+use crate::task::spec::TaskSpec;
 use crate::Timestamp;
 
+pub mod graph;
+pub mod player;
 pub mod spec;
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]

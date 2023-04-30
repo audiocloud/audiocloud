@@ -1,7 +1,10 @@
 use std::time::Instant;
 
+use api::task::player::PlayHead;
+
+use crate::buffer::{fill_slice, DeviceBuffers};
 use crate::juce::JuceAudioReader;
-use crate::{DeviceBuffers, InputPads, Node, NodeInfo, OutputPads, PlayHead, Result};
+use crate::{Node, NodeInfo, Result};
 
 const BUF_SIZE: usize = 1 << 12;
 
@@ -76,8 +79,8 @@ impl Node for JuceSourceReaderNode {
   fn process(&mut self,
              play: PlayHead,
              _device_buffers: DeviceBuffers,
-             _inputs: &mut InputPads,
-             outputs: &mut OutputPads,
+             _inputs: &[&[f64]],
+             outputs: &mut [&mut [f64]],
              _deadline: Instant)
              -> Result {
     let mut buffers = buffers!(self);
@@ -88,8 +91,8 @@ impl Node for JuceSourceReaderNode {
     self.reader
         .read_samples(&mut buffers[..channels], play.position as i64, play.buffer_size as i32);
 
-    for (i, (_, pad)) in outputs.iter_mut().enumerate() {
-      pad.send(&buffers[i][..buffer_size]);
+    for (i, output) in outputs.iter_mut().enumerate() {
+      fill_slice(output, buffers[i].iter().take(buffer_size).map(|f| *f as f64));
     }
 
     Ok(())
@@ -100,9 +103,12 @@ impl Node for JuceSourceReaderNode {
 mod test {
   use std::time::{Duration, Instant};
 
+  use api::task::player::PlayHead;
+
+  use crate::buffer::DeviceBuffers;
   use crate::juce::JuceAudioReader;
   use crate::juce_source_reader_node::JuceSourceReaderNode;
-  use crate::{DeviceBuffers, Node, PlayHead};
+  use crate::Node;
 
   #[test]
   fn test_io_perf() {
@@ -147,14 +153,13 @@ mod test {
     let start = Instant::now();
     let duration = Duration::from_secs(5);
 
+    let mut buf0 = [0.0; 1024];
+    let mut buf1 = [0.0; 1024];
+
     while start.elapsed() < duration {
       let deadline = Instant::now() + Duration::from_secs(1);
 
-      node.process(play_head,
-                   device_buffers,
-                   &mut Default::default(),
-                   &mut Default::default(),
-                   deadline)
+      node.process(play_head, device_buffers, &[], &mut [&mut buf0, &mut buf1], deadline)
           .expect("Failed to process");
     }
 

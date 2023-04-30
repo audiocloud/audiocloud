@@ -2,18 +2,11 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 #include <juce_audio_formats/juce_audio_formats.h>
 
-struct AudioMgr {
-    std::unique_ptr<juce::AudioDeviceManager> device_manager;
-    std::unique_ptr<juce::AudioIODevice> device;
-};
-
 std::unique_ptr<juce::AudioFormatManager> create_format_manager() {
     auto format_manager = std::make_unique<juce::AudioFormatManager>();
     format_manager->registerBasicFormats();
     return format_manager;
 }
-
-static std::unique_ptr<AudioMgr> audio_mgr;
 
 struct RustAudioIoCallback : public juce::AudioIODeviceCallback {
     void (*rust_callback)(
@@ -44,17 +37,22 @@ struct RustAudioIoCallback : public juce::AudioIODeviceCallback {
     }
 };
 
-extern "C" {
-int32_t init_audio_mgr(const char *type_name,
-                       const char *input_name, const char *output_name,
-                       const int input_channel_count, const int output_channel_count,
-                       const int sample_rate,
-                       const int buffer_size) {
-    try {
-        std::cout << "create_audio_mgr: " << type_name << " " << input_name << " " << output_name << std::endl;
-        std::cout << input_channel_count << " x " << output_channel_count << " @ " << sample_rate << "Hz" << std::endl;
+std::unique_ptr<juce::AudioDeviceManager> device_manager = std::make_unique<juce::AudioDeviceManager>();
+std::map<uint32_t, std::unique_ptr<juce::AudioIODevice>> audio_devices;
+std::atomic_int32_t audio_device_id{0};
 
-        auto device_manager = std::make_unique<juce::AudioDeviceManager>();
+extern "C" {
+int32_t create_audio_device(const char *type_name,
+                            const char *input_name, const char *output_name,
+                            const int input_channel_count, const int output_channel_count,
+                            const int sample_rate,
+                            const int buffer_size) {
+    auto our_device_id = audio_device_id.fetch_add(1);
+
+    try {
+        std::cout << "create_audio_device: " << type_name << " " << input_name << " " << output_name << " for device "
+                  << our_device_id << std::endl;
+        std::cout << input_channel_count << " x " << output_channel_count << " @ " << sample_rate << "Hz" << std::endl;
 
         for (auto dev_type: device_manager->getAvailableDeviceTypes()) {
             if (dev_type->getTypeName() != type_name) {
@@ -89,60 +87,76 @@ int32_t init_audio_mgr(const char *type_name,
                 return -2;
             }
 
-            audio_mgr = std::make_unique<AudioMgr>(AudioMgr{
-                    std::move(device_manager),
-                    std::move(audio_device)
-            });
+            audio_devices.emplace(our_device_id, std::move(audio_device));
 
-            return 0;
+            return our_device_id;
         }
 
         std::cerr << "No device type found" << std::endl;
     } catch (...) {
-        std::cerr << "create_audio_mgr: exception" << std::endl;
+        std::cerr << "create_audio_device: exception" << std::endl;
     }
 
     return -3;
 }
 
-void audio_mgr_start(void (*rust_callback)(
-        void *data,
-        const float *const *, int,
-        float *const *, int,
-        int), void *data) {
+int32_t start_audio_device(int32_t device_id,
+                           void (*rust_callback)(
+                                   void *data,
+                                   const float *const *, int,
+                                   float *const *, int,
+                                   int), void *data) {
 
-    if (audio_mgr && audio_mgr->device && rust_callback) {
-        auto callback = std::make_unique<RustAudioIoCallback>();
-        callback->rust_callback = rust_callback;
-        callback->data = data;
-
-        audio_mgr->device->start(callback.release());
+    if (audio_devices.count(device_id) == 0) {
+        std::cerr << "start_audio_mgr: device not found: " << device_id << std::endl;
+        return -1;
     }
+
+    if (!rust_callback) {
+        std::cerr << "start_audio_mgr: callback not set" << std::endl;
+        return -2;
+    }
+
+
+    auto callback = std::make_unique<RustAudioIoCallback>();
+    callback->rust_callback = rust_callback;
+    callback->data = data;
+
+    audio_devices[device_id]->start(callback.release());
 }
 
-uint32_t audio_mgr_get_latency() {
-    if (audio_mgr && audio_mgr->device) {
-        return audio_mgr->device->getInputLatencyInSamples() + audio_mgr->device->getOutputLatencyInSamples();
+int32_t get_audio_device_latency(int32_t device_id) {
+    if (audio_devices.count(device_id) == 0) {
+        std::cerr << "get_audio_device_latency: device not found: " << device_id << std::endl;
+        return -1;
     }
 
-    return 0;
+    auto &device = audio_devices[device_id];
+    return static_cast<int32_t>(device->getInputLatencyInSamples() + device->getOutputLatencyInSamples());
 }
 
-void audio_mgr_stop(AudioMgr *mgr) {
-    if (audio_mgr && audio_mgr->device) {
-        audio_mgr->device->stop();
+void stop_audio_device(int32_t device_id) {
+    if (audio_devices.count(device_id) == 0) {
+        std::cerr << "stop_audio_device: device not found: " << device_id << std::endl;
+        return;
     }
+
+    audio_devices[device_id]->stop();
+}
+
+void delete_audio_device(int32_t device_id) {
+    if (audio_devices.count(device_id) == 0) {
+        std::cerr << "shutdown_audio_device: device not found: " << device_id << std::endl;
+        return;
+    }
+
+    audio_devices.erase(device_id);
 }
 
 static std::unique_ptr<juce::ScopedJuceInitialiser_GUI> juce_gui = std::make_unique<juce::ScopedJuceInitialiser_GUI>();
 static std::unique_ptr<juce::AudioFormatManager> format_manager = create_format_manager();
 static std::unique_ptr<juce::TimeSliceThread> io_thread = std::make_unique<juce::TimeSliceThread>("io_thread");
 
-
-void juce_engine_shutdown() {
-    format_manager.reset();
-    juce::shutdownJuce_GUI();
-}
 
 juce::AudioFormatReader *create_file_reader(const char *path) {
     auto wd = juce::File::getCurrentWorkingDirectory();

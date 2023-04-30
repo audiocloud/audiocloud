@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
-use crate::task::spec::PlayId;
+use crate::task::player::PlayId;
 use crate::task::DesiredTaskPlayState;
 use crate::Timestamp;
 

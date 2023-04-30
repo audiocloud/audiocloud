@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::ptr::{null, null_mut};
-use std::slice::{from_raw_parts, from_raw_parts_mut};
+use std::iter::from_fn;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
@@ -10,23 +9,16 @@ use itertools::Itertools;
 use rayon::prelude::*;
 use rtrb::{Consumer, Producer};
 
-use api::task::spec::{AudioGraphSpec, InputId, NodeId, OutputId, PlayRegion};
+use api::task::graph::{AudioGraphSpec, InputId, NodeId, OutputId};
+use api::task::player::PlayHead;
+use buffer::DeviceBuffers;
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
 pub mod buffer;
-pub mod juce_source_reader_node;
+pub mod bus_node;
 pub mod juce;
-
-#[derive(Copy, Clone, Debug, Default)]
-pub struct PlayHead {
-  pub sample_rate: u32,
-  pub buffer_size: u32,
-  pub play_region: PlayRegion,
-  pub play_id:     u64,
-  pub generation:  u64,
-  pub position:    u64,
-}
+pub mod juce_source_reader_node;
 
 pub struct ConnectionEnd {
   pub consumer:          Consumer<f64>,
@@ -60,6 +52,13 @@ impl ConnectionEnd {
 
     SetLatencyOutcome::Ok
   }
+
+  pub fn pull(&mut self, len: usize) -> impl Iterator<Item = f64> + '_ {
+    std::iter::repeat(0.0).take(self.remaining_latency)
+                          .inspect(|_| self.remaining_latency -= 1)
+                          .chain(from_fn(|| self.consumer.pop().ok()))
+                          .take(len)
+  }
 }
 
 pub struct ConnectionStart {
@@ -91,51 +90,6 @@ impl OutputPad {
 pub type InputPads = HashMap<InputId, InputPad>;
 
 pub type OutputPads = HashMap<OutputId, OutputPad>;
-
-impl PlayHead {
-  pub fn advance_position(self) -> Self {
-    self.advance_position_by(self.buffer_size as usize)
-  }
-
-  pub fn advance_position_by(self, len: usize) -> Self {
-    let generation = self.generation + 1;
-    let position_end = self.position + len as u64;
-    let play_region = self.play_region;
-
-    let position = if position_end > play_region.end {
-      if play_region.looping {
-        play_region.start + (position_end - play_region.end)
-      } else {
-        play_region.end
-      }
-    } else {
-      position_end
-    };
-
-    Self { generation,
-           position,
-           ..self }
-  }
-
-  pub fn with_play_region(self, play_region: PlayRegion) -> Self {
-    let generation = self.generation + 1;
-    let play_id = self.play_id + 1;
-
-    Self { play_region,
-           generation,
-           play_id,
-           ..self }
-  }
-
-  pub fn playing_segment_size(&self) -> usize {
-    ((self.play_region.end - self.position) as i64).min(self.buffer_size as i64).max(0) as usize
-  }
-}
-
-pub struct IOBuffers {
-  pub inputs:  Vec<Vec<f32>>,
-  pub outputs: Vec<Vec<f32>>,
-}
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct NodeInfo {
@@ -173,8 +127,8 @@ pub trait Node: Send {
   fn process(&mut self,
              play: PlayHead,
              device_buffers: DeviceBuffers,
-             inputs: &mut InputPads,
-             outputs: &mut OutputPads,
+             inputs_buffers: &[&[f64]],
+             outputs: &mut [&mut [f64]],
              deadline: Instant)
              -> Result {
     Ok(())
@@ -199,6 +153,8 @@ struct PlayerNode {
   must_prepare:        bool,
   inputs:              InputPads,
   outputs:             OutputPads,
+  input_bufs:          Vec<Vec<f64>>,
+  output_bufs:         Vec<Vec<f64>>,
   generation:          u64,
   rank:                i32,
 }
@@ -208,40 +164,6 @@ pub struct GraphPlayer {
   play_head:        PlayHead,
   must_prepare:     bool,
   ready_to_iterate: bool,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub struct DeviceBuffers {
-  pub inputs:      *const *const f32,
-  pub outputs:     *mut *mut f32,
-  pub num_inputs:  usize,
-  pub num_outputs: usize,
-  pub buffer_size: usize,
-}
-
-impl Default for DeviceBuffers {
-  fn default() -> Self {
-    Self { inputs:      null(),
-           outputs:     null_mut(),
-           num_inputs:  0,
-           num_outputs: 0,
-           buffer_size: 0, }
-  }
-}
-
-unsafe impl Send for DeviceBuffers {}
-unsafe impl Sync for DeviceBuffers {}
-
-impl DeviceBuffers {
-  pub fn get_input_plane(&self, plane: usize) -> &[f32] {
-    assert!(plane < self.num_inputs);
-    unsafe { from_raw_parts(*self.inputs.add(plane), self.buffer_size) }
-  }
-
-  pub fn get_output_plane(&self, plane: usize) -> &mut [f32] {
-    assert!(plane < self.num_outputs);
-    unsafe { from_raw_parts_mut(*self.outputs.add(plane), self.buffer_size) }
-  }
 }
 
 impl GraphPlayer {
@@ -480,15 +402,20 @@ impl GraphPlayer {
                               .into_iter()
                               .sorted_by_key(|(rank, _)| *rank)
     {
-      let groups = groups.collect_vec();
+      let mut groups = groups.collect_vec();
 
       // without spawn() this is not going to be multi-threaded.
-      for (id, err) in groups.into_par_iter()
-                             .map(|n| {
+      for (id, err) in groups.par_iter_mut()
+                             .map(|mut n| {
                                n.generation = play_head.generation;
                                let id = n.id.clone();
 
-                               let result = n.node.process(play_head, device_buffers, &mut n.inputs, &mut n.outputs, deadline);
+                               // TODO: collect to a SmallVec<32>
+
+                               let inputs = n.input_bufs.iter().map(|s| s.as_slice()).collect_vec();
+                               let mut outputs = n.output_bufs.iter_mut().map(|s| s.as_mut_slice()).collect_vec();
+
+                               let result = n.node.process(play_head, device_buffers, &inputs[..], &mut outputs[..], deadline);
                                (id, result)
                              })
                              .find_map_first(|(id, res)| res.err().map(|err| (id, err)))

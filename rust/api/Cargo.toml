@@ -9,9 +9,13 @@ derive_more = "0.99"
 anyhow = "1"
 cuid2 = "0.1"
 
+[dependencies.bytes]
+version = "1"
+features = ["serde"]
+
 [dependencies.schemars]
 version = "0.8"
-features = ["chrono"]
+features = ["chrono", "bytes"]
 
 [dependencies.chrono]
 version = "0.4"
