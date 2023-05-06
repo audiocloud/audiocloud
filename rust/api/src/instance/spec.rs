@@ -10,19 +10,27 @@ use crate::BucketKey;
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceSpec {
-  pub model:  InstanceModel,
-  pub host:   String,
-  pub power:  Option<InstancePowerSpec>,
-  pub media:  Option<InstanceMediaSpec>,
-  pub driver: InstanceDriverConfig,
+  pub model:      InstanceModel,
+  pub host:       String,
+  pub power:      Option<InstancePowerSpec>,
+  pub media:      Option<InstanceMediaSpec>,
+  pub attachment: Option<InstanceAttachment>,
+  pub driver:     InstanceDriverConfig,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct InstanceAttachment {
+  pub inputs_start:  Option<usize>,
+  pub outputs_start: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstancePowerSpec {
   pub power_controller:   String,
-  pub power_on:           ParameterCommand,
-  pub power_off:          ParameterCommand,
+  pub power_on:           SetParameterCommand,
+  pub power_off:          SetParameterCommand,
   pub warm_up_ms:         u64,
   pub cool_down_ms:       u64,
   pub idle_ms:            u64,
@@ -31,7 +39,7 @@ pub struct InstancePowerSpec {
 }
 
 impl InstancePowerSpec {
-  pub fn get_command(&self, desired: DesiredInstancePowerState) -> &ParameterCommand {
+  pub fn get_command(&self, desired: DesiredInstancePowerState) -> &SetParameterCommand {
     match desired {
       | DesiredInstancePowerState::On => &self.power_on,
       | DesiredInstancePowerState::Off => &self.power_off,
@@ -46,13 +54,13 @@ pub struct InstanceMediaSpec {
   #[serde(default = "default_position_report")]
   pub position_report: String,
   pub report_triggers: Vec<PlayStateReportTrigger>,
-  pub play:            ParameterCommand,
-  pub stop:            ParameterCommand,
-  pub rewind:          ParameterCommand,
+  pub play:            SetParameterCommand,
+  pub stop:            SetParameterCommand,
+  pub rewind:          SetParameterCommand,
 }
 
 impl InstanceMediaSpec {
-  pub fn get_command(&self, desired: DesiredInstancePlayState, remaining: f64) -> &ParameterCommand {
+  pub fn get_command(&self, desired: DesiredInstancePlayState, remaining: f64) -> &SetParameterCommand {
     match desired {
       | DesiredInstancePlayState::Stop => &self.stop,
       | DesiredInstancePlayState::Play { duration, .. } =>
@@ -67,7 +75,7 @@ impl InstanceMediaSpec {
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct ParameterCommand {
+pub struct SetParameterCommand {
   pub parameter: String,
   #[serde(default)]
   pub channel:   usize,

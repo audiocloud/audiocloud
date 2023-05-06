@@ -5,7 +5,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::task::graph::{BusId, SinkId, SinkSpec, SourceId};
+use crate::instance::model::{ParameterModel, ReportModel};
+use crate::task::graph::{NodeId, SinkId, SinkSpec};
 
 pub type PlayId = u64;
 
@@ -85,40 +86,19 @@ pub enum GraphPlaybackEvent {
   GraphStateChanged {
     state: GraphPlaybackState,
   },
+  GraphNodesPrepared {
+    play_id: PlayId,
+    nodes:   HashMap<NodeId, NodeInfo>,
+  },
   GraphSinkCaptured {
     play_id:   PlayId,
     play_head: PlayHead,
     sink_id:   SinkId,
     data:      bytes::Bytes,
   },
-  NodeMetricsCaptured {
-    metrics:   Vec<NodeMetric>,
-    play_id:   PlayId,
-    play_head: PlayHead,
-  },
-}
-
-/// Metrics emitted by the player while playing back a graph
-#[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
-#[serde(rename_all = "camelCase", tag = "type", content = "details")]
-pub enum NodeMetric {
-  Source {
-    source_id:          SourceId,
-    output_rms_levels:  (f64, f64),
-    output_peak_levels: (f64, f64),
-  },
-  Bus {
-    bus_id:             BusId,
-    input_rms_levels:   Vec<f64>,
-    input_peak_levels:  Vec<f64>,
-    output_rms_levels:  Vec<f64>,
-    output_peak_levels: Vec<f64>,
-  },
-  Sink {
-    output_rms_levels:  (f64, f64),
-    output_peak_levels: (f64, f64),
-    output_lufs_levels: (f64, f64),
-    sink_id:            SinkId,
+  NodeEvents {
+    play_id: PlayId,
+    events:  Vec<(NodeId, NodeEvent)>,
   },
 }
 
@@ -172,4 +152,23 @@ impl PlayHead {
   pub fn playing_segment_size(&self) -> usize {
     ((self.play_region.end - self.position) as i64).min(self.buffer_size as i64).max(0) as usize
   }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeInfo {
+  pub latency:     usize,
+  pub num_inputs:  usize,
+  pub num_outputs: usize,
+  #[serde(default)]
+  pub parameters:  HashMap<String, ParameterModel>,
+  #[serde(default)]
+  pub reports:     HashMap<String, ReportModel>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum NodeEvent {
+  #[serde(rename_all = "camelCase")]
+  Report { name: String, channel: usize, value: f64 },
 }

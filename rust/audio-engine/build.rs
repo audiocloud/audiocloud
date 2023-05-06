@@ -24,7 +24,6 @@ fn main() {
     println!("cargo:rustc-link-lib=dxguid");
     println!("cargo:rustc-link-lib=setupapi");
   } else if target_os.contains("darwin") {
-    println!("cargo:rustc-link-lib=dylib=c++");
     println!("cargo:rustc-link-lib=framework=Cocoa");
     println!("cargo:rustc-link-lib=framework=IOKit");
     println!("cargo:rustc-link-lib=framework=Accelerate");

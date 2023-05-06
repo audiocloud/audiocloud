@@ -5,7 +5,7 @@ use schemars::{schema_for, JsonSchema};
 use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
-use graph::{AudioGraphSpec, modify::AudioGraphModification};
+use graph::{modify::AudioGraphModification, AudioGraphSpec};
 use player::{GraphPlaybackEvent, PlayId};
 
 use crate::instance::driver::events::InstanceDriverEvent;
@@ -76,7 +76,17 @@ pub struct TaskEvent {
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum DesiredTaskPlayState {
   Idle,
-  Play { play_id: PlayId, from: f64, to: f64 },
+  Play(PlayRequest),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PlayRequest {
+  pub play_id:    PlayId,
+  pub from:       u64,
+  pub to:         u64,
+  pub start_from: u64,
+  pub looping:    bool,
 }
 
 impl Default for DesiredTaskPlayState {

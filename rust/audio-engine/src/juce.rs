@@ -50,7 +50,8 @@ extern "C" {
                               buffer: *const *mut f32,
                               num_channels: i32,
                               start_pos: i64,
-                              num_samples: i32)
+                              num_samples: i32,
+                              remaining_ms: u32)
                               -> i32;
 }
 
@@ -83,7 +84,7 @@ impl JuceAudioReader {
     unsafe { file_reader_get_total_length(self.reader_ptr) }
   }
 
-  pub fn read_samples(&self, buffers: &mut [&mut [f32]], pos: i64, len: i32) -> i32 {
+  pub fn read_samples(&self, buffers: &mut [&mut [f32]], pos: i64, len: i32, remaining_ms: u32) -> i32 {
     let mut slice_ptrs = [null_mut(),
                           null_mut(),
                           null_mut(),
@@ -97,7 +98,7 @@ impl JuceAudioReader {
       slice_ptrs[i] = buffer.as_mut_ptr();
     }
 
-    unsafe { file_reader_read_samples(self.reader_ptr, slice_ptrs.as_ptr(), buffers.len() as i32, pos, len as i32) }
+    unsafe { file_reader_read_samples(self.reader_ptr, slice_ptrs.as_ptr(), buffers.len() as i32, pos, len as i32, remaining_ms) }
   }
 }
 

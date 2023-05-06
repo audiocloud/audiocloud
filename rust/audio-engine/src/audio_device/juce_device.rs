@@ -1,24 +1,23 @@
 use std::collections::{HashMap, HashSet};
 use std::ffi::{c_void, CString};
-use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use anyhow::bail;
 use derive_more::Display;
-use serde::{Deserialize, Serialize};
-
-use audio_engine::buffer::DeviceBuffers;
-use audio_engine::juce;
 
 use crate::audio_device::{DeviceClientCommand, DeviceCommand};
+use crate::buffer::DeviceBuffers;
+use crate::juce;
 use crate::Result;
+
+// TODO: do we really need crossbeam_channel here? Can't we have tokio or std mpsc?
 
 pub struct JuceAudioDevice {
   id:            String,
   device_id:     i32,
   clients:       HashMap<String, Client>,
   generation:    u64,
-  rx_cmd:        mpsc::Receiver<DeviceCommand>,
+  rx_cmd:        crossbeam_channel::Receiver<DeviceCommand>,
   flip_duration: Duration,
 }
 
@@ -39,8 +38,8 @@ impl JuceAudioDevice {
              output_channel_count: usize,
              sample_rate: usize,
              buffer_size: usize)
-             -> Result<(mpsc::Sender<DeviceCommand>, Box<Self>)> {
-    let (tx_cmd, rx_cmd) = mpsc::channel();
+             -> Result<(crossbeam_channel::Sender<DeviceCommand>, Box<Self>)> {
+    let (tx_cmd, rx_cmd) = crossbeam_channel::bounded(0x100);
     let type_name = type_name.to_cstring();
     let input_name = CString::new(input_name)?;
     let output_name = CString::new(output_name)?;
@@ -154,16 +153,19 @@ extern "C" fn callback(data: *mut c_void,
                        num_outputs: i32,
                        buffer_size: i32) {
   let device = unsafe { &mut *(data as *mut JuceAudioDevice) };
+  device.generation += 1;
+
   let buffers = DeviceBuffers { inputs,
                                 outputs,
                                 num_inputs: num_inputs as usize,
                                 num_outputs: num_outputs as usize,
-                                buffer_size: buffer_size as usize };
+                                buffer_size: buffer_size as usize,
+                                generation: device.generation };
 
   device.handle_callback(buffers);
 }
 
-#[derive(Serialize, Deserialize, Debug, Display, Clone, Copy)]
+#[derive(Debug, Display, Clone, Copy)]
 #[display(fmt = "self:?")]
 pub enum JuceAudioDeviceType {
   CoreAudio,
@@ -180,5 +182,5 @@ impl JuceAudioDeviceType {
 }
 
 struct Client {
-  tx_cmd: mpsc::Sender<DeviceClientCommand>,
+  tx_cmd: crossbeam_channel::Sender<DeviceClientCommand>,
 }

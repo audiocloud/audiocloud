@@ -5,16 +5,31 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-dasp_sample = "0.11"
-dasp_frame = "0.11"
 flume = "0.10"
 rtrb = "0.2"
 derive_more = "0.99"
 tinyvec = "1"
 itertools = "0.10"
 lru = "0.10"
-rayon = "1"
+maplit = "1"
 lazy_static = "1"
+libflac-sys = "0.3"
+link-cplusplus = "1"
+ebur128 = "0.1"
+serde_json = "1" # for the json! macro
+crossbeam-channel = "0.5"
+bytes = "1"
+
+[dependencies.dasp]
+version = "0.11.0"
+features = ["signal"]
+
+[dependencies.tokio]
+version = "1"
+features = ["macros", "sync", "rt-multi-thread"]
+
+[dependencies.futures]
+version = "0.3"
 
 [dependencies.r8brain-rs]
 git = "https://github.com/audiocloud/r8brain-rs"

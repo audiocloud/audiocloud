@@ -33,7 +33,7 @@ fn default_audio_io_count() -> usize {
   2
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ParameterModel {
   #[serde(default)]
@@ -46,6 +46,14 @@ pub struct ParameterModel {
   pub channels: usize,
   #[serde(default)]
   pub metadata: HashMap<String, Value>,
+}
+
+pub fn unit_db() -> Option<String> {
+  Some("dB".to_owned())
+}
+
+pub fn unit_hz() -> Option<String> {
+  Some("Hz".to_owned())
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
@@ -65,6 +73,14 @@ pub enum ValueRange {
   },
 }
 
+impl ValueRange {
+  pub fn volume() -> Self {
+    Self::Bounded { min:  -100.0,
+                    max:  100.0,
+                    step: None, }
+  }
+}
+
 impl Default for ValueRange {
   fn default() -> Self {
     Self::Bounded { min:  0.0,
@@ -81,7 +97,7 @@ fn default_model_channels() -> usize {
   2
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[derive(Default, Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ReportModel {
   #[serde(default)]

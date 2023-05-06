@@ -6,7 +6,7 @@ use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
 use crate::task::player::PlayId;
-use crate::task::DesiredTaskPlayState;
+use crate::task::{DesiredTaskPlayState, PlayRequest};
 use crate::Timestamp;
 
 pub mod control;
@@ -160,8 +160,8 @@ impl From<DesiredTaskPlayState> for InstancePlayState {
   fn from(value: DesiredTaskPlayState) -> Self {
     match value {
       | DesiredTaskPlayState::Idle => Self::Idle,
-      | DesiredTaskPlayState::Play { play_id, from, to } => Self::Playing { play_id,
-                                                                            duration: to - from },
+      | DesiredTaskPlayState::Play(PlayRequest { play_id, from, to, .. }) => Self::Playing { play_id,
+                                                                                             duration: (to - from) as f64 },
     }
   }
 }
@@ -192,8 +192,8 @@ impl From<DesiredTaskPlayState> for DesiredInstancePlayState {
   fn from(value: DesiredTaskPlayState) -> Self {
     match value {
       | DesiredTaskPlayState::Idle => Self::Stop,
-      | DesiredTaskPlayState::Play { play_id, from, to } => Self::Play { play_id,
-                                                                         duration: to - from },
+      | DesiredTaskPlayState::Play(PlayRequest { play_id, from, to, .. }) => Self::Play { play_id,
+                                                                                          duration: (to - from) as f64 },
     }
   }
 }

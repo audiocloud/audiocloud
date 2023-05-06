@@ -157,8 +157,9 @@ static std::unique_ptr<juce::ScopedJuceInitialiser_GUI> juce_gui = std::make_uni
 static std::unique_ptr<juce::AudioFormatManager> format_manager = create_format_manager();
 static std::unique_ptr<juce::TimeSliceThread> io_thread = std::make_unique<juce::TimeSliceThread>("io_thread");
 
+typedef juce::BufferingAudioReader AudioFormatReader;
 
-juce::AudioFormatReader *create_file_reader(const char *path) {
+AudioFormatReader *create_file_reader(const char *path) {
     auto wd = juce::File::getCurrentWorkingDirectory();
     auto file = wd.getChildFile(juce::String(path));
     auto reader = format_manager->createReaderFor(file);
@@ -169,27 +170,30 @@ juce::AudioFormatReader *create_file_reader(const char *path) {
     return new juce::BufferingAudioReader(reader, *io_thread, 256 * 1024 * 1024);
 }
 
-void delete_file_reader(juce::AudioFormatReaderSource *reader) {
+void delete_file_reader(AudioFormatReader *reader) {
     delete reader;
 }
 
-int64_t file_reader_get_total_length(juce::AudioFormatReader *reader) {
+int64_t file_reader_get_total_length(AudioFormatReader *reader) {
     return static_cast<int64_t>(reader->lengthInSamples);
 }
 
-uint32_t file_reader_get_channels(juce::AudioFormatReader *reader) {
+uint32_t file_reader_get_channels(AudioFormatReader *reader) {
     return static_cast<uint32_t>(reader->numChannels);
 }
 
-uint32_t file_reader_get_sample_rate(juce::AudioFormatReader *reader) {
+uint32_t file_reader_get_sample_rate(AudioFormatReader *reader) {
     return static_cast<uint32_t>(reader->sampleRate);
 }
 
-int32_t file_reader_read_samples(juce::AudioFormatReader *reader,
+int32_t file_reader_read_samples(AudioFormatReader *reader,
                                  float **buffers,
                                  int32_t num_channels,
                                  int64_t start_pos,
-                                 int32_t num_samples) {
+                                 int32_t num_samples,
+                                 uint32_t timeout_ms) {
+    reader->setReadTimeout(static_cast<int>(timeout_ms));
+
     return reader->read(buffers, num_channels, start_pos, num_samples) ? 1 : 0;
 }
 
