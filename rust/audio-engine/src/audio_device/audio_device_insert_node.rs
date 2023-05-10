@@ -4,6 +4,7 @@ use api::task::player::{NodeEvent, PlayHead};
 
 use crate::buffer::{cast_sample_ref, fill_slice, DevicesBuffers, NodeBuffers};
 use crate::events::{slice_peak_level_db, slice_rms_level_db};
+use crate::player::DeviceInstanceAttachment;
 use crate::{Node, NodeInfo, Result};
 
 mod reports {
@@ -52,15 +53,20 @@ pub struct AudioDeviceInsertNode {
 }
 
 impl AudioDeviceInsertNode {
-  pub fn new(audio_device_id: String, sends: Vec<u32>, returns: Vec<u32>, latency: usize) -> Result<Self> {
-    let info = NodeInfo { latency,
-                          num_inputs: sends.len(),
-                          num_outputs: returns.len(),
-                          parameters: parameters::create(sends.len(), returns.len()),
-                          reports: reports::create(sends.len(), returns.len()) };
+  pub fn new(spec: &DeviceInstanceAttachment, device_latency: usize) -> Result<Self> {
+    let num_sends = spec.sends.len();
+    let num_returns = spec.returns.len();
+    let info = NodeInfo { latency:     spec.additional_latency + device_latency,
+                          num_inputs:  num_sends,
+                          num_outputs: num_returns,
+                          parameters:  parameters::create(num_sends, num_returns),
+                          reports:     reports::create(num_sends, num_returns), };
 
-    let send_gains = vec![1.0; sends.len()];
-    let return_gains = vec![1.0; returns.len()];
+    let send_gains = vec![1.0; num_sends];
+    let return_gains = vec![1.0; num_returns];
+    let audio_device_id = spec.device_id.clone();
+    let sends = spec.sends.clone();
+    let returns = spec.returns.clone();
 
     Ok(Self { info,
               audio_device_id,
@@ -80,10 +86,10 @@ impl Node for AudioDeviceInsertNode {
              _play: PlayHead,
              device_buffers: DevicesBuffers,
              node_buffers: NodeBuffers,
-             _deadline: Instant)
-             -> Result<Vec<NodeEvent>> {
+             _deadline: Instant,
+             events: &mut Vec<NodeEvent>)
+             -> Result {
     let device_buffers = device_buffers.device(&self.audio_device_id)?;
-    let mut rv = vec![];
 
     for (index, send_channel) in self.sends.iter().copied().enumerate() {
       let device_plane = device_buffers.output_plane(send_channel as usize);
@@ -98,13 +104,13 @@ impl Node for AudioDeviceInsertNode {
 
       fill_slice(device_plane, node_plane.iter().map(cast_sample_ref()));
 
-      rv.push(NodeEvent::Report { name:    reports::SEND_PEAK_LEVEL.to_owned(),
-                                  channel: index,
-                                  value:   peak_db, });
+      events.push(NodeEvent::Report { name:    reports::SEND_PEAK_LEVEL.to_owned(),
+                                      channel: index,
+                                      value:   peak_db, });
 
-      rv.push(NodeEvent::Report { name:    reports::SEND_RMS_LEVEL.to_owned(),
-                                  channel: index,
-                                  value:   rms_db, });
+      events.push(NodeEvent::Report { name:    reports::SEND_RMS_LEVEL.to_owned(),
+                                      channel: index,
+                                      value:   rms_db, });
     }
 
     for (index, return_channel) in self.returns.iter().copied().enumerate() {
@@ -120,15 +126,15 @@ impl Node for AudioDeviceInsertNode {
       let peak_db = slice_peak_level_db(node_plane);
       let rms_db = slice_rms_level_db(node_plane);
 
-      rv.push(NodeEvent::Report { name:    reports::RETURN_PEAK_LEVEL.to_owned(),
-                                  channel: index,
-                                  value:   peak_db, });
+      events.push(NodeEvent::Report { name:    reports::RETURN_PEAK_LEVEL.to_owned(),
+                                      channel: index,
+                                      value:   peak_db, });
 
-      rv.push(NodeEvent::Report { name:    reports::RETURN_RMS_LEVEL.to_owned(),
-                                  channel: index,
-                                  value:   rms_db, });
+      events.push(NodeEvent::Report { name:    reports::RETURN_RMS_LEVEL.to_owned(),
+                                      channel: index,
+                                      value:   rms_db, });
     }
 
-    Ok(rv)
+    Ok(())
   }
 }

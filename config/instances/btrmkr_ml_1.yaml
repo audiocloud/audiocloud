@@ -1,4 +1,8 @@
 host: better-pi
+attachment:
+  device: galaxy@macmini
+  inputs: [ 0, 1 ]
+  outputs: [ 0, 1 ]
 power:
   powerController: ppdu_r1_up_l
   driverNeedsPower: true

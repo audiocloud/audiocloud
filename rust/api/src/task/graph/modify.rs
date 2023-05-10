@@ -3,21 +3,33 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use super::{BusId, BusSpec, InsertId, InsertSpec, NodeId, OutputId, SourceId, SourceSpec};
+use crate::task::graph::VirtualInsertSpec;
+
+use super::{BusId, BusSpec, DeviceInsertSpec, InsertId, NodeId, OutputId, SourceId, SourceSpec};
 
 #[derive(Debug, Display, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum AudioGraphModification {
   #[display(fmt = "add source {source_id} with spec {source_spec:?}")]
-  AddSource { source_id: SourceId, source_spec: SourceSpec },
+  AddOrReplaceSource { source_id: SourceId, source_spec: SourceSpec },
+  #[display(fmt = "add device insert {insert_id} with spec {insert_spec:?}")]
+  AddOrReplaceDeviceInsert {
+    insert_id:   InsertId,
+    insert_spec: DeviceInsertSpec,
+  },
   #[display(fmt = "add insert {insert_id} with spec {insert_spec:?}")]
-  AddInsert { insert_id: InsertId, insert_spec: InsertSpec },
+  AddOrReplaceVirtualInsert {
+    insert_id:   InsertId,
+    insert_spec: VirtualInsertSpec,
+  },
   #[display(fmt = "add bus {bus_id} with spec {bus_spec:?}")]
-  AddBus { bus_id: BusId, bus_spec: BusSpec },
+  AddOrReplaceBus { bus_id: BusId, bus_spec: BusSpec },
   #[display(fmt = "remove source {source_id}")]
   RemoveSource { source_id: SourceId },
-  #[display(fmt = "remove insert {insert_id}")]
-  RemoveInsert { insert_id: InsertId },
+  #[display(fmt = "remove device insert {insert_id}")]
+  RemoveDeviceInsert { insert_id: InsertId },
+  #[display(fmt = "remove virtual insert {insert_id}")]
+  RemoveVirtualInsert { insert_id: InsertId },
   #[display(fmt = "remove bus {bus_id}")]
   RemoveBus { bus_id: BusId },
   #[display(fmt = "connect component {component} input {input_channel} to {output}")]
@@ -32,8 +44,6 @@ pub enum AudioGraphModification {
     input_channel: usize,
     output:        OutputId,
   },
-  #[display(fmt = "set source {source_id} file path to {path}")]
-  SetSourcePath { source_id: SourceId, path: String },
 }
 
 /// Validation errors for the graph to be created or modified

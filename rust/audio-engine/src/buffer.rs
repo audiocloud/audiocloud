@@ -7,6 +7,8 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use dasp::sample::FromSample;
 
+use api::task::player::NodeInfo;
+
 use super::Result;
 
 pub fn fill_slice<S>(slice: &mut [S], value: impl Iterator<Item = S>) {
@@ -89,12 +91,21 @@ pub struct NodeBuffers {
 }
 
 impl NodeBuffers {
-  pub fn new(inputs: Vec<Vec<f64>>, outputs: Vec<Vec<f64>>, buffer_size: usize) -> Self {
-    Self { num_inputs: inputs.len(),
+  pub fn allocate(info: &NodeInfo, buffer_size: usize) -> Self {
+    let num_inputs = info.num_inputs;
+    let num_outputs = info.num_outputs;
+    let inputs = (0..num_inputs).map(|_| vec![0.0; buffer_size]).collect();
+    let outputs = (0..num_outputs).map(|_| vec![0.0; buffer_size]).collect();
+
+    Self::new(inputs, outputs, buffer_size)
+  }
+
+  pub fn new(inputs: Vec<Vec<f64>>, outputs: Vec<Vec<f64>>, sample_buffer_size: usize) -> Self {
+    Self { num_inputs:  inputs.len(),
            num_outputs: outputs.len(),
-           inputs: Arc::new(inputs),
-           outputs: Arc::new(outputs),
-           buffer_size }
+           inputs:      Arc::new(inputs),
+           outputs:     Arc::new(outputs),
+           buffer_size: sample_buffer_size, }
   }
 
   pub fn input_plane(&self, plane: usize) -> &mut [f64] {
@@ -117,5 +128,4 @@ impl NodeBuffers {
 }
 
 unsafe impl Send for NodeBuffers {}
-
 unsafe impl Sync for NodeBuffers {}

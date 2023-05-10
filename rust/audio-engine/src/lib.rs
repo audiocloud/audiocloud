@@ -1,8 +1,10 @@
 use std::future::Future;
+use std::sync::Arc;
 use std::time::Instant;
 
 use dasp::sample::{FromSample, Sample};
 use itertools::Itertools;
+use tokio::sync::RwLock;
 
 use api::instance::spec::SetParameterCommand;
 use api::task::player::{NodeEvent, NodeInfo, PlayHead};
@@ -50,8 +52,8 @@ pub trait Node: Send + Sync {
   /// * `devices`: The device buffers for reading and writing
   /// * `io`: The node buffers for reading and writing
   /// * `deadline`: The time at which the node must have finished processing
-  fn process(&mut self, play: PlayHead, devices: DevicesBuffers, io: NodeBuffers, deadline: Instant) -> Result<Vec<NodeEvent>> {
-    Ok(vec![])
+  fn process(&mut self, play: PlayHead, devices: DevicesBuffers, io: NodeBuffers, deadline: Instant, events: &mut Vec<NodeEvent>) -> Result {
+    Ok(())
   }
 
   /// Called when the node will no longer be played and a new [prepare_to_play] will be called
@@ -64,3 +66,18 @@ pub trait Node: Send + Sync {
 }
 
 pub type BoxedNode = Box<dyn Node>;
+pub type SharedBoxedNode = Arc<RwLock<BoxedNode>>;
+
+#[macro_export]
+macro_rules! buffers8 {
+  ($x:ident) => {
+    [&mut $x.buf0[..],
+     &mut $x.buf1[..],
+     &mut $x.buf2[..],
+     &mut $x.buf3[..],
+     &mut $x.buf4[..],
+     &mut $x.buf5[..],
+     &mut $x.buf6[..],
+     &mut $x.buf7[..]]
+  };
+}

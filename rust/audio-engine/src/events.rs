@@ -1,9 +1,14 @@
+use std::cmp::Ordering;
+
 use api::instance::model::{unit_db, ReportModel, ValueRange};
 
 use crate::NodeEvent;
 
 pub fn slice_peak_level_db(samples: &[f64]) -> f64 {
-  gain_factor_to_db(samples.iter().map(|x| x.abs()).max_by(|a, b| a.total_cmp(b)).unwrap_or_default()).max(-100.0)
+  gain_factor_to_db(samples.into_iter()
+                           .map(|x| x.abs())
+                           .max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+                           .unwrap_or_default()).max(-100.0)
 }
 
 pub fn slice_rms_level_db(samples: &[f64]) -> f64 {

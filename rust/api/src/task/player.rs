@@ -81,7 +81,7 @@ pub struct GraphPlaybackAudio {
 /// Events emitted by a player while playing back a graph
 #[derive(Debug, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase", tag = "type", content = "details")]
-pub enum GraphPlaybackEvent {
+pub enum GraphPlayerEvent {
   Error(GraphPlaybackError),
   GraphStateChanged {
     state: GraphPlaybackState,

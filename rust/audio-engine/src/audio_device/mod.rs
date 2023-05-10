@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use anyhow::anyhow;
 use derive_more::Display;
-use futures::SinkExt;
+use tokio::sync::mpsc;
 
 use crate::buffer::DeviceBuffers;
 
@@ -21,7 +21,7 @@ pub enum DeviceCommand {
     /// Client ID. Must be unique.
     client_id: String,
     /// Sender to send commands to the client
-    tx_client: crossbeam_channel::Sender<DeviceClientCommand>,
+    tx_client: mpsc::Sender<DeviceClientCommand>,
   },
   /// Unregister a device client from the device
   #[display(fmt = "Unregister client {client_id}")]
@@ -73,7 +73,14 @@ pub enum DeviceClientCommand {
 
 #[derive(Clone, Debug)]
 pub struct AudioDevices {
-  devices: HashMap<String, crossbeam_channel::Sender<DeviceCommand>>,
+  devices:            HashMap<String, AudioDevice>,
+  native_sample_rate: usize,
+}
+
+#[derive(Clone, Debug)]
+struct AudioDevice {
+  tx_cmd:  mpsc::Sender<DeviceCommand>,
+  latency: usize,
 }
 
 impl AudioDevices {
@@ -81,9 +88,21 @@ impl AudioDevices {
     self.devices
         .get(device_id)
         .ok_or_else(|| anyhow!("Device {device_id} not found"))?
+        .tx_cmd
         .try_send(cmd)
         .map_err(|e| anyhow!("Failed to send command to device {device_id}: {e}"))?;
 
     Ok(())
+  }
+
+  pub fn get_native_sample_rate(&self) -> usize {
+    self.native_sample_rate
+  }
+
+  pub fn get_latency(&self, device_id: &str) -> Result<usize> {
+    Ok(self.devices
+           .get(device_id)
+           .ok_or_else(|| anyhow!("Device {device_id} not found"))?
+           .latency)
   }
 }

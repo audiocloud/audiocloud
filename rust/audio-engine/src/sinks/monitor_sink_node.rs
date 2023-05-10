@@ -74,8 +74,9 @@ impl Node for MonitorSinkNode {
              play: PlayHead,
              device_buffers: DevicesBuffers,
              node_buffers: NodeBuffers,
-             _deadline: Instant)
-             -> Result<Vec<NodeEvent>> {
+             _deadline: Instant,
+             events: &mut Vec<NodeEvent>)
+             -> Result {
     let channels = self.info.num_inputs;
     let device_buffers = device_buffers.device(&self.device_id)?;
 
@@ -91,16 +92,15 @@ impl Node for MonitorSinkNode {
 
     self.measurements.add_frames_planar_f64(buffers.as_slice())?;
 
-    let mut rv = (0..channels).map(|i| (i, self.measurements.true_peak(i as u32).unwrap_or_default()))
-                          .map(make_report(reports::PEAK_LEVEL, 0))
-                          .collect::<Vec<_>>();
+    events.extend((0..channels).map(|i| (i, self.measurements.true_peak(i as u32).unwrap_or_default()))
+                               .map(make_report(reports::PEAK_LEVEL, 0)));
 
     self.measure_position += play.buffer_size as u64;
     while self.measure_position >= self.measure_interval {
-      rv.push(make_report(reports::LUFS_LEVEL, 0)((0, self.measurements.loudness_momentary()?)));
+      events.push(make_report(reports::LUFS_LEVEL, 0)((0, self.measurements.loudness_momentary()?)));
       self.measure_position -= self.measure_interval;
     }
 
-    Ok(rv)
+    Ok(())
   }
 }

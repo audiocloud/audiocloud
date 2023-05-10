@@ -21,8 +21,9 @@ pub struct InstanceSpec {
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceAttachment {
-  pub inputs_start:  Option<usize>,
-  pub outputs_start: Option<usize>,
+  pub device:  String,
+  pub inputs:  Vec<usize>,
+  pub outputs: Vec<usize>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]

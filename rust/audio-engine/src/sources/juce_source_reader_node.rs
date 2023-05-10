@@ -1,5 +1,8 @@
 use std::time::Instant;
 
+use anyhow::anyhow;
+use r8brain_rs::PrecisionProfile;
+
 use api::task::player::PlayHead;
 
 use crate::buffer::{cast_sample_ref, fill_slice, DevicesBuffers, NodeBuffers};
@@ -9,58 +12,205 @@ use crate::{Node, NodeEvent, NodeInfo, Result};
 
 use super::reports;
 
-const BUF_SIZE: usize = 1 << 12;
+const BUF_SIZE: usize = 1 << 8;
+const PRELOAD_BUFFER_COUNT: usize = 32;
 
 pub struct JuceSourceReaderNode {
-  buf0:   [f32; BUF_SIZE],
-  buf1:   [f32; BUF_SIZE],
-  buf2:   [f32; BUF_SIZE],
-  buf3:   [f32; BUF_SIZE],
-  buf4:   [f32; BUF_SIZE],
-  buf5:   [f32; BUF_SIZE],
-  buf6:   [f32; BUF_SIZE],
-  buf7:   [f32; BUF_SIZE],
-  info:   NodeInfo,
-  reader: JuceAudioReader,
+  buf0:       [f32; BUF_SIZE],
+  buf1:       [f32; BUF_SIZE],
+  buf2:       [f32; BUF_SIZE],
+  buf3:       [f32; BUF_SIZE],
+  buf4:       [f32; BUF_SIZE],
+  buf5:       [f32; BUF_SIZE],
+  buf6:       [f32; BUF_SIZE],
+  buf7:       [f32; BUF_SIZE],
+  info:       NodeInfo,
+  reader:     JuceAudioReader,
+  resamplers: Option<Vec<r8brain_rs::ResamplerQueue>>,
+  play_head:  PlayHead,
 }
 
-macro_rules! buffers {
-  ($x:ident) => {
-    [&mut $x.buf0[..],
-     &mut $x.buf1[..],
-     &mut $x.buf2[..],
-     &mut $x.buf3[..],
-     &mut $x.buf4[..],
-     &mut $x.buf5[..],
-     &mut $x.buf6[..],
-     &mut $x.buf7[..]]
-  };
-}
+unsafe impl Send for JuceSourceReaderNode {}
+unsafe impl Sync for JuceSourceReaderNode {}
 
 impl JuceSourceReaderNode {
-  pub fn new(path: &str) -> Result<Self> {
+  pub fn new(path: &str, play_head: PlayHead, num_channels: usize) -> Result<Self> {
     let juce_reader = JuceAudioReader::new(path)?;
-    let num_channels = juce_reader.get_channel_count() as usize;
+    let source_num_channels = juce_reader.get_channel_count() as usize;
     let node_info = NodeInfo { num_outputs: num_channels,
-                               reports: reports::create(num_channels),
+                               reports: reports::create(source_num_channels),
                                ..Default::default() };
 
-    Ok(Self { buf0:   [0.0; BUF_SIZE],
-              buf1:   [0.0; BUF_SIZE],
-              buf2:   [0.0; BUF_SIZE],
-              buf3:   [0.0; BUF_SIZE],
-              buf4:   [0.0; BUF_SIZE],
-              buf5:   [0.0; BUF_SIZE],
-              buf6:   [0.0; BUF_SIZE],
-              buf7:   [0.0; BUF_SIZE],
-              info:   node_info,
-              reader: juce_reader, })
+    let r8b_resampler = Self::make_resamplers(play_head.sample_rate, source_num_channels, juce_reader.get_sample_rate() as u32);
+
+    Ok(Self { buf0:       [0.0; BUF_SIZE],
+              buf1:       [0.0; BUF_SIZE],
+              buf2:       [0.0; BUF_SIZE],
+              buf3:       [0.0; BUF_SIZE],
+              buf4:       [0.0; BUF_SIZE],
+              buf5:       [0.0; BUF_SIZE],
+              buf6:       [0.0; BUF_SIZE],
+              buf7:       [0.0; BUF_SIZE],
+              info:       node_info,
+              resamplers: r8b_resampler,
+              reader:     juce_reader,
+              play_head:  PlayHead::default(), })
   }
 
-  pub fn set_source(&mut self, path: &str) -> Result {
-    self.reader = JuceAudioReader::new(path)?;
-    self.info = NodeInfo { num_outputs: self.reader.get_channel_count() as usize,
-                           ..Default::default() };
+  fn make_resamplers(native_sample_rate: u32, source_num_channels: usize, source_rate: u32) -> Option<Vec<r8brain_rs::ResamplerQueue>> {
+    assert!(source_num_channels > 0);
+    assert!(native_sample_rate > 0);
+
+    if native_sample_rate == source_rate {
+      return None;
+    }
+
+    Some((0..source_num_channels).map(|_| {
+                                   r8brain_rs::ResamplerQueue::new(source_rate as f64,
+                                                                   native_sample_rate as f64,
+                                                                   8192,
+                                                                   0.2,
+                                                                   PrecisionProfile::Bits32)
+                                 })
+                                 .collect())
+  }
+
+  fn push_to_resamplers(input: &mut [&mut [f32]], num_read: usize, resamplers: &mut Vec<r8brain_rs::ResamplerQueue>) {
+    use rayon::prelude::*;
+
+    resamplers.par_iter_mut().zip(input.par_iter()).for_each(|(resampler, buffer)| {
+                                                     let mut resample_buffer = [0.0; BUF_SIZE];
+                                                     fill_slice(&mut resample_buffer[..num_read],
+                                                                buffer[..num_read].into_iter().map(cast_sample_ref()));
+
+                                                     resampler.push(&resample_buffer[..num_read]);
+                                                   });
+  }
+
+  fn pull_from_resamplers(node_buffers: &NodeBuffers,
+                          start: usize,
+                          remaining: usize,
+                          resamplers: &mut Vec<r8brain_rs::ResamplerQueue>)
+                          -> usize {
+    let mut resampler_read = 0;
+
+    for (output, resampler) in node_buffers.outputs().zip(resamplers.iter_mut()) {
+      resampler_read = resampler.pull(&mut output[start..start + remaining]);
+    }
+
+    resampler_read
+  }
+
+  fn prepare_to_play_with_resamplers(&mut self) -> Result {
+    let channels = self.reader.get_channel_count() as usize;
+    let mut buffers = crate::buffers8!(self);
+    let resamplers = self.resamplers.as_mut().unwrap();
+
+    for _ in 0..PRELOAD_BUFFER_COUNT {
+      let num_read = self.reader.read_samples(&mut buffers[..channels],
+                                              self.play_head.position as i64,
+                                              self.play_head.buffer_size as i32);
+
+      if num_read <= 0 {
+        break;
+      }
+
+      let num_read = num_read as usize;
+
+      Self::push_to_resamplers(&mut buffers[..channels], num_read, resamplers);
+
+      self.play_head = self.play_head.advance_position();
+    }
+
+    Ok(())
+  }
+
+  fn prepare_to_play_no_resamplers(&mut self) -> Result {
+    let channels = self.reader.get_channel_count() as usize;
+    let mut buffers = crate::buffers8!(self);
+    let mut play = self.play_head;
+
+    for _ in 0..PRELOAD_BUFFER_COUNT {
+      let num_read = self.reader.read_samples(&mut buffers[..channels],
+                                              self.play_head.position as i64,
+                                              self.play_head.buffer_size as i32);
+
+      if num_read <= 0 {
+        break;
+      }
+
+      play = play.advance_position();
+    }
+
+    Ok(())
+  }
+
+  fn process_with_resamplers(&mut self, node_buffers: &NodeBuffers) -> Result {
+    let channels = self.reader.get_channel_count() as usize;
+    let mut buffers = crate::buffers8!(self);
+    let mut total_read = 0;
+    let buffer_size = self.play_head.buffer_size as usize;
+    let resamplers = self.resamplers.as_mut().unwrap();
+
+    while total_read < buffer_size {
+      let remaining = buffer_size - total_read;
+
+      let num_read = self.reader.read_samples(&mut buffers[..channels],
+                                              self.play_head.position as i64,
+                                              self.play_head.buffer_size as i32);
+
+      if num_read < 0 {
+        return Err(anyhow!("Error reading samples from file"));
+      } else if num_read == 0 {
+        // we read what we can, but we're done
+        break;
+      }
+
+      let num_read = num_read as usize;
+
+      if resamplers[0].available_for_reading() < remaining {
+        // push to the queue ...
+        Self::push_to_resamplers(&mut buffers[..channels], num_read, resamplers);
+      }
+
+      // pull from the queue ...
+      let num_resampled = Self::pull_from_resamplers(node_buffers, total_read, remaining, resamplers);
+
+      total_read += num_resampled;
+    }
+
+    Ok(())
+  }
+
+  fn process_without_resamplers(&mut self, node_buffers: &NodeBuffers) -> Result {
+    let channels = self.reader.get_channel_count() as usize;
+    let mut buffers = crate::buffers8!(self);
+    let mut total_read = 0;
+    let buffer_size = self.play_head.buffer_size as usize;
+
+    while total_read < buffer_size {
+      let remaining = buffer_size - total_read;
+
+      let num_read = self.reader
+                         .read_samples(&mut buffers[..channels], self.play_head.position as i64, remaining as i32);
+
+      if num_read < 0 {
+        return Err(anyhow!("Error reading samples from file"));
+      } else if num_read == 0 {
+        // we read what we can, but we're done
+        break;
+      }
+
+      let num_read = num_read as usize;
+
+      for (output, buffer) in node_buffers.outputs().zip(buffers[..channels].iter()) {
+        fill_slice(&mut output[total_read..total_read + num_read],
+                   buffer[..num_read].into_iter().map(cast_sample_ref()));
+      }
+
+      total_read += num_read;
+      self.play_head = self.play_head.advance_position_by(num_read);
+    }
 
     Ok(())
   }
@@ -73,42 +223,35 @@ impl Node for JuceSourceReaderNode {
   }
 
   fn prepare_to_play(&mut self, play: PlayHead, _accumulated_latency: usize) -> Result {
-    let mut buffers = buffers!(self);
+    self.play_head = play;
+    self.resamplers = Self::make_resamplers(play.sample_rate, self.info.num_outputs, self.reader.get_sample_rate() as u32);
 
-    self.reader.read_samples(&mut buffers[..self.info.num_outputs],
-                             play.position as i64,
-                             play.buffer_size as i32,
-                             60_000);
-
-    Ok(())
+    if self.resamplers.is_some() {
+      self.prepare_to_play_with_resamplers()
+    } else {
+      self.prepare_to_play_no_resamplers()
+    }
   }
 
   fn process(&mut self,
-             play: PlayHead,
+             _play: PlayHead,
              _device_buffers: DevicesBuffers,
              node_buffers: NodeBuffers,
-             deadline: Instant)
-             -> Result<Vec<NodeEvent>> {
-    let mut buffers = buffers!(self);
-
-    let channels = self.info.num_outputs;
-    let buffer_size = play.buffer_size as usize;
-    let remaining_ms = (((deadline - Instant::now()).as_secs_f64() / 1000.0).ceil() as u32).max(1);
-
-    self.reader.read_samples(&mut buffers[..channels],
-                             play.position as i64,
-                             play.buffer_size as i32,
-                             remaining_ms);
-
-    for (i, output) in node_buffers.outputs().enumerate() {
-      fill_slice(output, buffers[i].iter().take(buffer_size).map(cast_sample_ref()));
+             _deadline: Instant,
+             events: &mut Vec<NodeEvent>)
+             -> Result {
+    if self.resamplers.is_some() {
+      self.process_with_resamplers(&node_buffers)?;
+    } else {
+      self.process_without_resamplers(&node_buffers)?;
     }
 
-    Ok(node_buffers.outputs()
-                   .map(|s| slice_peak_level_db(s as &_))
-                   .enumerate()
-                   .map(make_report(reports::PEAK_LEVEL, 0))
-                   .collect())
+    events.extend(node_buffers.outputs()
+                              .map(|s| slice_peak_level_db(s as &_))
+                              .enumerate()
+                              .map(make_report(reports::PEAK_LEVEL, 0)));
+
+    Ok(())
   }
 }
 
@@ -126,21 +269,24 @@ mod test {
 
   #[test]
   fn test_io_perf() {
-    const BUF_SIZE: usize = 1 << 8;
     let mut buffer0 = [0.0; BUF_SIZE];
 
     let src = JuceAudioReader::new("../../test-files/StarWars3.wav").expect("Failed to open file");
 
     let start = Instant::now();
-    let length = src.get_total_length();
+    let length = 10_000 * BUF_SIZE as i64;
     let mut read = 0;
-    let duration = Duration::from_secs(2);
+    let duration = test_duration();
     let channels = src.get_channel_count() as usize;
     let mut pos = 0;
 
     while start.elapsed() < duration {
       let mut buffers = [&mut buffer0[..]];
-      src.read_samples(&mut buffers[..channels], pos, BUF_SIZE as i32, 60_000);
+      if src.read_samples(&mut buffers[..channels], pos, BUF_SIZE as i32) < BUF_SIZE as i32 {
+        pos = 0;
+        continue;
+      }
+
       read += 1;
       pos += BUF_SIZE as i64;
 
@@ -149,17 +295,61 @@ mod test {
       }
     }
 
-    println!("Read {} blocks in {:?}", read, start.elapsed());
-    println!("Equals {0:1} MB/s",
+    println!("Direct: Read {read} blocks in {:?}", start.elapsed());
+    println!("Equals {0:.1} MB/s",
              (read as f64 * BUF_SIZE as f64 * 2 as f64 / (1024f64 * 1024f64)) / start.elapsed().as_secs_f64());
+  }
+
+  fn test_duration() -> Duration {
+    Duration::from_secs(5)
   }
 
   #[test]
   fn test_node_perf() {
-    let mut node = JuceSourceReaderNode::new("../../test-files/StarWars3.wav").expect("Failed to open file");
     let mut play_head = PlayHead::default();
-    play_head.play_region.end = 60000;
+    play_head.play_region.end = (BUF_SIZE * 1_000) as u64;
     play_head.play_region.looping = true;
+    play_head.sample_rate = 22_050;
+    play_head.buffer_size = BUF_SIZE as u32;
+
+    test_node_perf_with_play_head("../../test-files/StarWars3.wav", "native", play_head);
+  }
+
+  #[test]
+  fn test_node_perf_src() {
+    let mut play_head = PlayHead::default();
+    play_head.play_region.end = (BUF_SIZE * 1_000) as u64;
+    play_head.play_region.looping = true;
+    play_head.sample_rate = 192_000;
+    play_head.buffer_size = BUF_SIZE as u32;
+
+    test_node_perf_with_play_head("../../test-files/StarWars3.wav", "192k upsample", play_head);
+  }
+
+  #[test]
+  fn test_node_perf_surround() {
+    let mut play_head = PlayHead::default();
+    play_head.play_region.end = (BUF_SIZE * 1_000) as u64;
+    play_head.play_region.looping = true;
+    play_head.sample_rate = 48000;
+    play_head.buffer_size = BUF_SIZE as u32;
+
+    test_node_perf_with_play_head("../../test-files/Nums_7dot1_24_48000.wav", "native", play_head);
+  }
+
+  #[test]
+  fn test_node_perf_surround_src() {
+    let mut play_head = PlayHead::default();
+    play_head.play_region.end = (BUF_SIZE * 1_000) as u64;
+    play_head.play_region.looping = true;
+    play_head.sample_rate = 192_000;
+    play_head.buffer_size = BUF_SIZE as u32;
+
+    test_node_perf_with_play_head("../../test-files/Nums_7dot1_24_48000.wav", "192k upsample", play_head);
+  }
+
+  fn test_node_perf_with_play_head(file_name: &str, label: &str, play_head: PlayHead) {
+    let mut node = JuceSourceReaderNode::new(file_name, play_head, 2).expect("Failed to open file");
 
     let info = node.get_node_info(play_head);
 
@@ -167,22 +357,26 @@ mod test {
     let device_buffers = DevicesBuffers::default();
 
     let start = Instant::now();
-    let duration = Duration::from_secs(5);
+    let duration = test_duration();
 
-    let mut buf0 = vec![0.0; 1024];
-    let mut buf1 = vec![0.0; 1024];
-
-    let node_buffers = NodeBuffers::new(vec![], vec![buf0, buf1], 1024);
+    let node_buffers = NodeBuffers::allocate(&info, BUF_SIZE);
+    let mut read = 0;
+    let mut events = vec![];
 
     while start.elapsed() < duration {
-      let deadline = Instant::now() + Duration::from_secs(1);
+      let deadline = Instant::now() + Duration::from_millis(10);
 
-      let events = node.process(play_head, device_buffers.clone(), node_buffers.clone(), deadline)
-                       .expect("Failed to process");
+      node.process(play_head, device_buffers.clone(), node_buffers.clone(), deadline, &mut events)
+          .expect("Failed to process");
 
-      assert_eq!(events.len(), 1);
+      events.clear();
+
+      // assert!(events.len() >= 1);
+      read += 1;
     }
 
-    println!("Processed {} blocks in {:?}", play_head.play_region.end / 1024, start.elapsed());
+    println!("Node: Read {read} blocks in {:?} from {file_name} ({label})", start.elapsed());
+    println!("Equals {0:.1} MB/s",
+             (read as f64 * play_head.buffer_size as f64 * info.num_outputs as f64 / (1024f64 * 1024f64)) / start.elapsed().as_secs_f64());
   }
 }

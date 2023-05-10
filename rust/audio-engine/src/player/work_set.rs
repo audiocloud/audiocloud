@@ -170,12 +170,14 @@ async fn execute_node(id: NodeId,
                       play_head: PlayHead,
                       deadline: Instant,
                       tx_tasks: mpsc::Sender<InternalTaskEvent>) {
+  // TODO: reuse events buffer?
   let mut source = node_api.write().await;
-  let result = block_in_place(|| source.process(play_head, devices, buffers, deadline));
+  let mut events = vec![];
+  let result = block_in_place(|| source.process(play_head, devices, buffers, deadline, &mut events));
 
-  tx_tasks.send(InternalTaskEvent::Completed { node_id: id,
+  tx_tasks.send(InternalTaskEvent::Completed { node_id:    id,
                                                generation: play_head.generation,
-                                               result })
+                                               result:     result.map(|_| events), })
           .await
           .expect("Failed to send Task completion");
 }

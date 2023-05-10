@@ -49,18 +49,20 @@ impl Drop for StreamingSinkNode {
   }
 }
 
-extern "C" fn write_callback(encoder: *const FLAC__StreamEncoder,
-                             buffer: *const FLAC__byte,
-                             bytes: usize,
-                             samples: u32,
-                             current_frame: u32,
-                             client_data: *mut c_void)
-                             -> FLAC__StreamEncoderWriteStatus {
-  // TODO: actually do the writing
+unsafe extern "C" fn write_callback(encoder: *const FLAC__StreamEncoder,
+                                    buffer: *const FLAC__byte,
+                                    bytes: usize,
+                                    samples: u32,
+                                    current_frame: u32,
+                                    client_data: *mut c_void)
+                                    -> FLAC__StreamEncoderWriteStatus {
+  let shared = &mut *(client_data as *mut Shared);
+
+  shared.buffer
+        .push_back(bytes::Bytes::copy_from_slice(std::slice::from_raw_parts(buffer, bytes)));
+
   FLAC__STREAM_ENCODER_WRITE_STATUS_OK
 }
-
-extern "C" fn metadata_callback(encoder: *const FLAC__StreamEncoder, metadata: *const FLAC__StreamMetadata, client_data: *mut c_void) {}
 
 impl StreamingSinkNode {
   pub fn new(channels: usize, sample_rate: u32, native_sample_rate: u32, bits_per_sample: usize) -> Result<Self> {
@@ -94,7 +96,7 @@ impl StreamingSinkNode {
                                        Some(write_callback),
                                        None,
                                        None,
-                                       Some(metadata_callback),
+                                       None,
                                        shared.as_mut() as *mut Shared as *mut c_void)
     };
 
@@ -147,8 +149,9 @@ impl Node for StreamingSinkNode {
              _play: PlayHead,
              _device_buffers: DevicesBuffers,
              node_buffers: NodeBuffers,
-             _deadline: Instant)
-             -> Result<Vec<NodeEvent>> {
+             _deadline: Instant,
+             events: &mut Vec<NodeEvent>)
+             -> Result {
     let mut channel0 = [0.0; 8192];
     let mut channel1 = [0.0; 8192];
     let mut channel2 = [0.0; 8192];
@@ -201,8 +204,6 @@ impl Node for StreamingSinkNode {
       }
     }
 
-    let mut rv = vec![];
-
     if num_samples > 0 {
       let channels = [&channel0[..num_samples],
                       &channel1[..num_samples],
@@ -214,13 +215,12 @@ impl Node for StreamingSinkNode {
                       &channel7[..num_samples]];
 
       self.measurements.add_frames_planar_f64(&channels[..num_channels])?;
-      let mut rv = (0..num_channels).map(|i| (i, self.measurements.true_peak(i as u32).unwrap_or_default()))
-                                    .map(make_report(reports::PEAK_LEVEL, 0))
-                                    .collect::<Vec<_>>();
+      events.extend((0..num_channels).map(|i| (i, self.measurements.true_peak(i as u32).unwrap_or_default()))
+                                     .map(make_report(reports::PEAK_LEVEL, 0)));
 
       self.measure_position += num_samples as u64;
       while self.measure_position > self.measure_interval {
-        rv.push(make_report(reports::LUFS_LEVEL, 0)((0, self.measurements.loudness_momentary()?)));
+        events.push(make_report(reports::LUFS_LEVEL, 0)((0, self.measurements.loudness_momentary()?)));
         self.measure_position -= self.measure_interval;
       }
 
@@ -236,6 +236,6 @@ impl Node for StreamingSinkNode {
       }
     }
 
-    Ok(rv)
+    Ok(())
   }
 }

@@ -6,7 +6,7 @@ use schemars_zod::merge_schemas;
 use serde::{Deserialize, Serialize};
 
 use graph::{modify::AudioGraphModification, AudioGraphSpec};
-use player::{GraphPlaybackEvent, PlayId};
+use player::{GraphPlayerEvent, PlayId};
 
 use crate::instance::driver::events::InstanceDriverEvent;
 use crate::task::spec::TaskSpec;
@@ -69,7 +69,7 @@ pub enum TaskId {
 pub struct TaskEvent {
   play_id:         Option<String>,
   instance_events: Vec<InstanceDriverEvent>,
-  player_events:   Vec<GraphPlaybackEvent>,
+  player_events:   Vec<GraphPlayerEvent>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]

@@ -155,9 +155,9 @@ void delete_audio_device(int32_t device_id) {
 
 static std::unique_ptr<juce::ScopedJuceInitialiser_GUI> juce_gui = std::make_unique<juce::ScopedJuceInitialiser_GUI>();
 static std::unique_ptr<juce::AudioFormatManager> format_manager = create_format_manager();
-static std::unique_ptr<juce::TimeSliceThread> io_thread = std::make_unique<juce::TimeSliceThread>("io_thread");
+// static std::unique_ptr<juce::TimeSliceThread> io_thread = std::make_unique<juce::TimeSliceThread>("io_thread");
 
-typedef juce::BufferingAudioReader AudioFormatReader;
+typedef juce::AudioFormatReader AudioFormatReader;
 
 AudioFormatReader *create_file_reader(const char *path) {
     auto wd = juce::File::getCurrentWorkingDirectory();
@@ -167,7 +167,8 @@ AudioFormatReader *create_file_reader(const char *path) {
         return nullptr;
     }
 
-    return new juce::BufferingAudioReader(reader, *io_thread, 256 * 1024 * 1024);
+    // return new juce::BufferingAudioReader(reader, *io_thread, 256 * 1024 * 1024);
+    return reader;
 }
 
 void delete_file_reader(AudioFormatReader *reader) {
@@ -190,11 +191,20 @@ int32_t file_reader_read_samples(AudioFormatReader *reader,
                                  float **buffers,
                                  int32_t num_channels,
                                  int64_t start_pos,
-                                 int32_t num_samples,
-                                 uint32_t timeout_ms) {
-    reader->setReadTimeout(static_cast<int>(timeout_ms));
+                                 int32_t num_samples) {
+    // reader->setReadTimeout(static_cast<int>(timeout_ms));
 
-    return reader->read(buffers, num_channels, start_pos, num_samples) ? 1 : 0;
+    jassert(num_channels == reader->numChannels);
+    jassert(start_pos >= 0);
+    jassert(num_samples >= 0);
+
+    // reading after end of file reads zero samples
+    if (start_pos >= reader->lengthInSamples) {
+        return 0;
+    }
+
+    auto num_read = std::min(reader->lengthInSamples, start_pos + num_samples) - start_pos;
+    return reader->read(buffers, num_channels, start_pos, num_samples) ? static_cast<int32_t>(num_read) : -1;
 }
 
 }

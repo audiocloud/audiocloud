@@ -1,4 +1,3 @@
-use std::io::Read;
 use std::time::Instant;
 
 use anyhow::bail;
@@ -152,7 +151,7 @@ impl BusNode {
               output_volumes })
   }
 
-  fn stereo_unwrap(&mut self, source: &mut [f64], left: &mut [f64], right: &mut [f64]) -> Result<Vec<NodeEvent>> {
+  fn stereo_unwrap(&mut self, source: &mut [f64], left: &mut [f64], right: &mut [f64], events: &mut Vec<NodeEvent>) -> Result {
     let input_vol = self.input_volumes.get(0).cloned().unwrap_or(1.0);
 
     for sample in source.iter_mut() {
@@ -164,11 +163,13 @@ impl BusNode {
     fill_slice(left, source.iter().copied().map(|x| x * left_vol));
     fill_slice(right, source.iter().copied().map(|x| x * right_vol));
 
-    Ok(reports::io_levels_peak([source as &_].into_iter(), [left as &_, right as &_].into_iter(), 0, 0).chain(
-      reports::io_levels_rms([source as &_].into_iter(), [left as &_, right as &_].into_iter(), 0, 0)).collect())
+    events.extend(reports::io_levels_peak([source as &_].into_iter(), [left as &_, right as &_].into_iter(), 0, 0));
+    events.extend(reports::io_levels_rms([source as &_].into_iter(), [left as &_, right as &_].into_iter(), 0, 0));
+
+    Ok(())
   }
 
-  fn stereo_collapse(&mut self, left: &mut [f64], right: &mut [f64], target: &mut [f64]) -> Result<Vec<NodeEvent>> {
+  fn stereo_collapse(&mut self, left: &mut [f64], right: &mut [f64], target: &mut [f64], events: &mut Vec<NodeEvent>) -> Result {
     let [left_vol, right_vol] = self.input_volumes.as_slice()[..2] else { bail!("mismatched channel volume counts")};
     let output_vol = self.output_volumes.get(0).cloned().unwrap_or(1.0);
 
@@ -179,15 +180,16 @@ impl BusNode {
 
     fill_slice(target, left.into_iter().zip(right.into_iter()).map(|(l, r)| (*l + *r) * output_vol));
 
-    Ok(reports::io_levels_peak([left as &_, right as &_].into_iter(), [target as &_].into_iter(), 0, 0).chain(
-      reports::io_levels_rms([left as &_, right as &_].into_iter(), [target as &_].into_iter(), 0, 0)).collect())
+    events.extend(reports::io_levels_peak([left as &_, right as &_].into_iter(), [target as &_].into_iter(), 0, 0));
+    events.extend(reports::io_levels_rms([left as &_, right as &_].into_iter(), [target as &_].into_iter(), 0, 0));
+
+    Ok(())
   }
 
-  fn copy<'a, Sources, Targets>(&mut self, sources: Sources, targets: Targets) -> Result<Vec<NodeEvent>>
+  fn copy<'a, Sources, Targets>(&mut self, sources: Sources, targets: Targets, events: &mut Vec<NodeEvent>) -> Result
     where Sources: Iterator<Item = &'a mut [f64]>,
           Targets: Iterator<Item = &'a mut [f64]>
   {
-    let mut levels = Vec::new();
     for (i, (src, dest)) in sources.zip(targets).enumerate() {
       let src_level = self.input_volumes.get(i).cloned().unwrap_or(1.0);
       let dst_level = self.output_volumes.get(i).cloned().unwrap_or(1.0);
@@ -200,11 +202,11 @@ impl BusNode {
         *dst = *src * dst_level;
       }
 
-      levels.extend(reports::io_levels_peak([src as &_].into_iter(), [dest as &_].into_iter(), i, i));
-      levels.extend(reports::io_levels_rms([src as &_].into_iter(), [dest as &_].into_iter(), i, i));
+      events.extend(reports::io_levels_peak([src as &_].into_iter(), [dest as &_].into_iter(), i, i));
+      events.extend(reports::io_levels_rms([src as &_].into_iter(), [dest as &_].into_iter(), i, i));
     }
 
-    Ok(levels)
+    Ok(())
   }
 }
 
@@ -228,16 +230,19 @@ impl Node for BusNode {
              _play: PlayHead,
              _devices: DevicesBuffers,
              node_buffers: NodeBuffers,
-             _deadline: Instant)
-             -> Result<Vec<NodeEvent>> {
+             _deadline: Instant,
+             events: &mut Vec<NodeEvent>)
+             -> Result {
     match (node_buffers.num_inputs, node_buffers.num_outputs) {
       | (1, 2) => self.stereo_unwrap(node_buffers.input_plane(0),
                                      node_buffers.output_plane(0),
-                                     node_buffers.output_plane(1)),
+                                     node_buffers.output_plane(1),
+                                     events),
       | (2, 1) => self.stereo_collapse(node_buffers.input_plane(0),
                                        node_buffers.input_plane(1),
-                                       node_buffers.output_plane(0)),
-      | (_, _) => self.copy(node_buffers.inputs(), node_buffers.outputs()),
+                                       node_buffers.output_plane(0),
+                                       events),
+      | (_, _) => self.copy(node_buffers.inputs(), node_buffers.outputs(), events),
     }
   }
 }

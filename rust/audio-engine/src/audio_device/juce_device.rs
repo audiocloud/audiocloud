@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::bail;
 use derive_more::Display;
+use tokio::sync::mpsc;
 
 use crate::audio_device::{DeviceClientCommand, DeviceCommand};
 use crate::buffer::DeviceBuffers;
@@ -182,5 +183,5 @@ impl JuceAudioDeviceType {
 }
 
 struct Client {
-  tx_cmd: crossbeam_channel::Sender<DeviceClientCommand>,
+  tx_cmd: mpsc::Sender<DeviceClientCommand>,
 }

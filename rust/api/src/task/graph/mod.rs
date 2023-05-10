@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use anyhow::{bail, Result};
 use derive_more::Display;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -17,9 +18,10 @@ pub type BusId = u64;
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioGraphSpec {
-  pub sources: HashMap<SourceId, SourceSpec>,
-  pub inserts: HashMap<InsertId, InsertSpec>,
-  pub busses:  HashMap<BusId, BusSpec>,
+  pub sources:         HashMap<SourceId, SourceSpec>,
+  pub device_inserts:  HashMap<InsertId, DeviceInsertSpec>,
+  pub virtual_inserts: HashMap<InsertId, VirtualInsertSpec>,
+  pub busses:          HashMap<BusId, BusSpec>,
 }
 
 /// Reference to an output channel of a graph
@@ -36,6 +38,17 @@ pub enum OutputId {
   Bus(BusId, usize),
 }
 
+impl OutputId {
+  pub fn channel_index(&self) -> usize {
+    match self {
+      | OutputId::Source(_, channel) => *channel,
+      | OutputId::DeviceInsert(_, channel) => *channel,
+      | OutputId::VirtualInsert(_, channel) => *channel,
+      | OutputId::Bus(_, channel) => *channel,
+    }
+  }
+}
+
 /// Reference to an input channel of a graph
 #[derive(Debug, Display, Serialize, Deserialize, JsonSchema, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase", tag = "type", content = "id")]
@@ -50,6 +63,18 @@ pub enum InputId {
   DeviceSink(SinkId, usize),
   #[display(fmt = "streaming sink {_0}, input channel {_1}")]
   StreamingSink(SinkId, usize),
+}
+
+impl InputId {
+  pub fn channel_index(&self) -> usize {
+    match self {
+      | InputId::DeviceInsert(_, channel) => *channel,
+      | InputId::VirtualInsert(_, channel) => *channel,
+      | InputId::Bus(_, channel) => *channel,
+      | InputId::DeviceSink(_, channel) => *channel,
+      | InputId::StreamingSink(_, channel) => *channel,
+    }
+  }
 }
 
 impl Into<NodeId> for OutputId {
@@ -93,6 +118,29 @@ pub enum NodeId {
   StreamingSink(SinkId),
 }
 
+impl NodeId {
+  pub fn input(&self, index: usize) -> Result<InputId> {
+    Ok(match self {
+      | NodeId::DeviceInsert(id) => InputId::DeviceInsert(*id, index),
+      | NodeId::VirtualInsert(id) => InputId::VirtualInsert(*id, index),
+      | NodeId::Bus(id) => InputId::Bus(*id, index),
+      | NodeId::DeviceSink(id) => InputId::DeviceSink(*id, index),
+      | NodeId::StreamingSink(id) => InputId::StreamingSink(*id, index),
+      | _ => bail!("Node {self} does not have inputs"),
+    })
+  }
+
+  pub fn output(&self, index: usize) -> Result<OutputId> {
+    Ok(match self {
+      | NodeId::Source(id) => OutputId::Source(*id, index),
+      | NodeId::DeviceInsert(id) => OutputId::DeviceInsert(*id, index),
+      | NodeId::VirtualInsert(id) => OutputId::VirtualInsert(*id, index),
+      | NodeId::Bus(id) => OutputId::Bus(*id, index),
+      | _ => bail!("Node {self} does not have outputs"),
+    })
+  }
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceSpec {
@@ -105,28 +153,28 @@ pub struct SourceSpec {
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BusSpec {
-  pub inputs:      Vec<Vec<InputSpec>>,
+  pub inputs:      Vec<Vec<OutputId>>,
   pub num_outputs: usize,
 }
 
 /// Specification of an insert instance within the graph (e.g. an external hardware, or VST plugin) that can be connected to the graph
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct InsertSpec {
-  pub inputs:      Vec<Vec<InputSpec>>,
+pub struct DeviceInsertSpec {
+  pub inputs:      Vec<Vec<OutputId>>,
   pub instance_id: String,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct SinkSpec {
-  pub inputs:      Vec<Vec<InputSpec>>,
-  pub sample_rate: u32,
+pub struct VirtualInsertSpec {
+  pub inputs:   Vec<Vec<OutputId>>,
+  pub model_id: String,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone, Copy)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct InputSpec {
-  pub source: OutputId,
-  pub gain:   f64,
+pub struct SinkSpec {
+  pub inputs:      Vec<Vec<OutputId>>,
+  pub sample_rate: u32,
 }

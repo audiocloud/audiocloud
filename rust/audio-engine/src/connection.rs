@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail};
 
 use api::task::graph::{InputId, NodeId, OutputId};
 
-use crate::player::GraphPlayer;
+use crate::player::{GraphPlayer, PlayerChangeOutcome};
 use crate::Result;
 
 #[derive(Debug, Default)]
@@ -14,14 +14,8 @@ pub struct Connection {
   pub latency:           usize,
 }
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum SetLatencyOutcome {
-  Ok,
-  ConnectionsNeedReset,
-}
-
 impl Connection {
-  pub fn set_latency(&mut self, new_latency: usize) -> SetLatencyOutcome {
+  pub fn set_latency(&mut self, new_latency: usize) -> PlayerChangeOutcome {
     let already_delayed = self.latency - self.remaining_latency;
     let diff = new_latency as isize - already_delayed as isize;
 
@@ -29,7 +23,7 @@ impl Connection {
     if diff < 0 {
       for _ in 0..-diff {
         if self.samples.pop_front().is_none() {
-          return SetLatencyOutcome::ConnectionsNeedReset;
+          return PlayerChangeOutcome::NeedReset;
         }
       }
     } else {
@@ -38,12 +32,17 @@ impl Connection {
 
     self.latency = new_latency;
 
-    SetLatencyOutcome::Ok
+    PlayerChangeOutcome::NoAction
+  }
+
+  pub fn reset(&mut self) {
+    self.remaining_latency = self.latency;
+    self.samples.clear();
   }
 }
 
 impl GraphPlayer {
-  fn update_latency(&mut self) -> anyhow::Result<SetLatencyOutcome> {
+  pub(crate) fn update_latency(&mut self) -> anyhow::Result<PlayerChangeOutcome> {
     #[derive(Debug)]
     struct Edge {
       from:         OutputId,
@@ -130,17 +129,17 @@ impl GraphPlayer {
       }
     }
 
-    let mut rv = SetLatencyOutcome::Ok;
+    let mut rv = PlayerChangeOutcome::NoAction;
     for edge in edges {
-      if self.set_delay(edge.from, edge.to, edge.compensation.unwrap_or_default())? == SetLatencyOutcome::ConnectionsNeedReset {
-        rv = SetLatencyOutcome::ConnectionsNeedReset;
+      if self.set_delay(edge.from, edge.to, edge.compensation.unwrap_or_default())? == PlayerChangeOutcome::NeedReset {
+        rv = PlayerChangeOutcome::NeedReset;
       }
     }
 
     Ok(rv)
   }
 
-  fn set_delay(&mut self, from: OutputId, to: InputId, latency: usize) -> Result<SetLatencyOutcome> {
+  fn set_delay(&mut self, from: OutputId, to: InputId, latency: usize) -> Result<PlayerChangeOutcome> {
     let Some(connection) = self.connections.get_mut(&(from, to)) else { bail!("Connection {from} -> {to} does not exist") };
     Ok(connection.set_latency(latency))
   }
