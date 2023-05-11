@@ -177,26 +177,26 @@ impl GraphPlayer {
           self.handle_control_cmd(control_msg);
         },
         Some(device_msg) = self.rx_device.recv() => {
-          self.handle_device_cmd(device_msg);
+          self.handle_device_cmd(device_msg).await;
         },
         Some(params_msg) = self.rx_params.recv() => {
           self.handle_params_cmd(params_msg);
         }
         Some(task_msg) = self.rx_tasks.recv() => {
-          self.handle_task_msg(task_msg);
+          self.handle_task_msg(task_msg).await;
         }
         else => break,
       }
     }
   }
 
-  fn handle_device_cmd(&mut self, cmd: DeviceClientCommand) {
+  async fn handle_device_cmd(&mut self, cmd: DeviceClientCommand) {
     match cmd {
       | DeviceClientCommand::Flip { device_id,
                                     buffers,
                                     generation,
                                     deadline, } =>
-        if let Err(err) = self.device_flip_buffers(device_id, buffers, generation, deadline) {
+        if let Err(err) = self.device_flip_buffers(device_id, buffers, generation, deadline).await {
           self.handle_error(err);
         },
       | DeviceClientCommand::Registered { device_id } => {}
@@ -214,20 +214,24 @@ impl GraphPlayer {
     }
   }
 
-  async fn handle_params_cmd(&mut self, PlayerParameterCommand { node, changes }: PlayerParameterCommand) {
+  fn handle_params_cmd(&mut self, PlayerParameterCommand { node, changes }: PlayerParameterCommand) {
     let Some(node) = self.node_apis.get(&node) else { return };
-    let mut node = node.write().await;
-    for change in changes {
-      node.set_parameter(&change);
-    }
+    let node = node.clone();
+
+    spawn(async move {
+      let mut node = node.write().await;
+      for change in changes {
+        node.set_parameter(&change);
+      }
+    });
   }
 
-  fn handle_task_msg(&mut self, cmd: InternalTaskEvent) {
+  async fn handle_task_msg(&mut self, cmd: InternalTaskEvent) {
     match cmd {
       | InternalTaskEvent::Completed { node_id,
                                        result,
                                        generation, } =>
-        if let Err(err) = self.task_completed(node_id, generation, result) {
+        if let Err(err) = self.task_completed(node_id, generation, result).await {
           self.handle_error(err);
         },
     }

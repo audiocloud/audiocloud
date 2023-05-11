@@ -98,7 +98,8 @@ pub enum GraphPlayerEvent {
   },
   NodeEvents {
     play_id: PlayId,
-    events:  Vec<(NodeId, NodeEvent)>,
+    node_id: NodeId,
+    events:  Vec<NodeEvent>,
   },
 }
 

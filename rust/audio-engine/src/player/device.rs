@@ -3,12 +3,18 @@ use std::time::Instant;
 
 use anyhow::bail;
 
+use crate::audio_device::DeviceCommand;
 use crate::buffer::DeviceBuffers;
 use crate::player::GraphPlayer;
 use crate::Result;
 
 impl GraphPlayer {
-  pub(crate) fn device_flip_buffers(&mut self, device_id: String, buffers: DeviceBuffers, generation: u64, deadline: Instant) -> Result {
+  pub(crate) async fn device_flip_buffers(&mut self,
+                                          device_id: String,
+                                          buffers: DeviceBuffers,
+                                          _generation: u64,
+                                          deadline: Instant)
+                                          -> Result {
     if self.current_work_set.device_flips_started.contains_key(&device_id) {
       bail!("Device {} already has a flip in progress in the current WorkSet", device_id)
     }
@@ -46,9 +52,35 @@ impl GraphPlayer {
       }
     }
 
-    // we now have a work set
-    self.execute_work_sets();
+    self.update_work_sets().await?;
 
     Ok(())
+  }
+
+  pub(crate) fn subscribe_to_devices(&mut self, all_devices: &HashSet<String>) -> Result {
+    for device in all_devices {
+      self.audio_devices
+          .send_command(&device, DeviceCommand::Register { tx_client: self.tx_device.clone(),
+                                                           client_id: self.client_id.clone(), })?;
+    }
+
+    Ok(())
+  }
+
+  pub(crate) fn unsubscribe_from_devices(&mut self, all_devices: &HashSet<String>) -> Result {
+    for device in all_devices {
+      self.audio_devices
+          .send_command(&device, DeviceCommand::Unregister { client_id: self.client_id.clone(), })?;
+    }
+
+    Ok(())
+  }
+
+  pub(crate) fn referenced_device_ids(&mut self) -> HashSet<String> {
+    self.node_state
+        .values()
+        .flat_map(|n| n.audio_device_requirements.iter())
+        .cloned()
+        .collect::<HashSet<_>>()
   }
 }

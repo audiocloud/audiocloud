@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::anyhow;
@@ -10,7 +9,6 @@ use api::task::graph::modify::AudioGraphModification;
 use api::task::graph::{BusId, BusSpec, DeviceInsertSpec, InputId, InsertId, NodeId, OutputId, SourceId, SourceSpec, VirtualInsertSpec};
 
 use crate::audio_device::audio_device_insert_node::AudioDeviceInsertNode;
-use crate::audio_device::DeviceCommand;
 use crate::bus_node::BusNode;
 use crate::connection::Connection;
 use crate::player::GraphPlayer;
@@ -66,16 +64,7 @@ impl GraphPlayer {
     Ok(outcome)
   }
 
-  pub(crate) async fn apply_change_outcome(&mut self, outcome: PlayerChangeOutcome) -> Result {
-    if matches!(outcome, PlayerChangeOutcome::NeedReset) {
-      self.reset().await?;
-    }
-
-    Ok(())
-  }
-
-  // TODO: put in separate file that deals with overall change application
-  async fn reset(&mut self) -> Result {
+  pub(crate) async fn reset(&mut self) -> Result {
     let all_devices = self.referenced_device_ids();
 
     self.unsubscribe_from_devices(&all_devices)?;
@@ -98,33 +87,6 @@ impl GraphPlayer {
     self.subscribe_to_devices(&all_devices)?;
 
     Ok(())
-  }
-
-  fn subscribe_to_devices(&mut self, all_devices: &HashSet<String>) -> Result {
-    for device in all_devices {
-      self.audio_devices
-          .send_command(&device, DeviceCommand::Register { tx_client: self.tx_device.clone(),
-                                                           client_id: self.client_id.clone(), })?;
-    }
-
-    Ok(())
-  }
-
-  fn unsubscribe_from_devices(&mut self, all_devices: &HashSet<String>) -> Result {
-    for device in all_devices {
-      self.audio_devices
-          .send_command(&device, DeviceCommand::Unregister { client_id: self.client_id.clone(), })?;
-    }
-
-    Ok(())
-  }
-
-  fn referenced_device_ids(&mut self) -> HashSet<String> {
-    self.node_state
-        .values()
-        .flat_map(|n| n.audio_device_requirements.iter())
-        .cloned()
-        .collect::<HashSet<_>>()
   }
 
   fn add_source(&mut self, source_id: SourceId, spec: SourceSpec) -> Result<PlayerChangeOutcome> {
@@ -253,7 +215,13 @@ impl GraphPlayer {
     Ok(PlayerChangeOutcome::ConnectionSync)
   }
 
-  fn sync_connections(&mut self, node_id: NodeId) -> PlayerChangeOutcome {
+  pub(crate) fn sync_all_connections(&mut self) {
+    for node_id in self.node_state.keys().copied().collect::<Vec<_>>().into_iter() {
+      self.sync_connections(node_id);
+    }
+  }
+
+  pub fn sync_connections(&mut self, node_id: NodeId) -> PlayerChangeOutcome {
     let state = self.node_state.get(&node_id);
 
     if let Some(state) = state.as_ref() {

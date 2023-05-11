@@ -9,12 +9,12 @@ use tokio::sync::{mpsc, RwLock};
 use tokio::task::block_in_place;
 
 use api::task::graph::NodeId;
-use api::task::player::{NodeEvent, PlayHead};
+use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead};
 
 use crate::audio_device::DeviceCommand;
 use crate::buffer::{DeviceBuffers, DevicesBuffers, NodeBuffers};
-use crate::player::{GraphPlayer, InternalTaskEvent, PlayerNodeState};
-use crate::{BoxedNode, Node, Result};
+use crate::player::{GraphPlayer, InternalTaskEvent, PlayerChangeOutcome, PlayerNodeState};
+use crate::{BoxedNode, Result};
 
 #[derive(Debug)]
 pub struct WorkSet {
@@ -50,7 +50,7 @@ impl From<PlayHead> for WorkSet {
 }
 
 impl GraphPlayer {
-  pub(crate) fn execute_work_sets(&mut self) {
+  pub(crate) async fn update_work_sets(&mut self) -> Result {
     Self::execute_work_set(&mut self.current_work_set, &mut self.node_state, &self.node_apis, &self.tx_tasks);
 
     for work_set in &mut self.partial_work_sets {
@@ -59,10 +59,26 @@ impl GraphPlayer {
 
     self.partial_work_sets.retain(|ws| !ws.is_empty());
 
-    if self.partial_work_sets.is_empty() && self.current_work_set.is_empty() {
-      self.apply_pending_structure_changes();
+    if self.current_work_set.is_empty() {
       self.current_work_set_finished();
     }
+
+    if self.partial_work_sets.is_empty() && self.current_work_set.is_empty() {
+      match self.apply_pending_structure_changes() {
+        | Err(err) => {
+          self.handle_error(err);
+        }
+        | Ok(PlayerChangeOutcome::NoAction) => { /* oh happy days */ }
+        | Ok(PlayerChangeOutcome::ConnectionSync) => {
+          self.sync_all_connections();
+        }
+        | Ok(PlayerChangeOutcome::NeedReset) => {
+          self.reset().await?;
+        }
+      }
+    }
+
+    Ok(())
   }
 
   fn execute_work_set(work_set: &mut WorkSet,
@@ -105,9 +121,18 @@ impl GraphPlayer {
     }
   }
 
-  pub(crate) fn task_completed(&mut self, task_id: NodeId, generation: u64, result: Result<Vec<NodeEvent>>) -> Result {
-    if let Err(err) = result {
-      bail!("Task {task_id} generation {generation} failed: {err}");
+  pub(crate) async fn task_completed(&mut self, task_id: NodeId, generation: u64, result: Result<Vec<NodeEvent>>) -> Result {
+    match result {
+      | Err(err) => {
+        bail!("Task {task_id} generation {generation} failed: {err}");
+      }
+      | Ok(node_events) => {
+        let _ = self.tx_events
+                    .send(GraphPlayerEvent::NodeEvents { play_id: self.play_head.play_id,
+                                                         node_id: task_id,
+                                                         events:  node_events, })
+                    .await;
+      }
     }
 
     let Some(node) = self.node_state.get_mut(&task_id) else { bail!("Task {task_id} generation {generation} completed but node not found") };
@@ -118,18 +143,17 @@ impl GraphPlayer {
 
     node.processing = None;
 
+    self.current_work_set.nodes_executing.remove(&task_id);
     self.current_work_set.nodes_executed.insert(task_id);
 
-    self.check_device_flip_finished();
+    self.update_device_flips();
 
-    if self.current_work_set.nodes_to_execute.is_empty() {
-      self.current_work_set_finished();
-    }
+    self.update_work_sets().await?;
 
     Ok(())
   }
 
-  fn check_device_flip_finished(&mut self) {
+  fn update_device_flips(&mut self) {
     // if all nodes requiring device dev finished flipping...
     let mut required_devices = HashSet::new();
 
@@ -152,6 +176,8 @@ impl GraphPlayer {
   }
 
   fn current_work_set_finished(&mut self) {
+    self.update_device_flips();
+
     // create a new current WorkSet
     self.play_head = self.play_head.advance_position();
     let prev_work_set = mem::replace(&mut self.current_work_set, self.play_head.into());
