@@ -1,0 +1,16 @@
+[Unit]
+Description=Driver
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=idle
+ExecStart=/opt/audiocloud/domain_server --enable-instance-drivers --driver-host-name=`hostname`
+WorkingDirectory=/opt/audiocloud
+PrivateTmp=true
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=audiocloud
+Environment=NATS_URL=10.1.0.10:4222
+
+[Install]
+WantedBy=multi-user.target
