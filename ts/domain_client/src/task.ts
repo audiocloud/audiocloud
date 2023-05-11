@@ -3,16 +3,17 @@ import { z } from "zod";
 export const AudioGraphSpec = memoizeOne(() =>
   z.object({
     busses: z.record(z.lazy(BusSpec)),
-    inserts: z.record(z.lazy(InsertSpec)),
+    deviceInserts: z.record(z.lazy(DeviceInsertSpec)),
     sources: z.record(z.lazy(SourceSpec)),
+    virtualInserts: z.record(z.lazy(VirtualInsertSpec)),
   })
 );
 export type AudioGraphSpec = z.infer<ReturnType<typeof AudioGraphSpec>>;
 
 export const BusSpec = memoizeOne(() =>
   z.object({
-    inputs: z.array(z.array(z.lazy(InputSpec))),
-    midSideMode: z.union([z.lazy(MidSideMode), z.null()]),
+    inputs: z.array(z.array(z.lazy(OutputId))),
+    numOutputs: z.number().int(),
   })
 );
 export type BusSpec = z.infer<ReturnType<typeof BusSpec>>;
@@ -21,9 +22,11 @@ export const DesiredTaskPlayState = memoizeOne(() =>
   z.discriminatedUnion("type", [
     z.object({ type: z.literal("idle") }),
     z.object({
-      from: z.number(),
-      play_id: z.number().int(),
-      to: z.number(),
+      end: z.number().int(),
+      looping: z.boolean(),
+      playId: z.number().int(),
+      start: z.number().int(),
+      startFrom: z.number().int(),
       type: z.literal("play"),
     }),
   ])
@@ -32,18 +35,13 @@ export type DesiredTaskPlayState = z.infer<
   ReturnType<typeof DesiredTaskPlayState>
 >;
 
-export const InputSpec = memoizeOne(() =>
-  z.object({ gain: z.number(), source: z.lazy(OutputId) })
-);
-export type InputSpec = z.infer<ReturnType<typeof InputSpec>>;
-
-export const InsertSpec = memoizeOne(() =>
+export const DeviceInsertSpec = memoizeOne(() =>
   z.object({
-    inputs: z.array(z.array(z.lazy(InputSpec))),
+    inputs: z.array(z.array(z.lazy(OutputId))),
     instanceId: z.string(),
   })
 );
-export type InsertSpec = z.infer<ReturnType<typeof InsertSpec>>;
+export type DeviceInsertSpec = z.infer<ReturnType<typeof DeviceInsertSpec>>;
 
 export const InstanceAllocationRequest = memoizeOne(() =>
   z.discriminatedUnion("type", [
@@ -58,11 +56,6 @@ export type InstanceAllocationRequest = z.infer<
 export const MediaId = memoizeOne(() => z.string());
 export type MediaId = z.infer<ReturnType<typeof MediaId>>;
 
-export const MidSideMode = memoizeOne(() =>
-  z.enum(["encodeToMidSide", "decodeToLeftRight"])
-);
-export type MidSideMode = z.infer<ReturnType<typeof MidSideMode>>;
-
 export const OutputId = memoizeOne(() =>
   z.discriminatedUnion("type", [
     z.object({
@@ -71,7 +64,11 @@ export const OutputId = memoizeOne(() =>
     }),
     z.object({
       id: z.tuple([z.number().int(), z.number().int()]),
-      type: z.literal("insert"),
+      type: z.literal("deviceInsert"),
+    }),
+    z.object({
+      id: z.tuple([z.number().int(), z.number().int()]),
+      type: z.literal("virtualInsert"),
     }),
     z.object({
       id: z.tuple([z.number().int(), z.number().int()]),
@@ -85,7 +82,6 @@ export const SourceSpec = memoizeOne(() =>
   z.object({
     mediaId: z.lazy(MediaId),
     numChannels: z.number().int(),
-    sourceUrl: z.string(),
     startAt: z.number().int(),
   })
 );
@@ -103,3 +99,8 @@ export const TaskSpec = memoizeOne(() =>
   })
 );
 export type TaskSpec = z.infer<ReturnType<typeof TaskSpec>>;
+
+export const VirtualInsertSpec = memoizeOne(() =>
+  z.object({ inputs: z.array(z.array(z.lazy(OutputId))), modelId: z.string() })
+);
+export type VirtualInsertSpec = z.infer<ReturnType<typeof VirtualInsertSpec>>;

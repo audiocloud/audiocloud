@@ -62,6 +62,15 @@ export type HttpDriverReport = z.infer<ReturnType<typeof HttpDriverReport>>;
 export const HttpMethod = memoizeOne(() => z.enum(["GET", "PUT", "POST"]));
 export type HttpMethod = z.infer<ReturnType<typeof HttpMethod>>;
 
+export const InstanceAttachment = memoizeOne(() =>
+  z.object({
+    device: z.string(),
+    inputs: z.array(z.number().int()),
+    outputs: z.array(z.number().int()),
+  })
+);
+export type InstanceAttachment = z.infer<ReturnType<typeof InstanceAttachment>>;
+
 export const InstanceDriverConfig = memoizeOne(() =>
   z.discriminatedUnion("type", [
     z.object({
@@ -148,11 +157,11 @@ export type InstanceFeature = z.infer<ReturnType<typeof InstanceFeature>>;
 export const InstanceMediaSpec = memoizeOne(() =>
   z.object({
     durationMs: z.number().int(),
-    play: z.lazy(ParameterCommand),
+    play: z.lazy(SetParameterCommand),
     positionReport: z.string(),
     reportTriggers: z.array(z.lazy(PlayStateReportTrigger)),
-    rewind: z.lazy(ParameterCommand),
-    stop: z.lazy(ParameterCommand),
+    rewind: z.lazy(SetParameterCommand),
+    stop: z.lazy(SetParameterCommand),
   })
 );
 export type InstanceMediaSpec = z.infer<ReturnType<typeof InstanceMediaSpec>>;
@@ -211,8 +220,8 @@ export const InstancePowerSpec = memoizeOne(() =>
     driverNeedsPower: z.boolean(),
     idleMs: z.number().int(),
     powerController: z.string(),
-    powerOff: z.lazy(ParameterCommand),
-    powerOn: z.lazy(ParameterCommand),
+    powerOff: z.lazy(SetParameterCommand),
+    powerOn: z.lazy(SetParameterCommand),
     warmUpMs: z.number().int(),
   })
 );
@@ -225,6 +234,7 @@ export type InstancePowerState = z.infer<ReturnType<typeof InstancePowerState>>;
 
 export const InstanceSpec = memoizeOne(() =>
   z.object({
+    attachment: z.union([z.lazy(InstanceAttachment), z.null()]),
     driver: z.lazy(InstanceDriverConfig),
     host: z.string(),
     media: z.union([z.lazy(InstanceMediaSpec), z.null()]),
@@ -245,15 +255,6 @@ export const OscParameterConfig = memoizeOne(() =>
   })
 );
 export type OscParameterConfig = z.infer<ReturnType<typeof OscParameterConfig>>;
-
-export const ParameterCommand = memoizeOne(() =>
-  z.object({
-    channel: z.number().int(),
-    parameter: z.string(),
-    value: z.number(),
-  })
-);
-export type ParameterCommand = z.infer<ReturnType<typeof ParameterCommand>>;
 
 export const ParameterModel = memoizeOne(() =>
   z.object({
@@ -333,12 +334,6 @@ export const RtCommand = memoizeOne(() =>
       instanceId: z.string(),
       type: z.literal("unsubscribeFromInstanceEvents"),
     }),
-    z.object({ type: z.literal("createPeerConnection") }),
-    z.object({ offer: z.string(), type: z.literal("acceptPeerConnection") }),
-    z.object({
-      candidate: z.string(),
-      type: z.literal("offerPeerConnectionCandidate"),
-    }),
   ])
 );
 export type RtCommand = z.infer<ReturnType<typeof RtCommand>>;
@@ -379,11 +374,6 @@ export const RtEvent = memoizeOne(() =>
       requestId: z.string(),
       success: z.boolean(),
       type: z.literal("unsubscribeFromInstanceEvents"),
-    }),
-    z.object({ offer: z.string(), type: z.literal("offerPeerConnection") }),
-    z.object({
-      candidate: z.string(),
-      type: z.literal("offerPeerConnectionCandidate"),
     }),
   ])
 );
@@ -482,6 +472,17 @@ export const SetInstanceParameterResponse = memoizeOne(() =>
 );
 export type SetInstanceParameterResponse = z.infer<
   ReturnType<typeof SetInstanceParameterResponse>
+>;
+
+export const SetParameterCommand = memoizeOne(() =>
+  z.object({
+    channel: z.number().int(),
+    parameter: z.string(),
+    value: z.number(),
+  })
+);
+export type SetParameterCommand = z.infer<
+  ReturnType<typeof SetParameterCommand>
 >;
 
 export const UsbHidParameterConfig = memoizeOne(() =>
