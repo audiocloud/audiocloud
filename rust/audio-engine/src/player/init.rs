@@ -45,28 +45,28 @@ impl GraphPlayer {
                         audio_devices:            devices,
                         current_work_set:         work_set,
                         partial_work_sets:        Default::default(),
-                        pending_changes:          Default::default(),
+                        pending_commands:         Default::default(),
                         media_resolver:           use_media_resolver,
                         device_instance_resolver: use_device_instance_resolver, };
 
+    let mut modifications = vec![];
+
     for (source_id, source_spec) in spec.sources {
-      rv.pending_changes
-        .push_back(AudioGraphModification::AddOrReplaceSource { source_id, source_spec });
+      modifications.push(AudioGraphModification::AddOrReplaceSource { source_id, source_spec });
     }
     for (bus_id, bus_spec) in spec.busses {
-      rv.pending_changes
-        .push_back(AudioGraphModification::AddOrReplaceBus { bus_id, bus_spec });
+      modifications.push(AudioGraphModification::AddOrReplaceBus { bus_id, bus_spec });
     }
     for (insert_id, insert_spec) in spec.device_inserts {
-      rv.pending_changes
-        .push_back(AudioGraphModification::AddOrReplaceDeviceInsert { insert_id, insert_spec });
+      modifications.push(AudioGraphModification::AddOrReplaceDeviceInsert { insert_id, insert_spec });
     }
     for (insert_id, insert_spec) in spec.virtual_inserts {
-      rv.pending_changes
-        .push_back(AudioGraphModification::AddOrReplaceVirtualInsert { insert_id, insert_spec });
+      modifications.push(AudioGraphModification::AddOrReplaceVirtualInsert { insert_id, insert_spec });
     }
 
-    rv.apply_pending_structure_changes()?;
+    rv.pending_commands.push_back(PlayerControlCommand::ModifyGraph { modifications });
+
+    rv.apply_pending_commands()?;
 
     Ok(rv)
   }

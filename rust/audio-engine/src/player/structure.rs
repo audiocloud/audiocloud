@@ -12,54 +12,50 @@ use crate::audio_device::audio_device_insert_node::AudioDeviceInsertNode;
 use crate::bus_node::BusNode;
 use crate::connection::Connection;
 use crate::player::GraphPlayer;
-use crate::player::PlayerChangeOutcome;
+use crate::player::PlayerCommandOutcome;
 use crate::sources::juce_source_reader_node::JuceSourceReaderNode;
 use crate::{Node, Result};
 
 impl GraphPlayer {
-  pub(crate) fn apply_pending_structure_changes(&mut self) -> Result<PlayerChangeOutcome> {
-    let mut outcome = PlayerChangeOutcome::NoAction;
+  pub(crate) fn apply_graph_modification(&mut self, change: AudioGraphModification) -> Result<PlayerCommandOutcome> {
+    let mut outcome = PlayerCommandOutcome::NoAction;
 
-    while let Some(change) = self.pending_changes.pop_front() {
-      match change {
-        | AudioGraphModification::AddOrReplaceSource { source_id, source_spec } => {
-          outcome |= self.add_source(source_id, source_spec)?;
-        }
-        | AudioGraphModification::AddOrReplaceDeviceInsert { insert_id, insert_spec } => {
-          outcome |= self.add_device_insert(insert_id, insert_spec)?;
-        }
-        | AudioGraphModification::AddOrReplaceVirtualInsert { insert_id, insert_spec } => {
-          outcome |= self.add_virtual_insert(insert_id, insert_spec)?;
-        }
-        | AudioGraphModification::AddOrReplaceBus { bus_id, bus_spec } => {
-          outcome |= self.add_bus(bus_id, bus_spec)?;
-        }
-        | AudioGraphModification::RemoveSource { source_id } => {
-          outcome |= self.remove_source(source_id)?;
-        }
-        | AudioGraphModification::RemoveDeviceInsert { insert_id } => {
-          outcome |= self.remove_device_insert(insert_id)?;
-        }
-        | AudioGraphModification::RemoveVirtualInsert { insert_id } => {
-          outcome |= self.remove_virtual_insert(insert_id)?;
-        }
-        | AudioGraphModification::RemoveBus { bus_id } => {
-          outcome |= self.remove_bus(bus_id)?;
-        }
-        | AudioGraphModification::Connect { component,
-                                            input_channel,
-                                            output, } => {
-          outcome |= self.connect(component, input_channel, output)?;
-        }
-        | AudioGraphModification::Disconnect { component,
-                                               input_channel,
-                                               output, } => {
-          outcome |= self.disconnect(component, input_channel, output)?;
-        }
+    match change {
+      | AudioGraphModification::AddOrReplaceSource { source_id, source_spec } => {
+        outcome |= self.add_source(source_id, source_spec)?;
+      }
+      | AudioGraphModification::AddOrReplaceDeviceInsert { insert_id, insert_spec } => {
+        outcome |= self.add_device_insert(insert_id, insert_spec)?;
+      }
+      | AudioGraphModification::AddOrReplaceVirtualInsert { insert_id, insert_spec } => {
+        outcome |= self.add_virtual_insert(insert_id, insert_spec)?;
+      }
+      | AudioGraphModification::AddOrReplaceBus { bus_id, bus_spec } => {
+        outcome |= self.add_bus(bus_id, bus_spec)?;
+      }
+      | AudioGraphModification::RemoveSource { source_id } => {
+        outcome |= self.remove_source(source_id)?;
+      }
+      | AudioGraphModification::RemoveDeviceInsert { insert_id } => {
+        outcome |= self.remove_device_insert(insert_id)?;
+      }
+      | AudioGraphModification::RemoveVirtualInsert { insert_id } => {
+        outcome |= self.remove_virtual_insert(insert_id)?;
+      }
+      | AudioGraphModification::RemoveBus { bus_id } => {
+        outcome |= self.remove_bus(bus_id)?;
+      }
+      | AudioGraphModification::Connect { component,
+                                          input_channel,
+                                          output, } => {
+        outcome |= self.connect(component, input_channel, output)?;
+      }
+      | AudioGraphModification::Disconnect { component,
+                                             input_channel,
+                                             output, } => {
+        outcome |= self.disconnect(component, input_channel, output)?;
       }
     }
-
-    outcome |= self.update_latency()?;
 
     Ok(outcome)
   }
@@ -89,7 +85,7 @@ impl GraphPlayer {
     Ok(())
   }
 
-  fn add_source(&mut self, source_id: SourceId, spec: SourceSpec) -> Result<PlayerChangeOutcome> {
+  fn add_source(&mut self, source_id: SourceId, spec: SourceSpec) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::Source(source_id);
     let path = self.media_resolver.resolve(&spec.media_id)?;
     let node = JuceSourceReaderNode::new(&path, self.play_head, spec.num_channels)?;
@@ -100,14 +96,14 @@ impl GraphPlayer {
     self.node_apis.insert(node_id, Arc::new(RwLock::new(Box::new(node))));
 
     // adding a source always needs a reset because the player needs to buffer samples
-    Ok(PlayerChangeOutcome::NeedReset)
+    Ok(PlayerCommandOutcome::Reset)
   }
 
-  fn add_device_insert(&mut self, insert_id: InsertId, spec: DeviceInsertSpec) -> Result<PlayerChangeOutcome> {
+  fn add_device_insert(&mut self, insert_id: InsertId, spec: DeviceInsertSpec) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::DeviceInsert(insert_id);
     let device_attachment = self.device_instance_resolver.resolve(&spec.instance_id)?;
-    let device_latency = self.audio_devices.get_latency(&device_attachment.device_id)?;
-    let node = AudioDeviceInsertNode::new(&device_attachment, device_latency)?;
+    let device_info = self.audio_devices.get_info(&device_attachment.device_id)?;
+    let node = AudioDeviceInsertNode::new(&device_attachment, device_info.latency as usize)?;
 
     self.node_state.insert(node_id,
                            Self::new_node_state(node_id,
@@ -118,14 +114,14 @@ impl GraphPlayer {
                                                 spec.inputs)?);
     self.node_apis.insert(node_id, Arc::new(RwLock::new(Box::new(node))));
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn add_virtual_insert(&self, insert_id: InsertId, spec: VirtualInsertSpec) -> Result<PlayerChangeOutcome> {
+  fn add_virtual_insert(&self, insert_id: InsertId, spec: VirtualInsertSpec) -> Result<PlayerCommandOutcome> {
     Err(anyhow!("Virtual inserts are not yet implemented (ref: {insert_id}, spec: {spec:?})"))
   }
 
-  fn add_bus(&mut self, bus_id: BusId, spec: BusSpec) -> Result<PlayerChangeOutcome> {
+  fn add_bus(&mut self, bus_id: BusId, spec: BusSpec) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::Bus(bus_id);
     let node = BusNode::new(bus_id, spec.inputs.len(), spec.num_outputs)?;
 
@@ -139,46 +135,46 @@ impl GraphPlayer {
 
     self.node_apis.insert(node_id, Arc::new(RwLock::new(Box::new(node))));
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn remove_source(&mut self, source: SourceId) -> Result<PlayerChangeOutcome> {
+  fn remove_source(&mut self, source: SourceId) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::Source(source);
 
     self.node_apis.remove(&node_id);
     self.node_state.remove(&node_id);
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn remove_bus(&mut self, bus: BusId) -> Result<PlayerChangeOutcome> {
+  fn remove_bus(&mut self, bus: BusId) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::Bus(bus);
 
     self.node_apis.remove(&node_id);
     self.node_state.remove(&node_id);
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn remove_device_insert(&mut self, insert: InsertId) -> Result<PlayerChangeOutcome> {
+  fn remove_device_insert(&mut self, insert: InsertId) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::DeviceInsert(insert);
 
     self.node_apis.remove(&node_id);
     self.node_state.remove(&node_id);
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn remove_virtual_insert(&mut self, insert: InsertId) -> Result<PlayerChangeOutcome> {
+  fn remove_virtual_insert(&mut self, insert: InsertId) -> Result<PlayerCommandOutcome> {
     let node_id = NodeId::VirtualInsert(insert);
 
     self.node_apis.remove(&node_id);
     self.node_state.remove(&node_id);
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn connect(&mut self, component: NodeId, input_channel: usize, output_id: OutputId) -> Result<PlayerChangeOutcome> {
+  fn connect(&mut self, component: NodeId, input_channel: usize, output_id: OutputId) -> Result<PlayerCommandOutcome> {
     let input_id = component.input(input_channel)?;
 
     let state = self.node_state
@@ -193,10 +189,10 @@ impl GraphPlayer {
 
     state.node_requirements.insert(input_id.into());
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
-  fn disconnect(&mut self, component: NodeId, input_channels: usize, output_id: OutputId) -> Result<PlayerChangeOutcome> {
+  fn disconnect(&mut self, component: NodeId, input_channels: usize, output_id: OutputId) -> Result<PlayerCommandOutcome> {
     let input_id = component.input(input_channels)?;
 
     let state = self.node_state
@@ -212,7 +208,7 @@ impl GraphPlayer {
                                    .any(|output_id| <OutputId as Into<NodeId>>::into(*output_id) == required_node_id)
                            });
 
-    Ok(PlayerChangeOutcome::ConnectionSync)
+    Ok(PlayerCommandOutcome::ConnectionSync)
   }
 
   pub(crate) fn sync_all_connections(&mut self) {
@@ -221,7 +217,7 @@ impl GraphPlayer {
     }
   }
 
-  pub fn sync_connections(&mut self, node_id: NodeId) -> PlayerChangeOutcome {
+  pub fn sync_connections(&mut self, node_id: NodeId) -> PlayerCommandOutcome {
     let state = self.node_state.get(&node_id);
 
     if let Some(state) = state.as_ref() {
@@ -264,6 +260,6 @@ impl GraphPlayer {
                       }
                     });
 
-    PlayerChangeOutcome::NoAction
+    PlayerCommandOutcome::NoAction
   }
 }

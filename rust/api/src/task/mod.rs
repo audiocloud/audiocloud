@@ -72,19 +72,19 @@ pub struct TaskEvent {
   player_events:   Vec<GraphPlayerEvent>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum DesiredTaskPlayState {
   Idle,
   Play(PlayRequest),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PlayRequest {
   pub play_id:    PlayId,
-  pub from:       u64,
-  pub to:         u64,
+  pub start:      u64,
+  pub end:        u64,
   pub start_from: u64,
   pub looping:    bool,
 }

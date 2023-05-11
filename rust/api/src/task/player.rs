@@ -6,7 +6,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::instance::model::{ParameterModel, ReportModel};
+use crate::task::graph::modify::AudioGraphModification;
 use crate::task::graph::{NodeId, SinkId, SinkSpec};
+use crate::task::DesiredTaskPlayState;
 
 pub type PlayId = u64;
 
@@ -172,4 +174,12 @@ pub struct NodeInfo {
 pub enum NodeEvent {
   #[serde(rename_all = "camelCase")]
   Report { name: String, channel: usize, value: f64 },
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum PlayerControlCommand {
+  SetDesiredPlaybackState { desired: DesiredTaskPlayState },
+  Seek { play_id: PlayId, seek_to: u64 },
+  ModifyGraph { modifications: Vec<AudioGraphModification> },
 }

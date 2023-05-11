@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::mem;
 use std::ops::Add;
 use std::ptr::{null, null_mut};
 use std::slice::{from_raw_parts, from_raw_parts_mut};
@@ -78,6 +79,26 @@ impl DeviceBuffers {
   pub fn output_plane(&self, plane: usize) -> &mut [f32] {
     assert!(plane < self.num_outputs);
     unsafe { from_raw_parts_mut(*self.outputs.add(plane), self.buffer_size) }
+  }
+
+  pub fn allocate_and_forget(num_inputs: usize, num_outputs: usize, buffer_size: usize) -> Self {
+    let mut inputs = vec![vec![0.0; buffer_size as usize]; num_inputs];
+    let mut outputs = vec![vec![0.0; buffer_size as usize]; num_outputs];
+
+    let input_ptrs = inputs.iter_mut().map(|v| v.as_ptr()).collect::<Vec<_>>();
+    let mut output_ptrs = outputs.iter_mut().map(|v| v.as_mut_ptr()).collect::<Vec<_>>();
+
+    let rv = DeviceBuffers { inputs: input_ptrs.as_ptr(),
+                             outputs: output_ptrs.as_mut_ptr(),
+                             buffer_size: buffer_size as usize,
+                             generation: 0,
+                             num_inputs,
+                             num_outputs };
+
+    mem::forget(inputs);
+    mem::forget(outputs);
+
+    rv
   }
 }
 

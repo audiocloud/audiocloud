@@ -13,7 +13,7 @@ use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead};
 
 use crate::audio_device::DeviceCommand;
 use crate::buffer::{DeviceBuffers, DevicesBuffers, NodeBuffers};
-use crate::player::{GraphPlayer, InternalTaskEvent, PlayerChangeOutcome, PlayerNodeState};
+use crate::player::{GraphPlayer, InternalTaskEvent, PlayerCommandOutcome, PlayerNodeState};
 use crate::{BoxedNode, Result};
 
 #[derive(Debug)]
@@ -64,15 +64,15 @@ impl GraphPlayer {
     }
 
     if self.partial_work_sets.is_empty() && self.current_work_set.is_empty() {
-      match self.apply_pending_structure_changes() {
+      match self.apply_pending_commands() {
         | Err(err) => {
           self.handle_error(err);
         }
-        | Ok(PlayerChangeOutcome::NoAction) => { /* oh happy days */ }
-        | Ok(PlayerChangeOutcome::ConnectionSync) => {
+        | Ok(PlayerCommandOutcome::NoAction) => { /* oh happy days */ }
+        | Ok(PlayerCommandOutcome::ConnectionSync) => {
           self.sync_all_connections();
         }
-        | Ok(PlayerChangeOutcome::NeedReset) => {
+        | Ok(PlayerCommandOutcome::Reset) => {
           self.reset().await?;
         }
       }

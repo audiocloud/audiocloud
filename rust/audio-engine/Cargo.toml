@@ -20,7 +20,7 @@ serde_json = "1" # for the json! macro
 crossbeam-channel = "0.5"
 bytes = "1"
 nanoid = "0.4"
-rayon = "1"
+tracing = "0.1"
 
 [dependencies.dasp]
 version = "0.11.0"
@@ -28,14 +28,14 @@ features = ["signal"]
 
 [dependencies.tokio]
 version = "1"
-features = ["macros", "sync", "rt-multi-thread"]
+features = ["macros", "sync", "rt-multi-thread", "time"]
 
 [dependencies.futures]
 version = "0.3"
 
 [dependencies.r8brain-rs]
-# git = "https://github.com/audiocloud/r8brain-rs"
-path = "../../../r8brain-rs"
+git = "https://github.com/audiocloud/r8brain-rs"
+# path = "../../../r8brain-rs"
 
 [dependencies.api]
 path = "../api"

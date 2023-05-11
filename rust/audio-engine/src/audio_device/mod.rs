@@ -11,6 +11,7 @@ use super::Result;
 
 pub mod audio_device_insert_node;
 pub mod juce_device;
+pub mod simulator_device;
 
 /// Command sent to the device
 #[derive(Debug, Clone, Display)]
@@ -73,14 +74,22 @@ pub enum DeviceClientCommand {
 
 #[derive(Clone, Debug)]
 pub struct AudioDevices {
-  devices:            HashMap<String, AudioDevice>,
-  native_sample_rate: usize,
+  devices: HashMap<String, AudioDevice>,
 }
 
 #[derive(Clone, Debug)]
-struct AudioDevice {
-  tx_cmd:  mpsc::Sender<DeviceCommand>,
-  latency: usize,
+pub struct AudioDevice {
+  tx_cmd: mpsc::Sender<DeviceCommand>,
+  info:   AudioDeviceInfo,
+}
+
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
+pub struct AudioDeviceInfo {
+  pub latency:     u32,
+  pub buffer_size: u32,
+  pub sample_rate: u32,
+  pub num_inputs:  usize,
+  pub num_outputs: usize,
 }
 
 impl AudioDevices {
@@ -95,14 +104,14 @@ impl AudioDevices {
     Ok(())
   }
 
-  pub fn get_native_sample_rate(&self) -> usize {
-    self.native_sample_rate
-  }
-
-  pub fn get_latency(&self, device_id: &str) -> Result<usize> {
+  pub fn get_info(&self, device_id: &str) -> Result<AudioDeviceInfo> {
     Ok(self.devices
            .get(device_id)
            .ok_or_else(|| anyhow!("Device {device_id} not found"))?
-           .latency)
+           .info)
+  }
+
+  pub fn add_device(&mut self, device_id: String, device: AudioDevice) {
+    self.devices.insert(device_id, device);
   }
 }

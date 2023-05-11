@@ -12,7 +12,7 @@ use crate::{Node, NodeEvent, NodeInfo, Result};
 
 use super::reports;
 
-const BUF_SIZE: usize = 1 << 8;
+const BUF_SIZE: usize = 512;
 const PRELOAD_BUFFER_COUNT: usize = 32;
 
 pub struct JuceSourceReaderNode {
@@ -76,15 +76,13 @@ impl JuceSourceReaderNode {
   }
 
   fn push_to_resamplers(input: &mut [&mut [f32]], num_read: usize, resamplers: &mut Vec<r8brain_rs::ResamplerQueue>) {
-    use rayon::prelude::*;
+    resamplers.iter_mut().zip(input.iter()).for_each(|(resampler, buffer)| {
+                                             let mut resample_buffer = [0.0; BUF_SIZE];
+                                             fill_slice(&mut resample_buffer[..num_read],
+                                                        buffer[..num_read].into_iter().map(cast_sample_ref()));
 
-    resamplers.par_iter_mut().zip(input.par_iter()).for_each(|(resampler, buffer)| {
-                                                     let mut resample_buffer = [0.0; BUF_SIZE];
-                                                     fill_slice(&mut resample_buffer[..num_read],
-                                                                buffer[..num_read].into_iter().map(cast_sample_ref()));
-
-                                                     resampler.push(&resample_buffer[..num_read]);
-                                                   });
+                                             resampler.push(&resample_buffer[..num_read]);
+                                           });
   }
 
   fn pull_from_resamplers(node_buffers: &NodeBuffers,

@@ -8,9 +8,8 @@ use tokio::{select, spawn};
 
 use api::instance::spec::SetParameterCommand;
 use api::media::spec::MediaId;
-use api::task::graph::modify::AudioGraphModification;
 use api::task::graph::{AudioGraphSpec, InputId, NodeId, OutputId};
-use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead, PlayId};
+use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead, PlayId, PlayerControlCommand};
 use api::task::{DesiredTaskPlayState, PlayRequest};
 
 use crate::audio_device::{AudioDevices, DeviceClientCommand};
@@ -25,6 +24,7 @@ mod error;
 mod init;
 mod structure;
 mod work_set;
+mod command;
 
 pub trait MediaResolver: Send + Sync {
   fn resolve(&self, media_id: &MediaId) -> Result<String>;
@@ -77,7 +77,7 @@ pub struct GraphPlayer {
   /// Partial work sets that have pending
   pub(crate) partial_work_sets:        VecDeque<WorkSet>,
   /// Pending structural changes
-  pub(crate) pending_changes:          VecDeque<AudioGraphModification>,
+  pub(crate) pending_commands:         VecDeque<PlayerControlCommand>,
   /// Media resolver
   pub(crate) media_resolver:           Box<dyn MediaResolver>,
   /// Device instance resolver
@@ -205,13 +205,7 @@ impl GraphPlayer {
   }
 
   fn handle_control_cmd(&mut self, cmd: PlayerControlCommand) {
-    match cmd {
-      | PlayerControlCommand::SetDesiredPlaybackState { desired } => {}
-      | PlayerControlCommand::ModifyGraph { modifications } => {
-        self.pending_changes.extend(modifications.into_iter());
-      }
-      | PlayerControlCommand::Seek { play_id, seek_to } => {}
-    }
+    self.pending_commands.push_back(cmd);
   }
 
   fn handle_params_cmd(&mut self, PlayerParameterCommand { node, changes }: PlayerParameterCommand) {
@@ -238,13 +232,6 @@ impl GraphPlayer {
   }
 }
 
-#[derive(Debug)]
-pub enum PlayerControlCommand {
-  SetDesiredPlaybackState { desired: DesiredTaskPlayState },
-  Seek { play_id: PlayId, seek_to: u64 },
-  ModifyGraph { modifications: Vec<AudioGraphModification> },
-}
-
 pub struct PlayerParameterCommand {
   node:    NodeId,
   changes: Vec<SetParameterCommand>,
@@ -260,36 +247,36 @@ pub enum InternalTaskEvent {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum PlayerChangeOutcome {
+pub enum PlayerCommandOutcome {
   NoAction,
   ConnectionSync,
-  NeedReset,
+  Reset,
 }
 
-impl BitOrAssign for PlayerChangeOutcome {
+impl BitOrAssign for PlayerCommandOutcome {
   fn bitor_assign(&mut self, rhs: Self) {
     *self = *self | rhs;
   }
 }
 
-impl PlayerChangeOutcome {
+impl PlayerCommandOutcome {
   pub fn from_needs_reset(needs_reset: bool) -> Self {
     if needs_reset {
-      Self::NeedReset
+      Self::Reset
     } else {
       Self::NoAction
     }
   }
 }
 
-impl BitOr for PlayerChangeOutcome {
+impl BitOr for PlayerCommandOutcome {
   type Output = Self;
 
   fn bitor(self, rhs: Self) -> Self::Output {
     match (self, rhs) {
       | (Self::NoAction, Self::NoAction) => Self::NoAction,
       | (Self::NoAction, Self::ConnectionSync) | (Self::ConnectionSync, Self::NoAction) => Self::ConnectionSync,
-      | (_, _) => Self::NeedReset,
+      | (_, _) => Self::Reset,
     }
   }
 }

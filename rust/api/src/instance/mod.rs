@@ -160,7 +160,7 @@ impl From<DesiredTaskPlayState> for InstancePlayState {
   fn from(value: DesiredTaskPlayState) -> Self {
     match value {
       | DesiredTaskPlayState::Idle => Self::Idle,
-      | DesiredTaskPlayState::Play(PlayRequest { play_id, from, to, .. }) => Self::Playing { play_id,
+      | DesiredTaskPlayState::Play(PlayRequest { play_id, start: from, end: to, .. }) => Self::Playing { play_id,
                                                                                              duration: (to - from) as f64 },
     }
   }
@@ -192,7 +192,7 @@ impl From<DesiredTaskPlayState> for DesiredInstancePlayState {
   fn from(value: DesiredTaskPlayState) -> Self {
     match value {
       | DesiredTaskPlayState::Idle => Self::Stop,
-      | DesiredTaskPlayState::Play(PlayRequest { play_id, from, to, .. }) => Self::Play { play_id,
+      | DesiredTaskPlayState::Play(PlayRequest { play_id, start: from, end: to, .. }) => Self::Play { play_id,
                                                                                           duration: (to - from) as f64 },
     }
   }

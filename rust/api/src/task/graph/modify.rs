@@ -7,7 +7,7 @@ use crate::task::graph::VirtualInsertSpec;
 
 use super::{BusId, BusSpec, DeviceInsertSpec, InsertId, NodeId, OutputId, SourceId, SourceSpec};
 
-#[derive(Debug, Display, Serialize, Deserialize, JsonSchema, Clone)]
+#[derive(Debug, PartialEq, Display, Serialize, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum AudioGraphModification {
   #[display(fmt = "add source {source_id} with spec {source_spec:?}")]

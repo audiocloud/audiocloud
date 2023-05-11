@@ -11,7 +11,8 @@ use crate::buffer::DeviceBuffers;
 use crate::juce;
 use crate::Result;
 
-// TODO: do we really need crossbeam_channel here? Can't we have tokio or std mpsc?
+// TODO: Q: do we really need crossbeam_channel here? Can't we have tokio or std mpsc?
+// TODO: A: yes, as it has timeouts, which are missing with tokio or std mpsc
 
 pub struct JuceAudioDevice {
   id:            String,
