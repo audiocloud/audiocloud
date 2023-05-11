@@ -38,6 +38,8 @@ pub enum DeviceCommand {
     /// Generation number of the buffers that were flipped
     generation: u64,
   },
+  /// Terminate the device
+  Terminate,
 }
 
 /// Command sent to a device client
@@ -72,7 +74,7 @@ pub enum DeviceClientCommand {
   },
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct AudioDevices {
   devices: HashMap<String, AudioDevice>,
 }
@@ -113,5 +115,11 @@ impl AudioDevices {
 
   pub fn add_device(&mut self, device_id: String, device: AudioDevice) {
     self.devices.insert(device_id, device);
+  }
+
+  pub fn terminate_device(&mut self, device_id: &str) {
+    if let Some(device) = self.devices.remove(device_id) {
+      let _ = device.tx_cmd.try_send(DeviceCommand::Terminate);
+    }
   }
 }

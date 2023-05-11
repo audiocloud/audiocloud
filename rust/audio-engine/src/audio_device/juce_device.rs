@@ -82,6 +82,7 @@ impl JuceAudioDevice {
   }
 
   fn handle_callback(&mut self, buffers: DeviceBuffers) {
+    let mut terminated = false;
     let deadline = Instant::now() + self.flip_duration;
     let mut waiting_for = HashSet::new();
     let mut new_registrations = HashMap::new();
@@ -99,6 +100,9 @@ impl JuceAudioDevice {
           },
         | DeviceCommand::FlipFinished { .. } => {
           // too late, ignore
+        }
+        | DeviceCommand::Terminate => {
+          terminated = true;
         }
       }
     }
@@ -133,6 +137,10 @@ impl JuceAudioDevice {
             if generation == self.generation {
               waiting_for.remove(&client_id);
             },
+          | DeviceCommand::Terminate => {
+            waiting_for.clear();
+            terminated = true;
+          }
         }
       }
     }
@@ -145,6 +153,12 @@ impl JuceAudioDevice {
     }
 
     self.generation += 1;
+
+    if terminated {
+      unsafe {
+        juce::stop_audio_device(self.device_id);
+      }
+    }
   }
 }
 

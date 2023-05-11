@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use futures::SinkExt;
 use tokio::sync::mpsc;
 use tokio::{select, spawn};
 
@@ -18,7 +17,7 @@ pub fn new_simulator_device(device_id: String, info: AudioDeviceInfo) -> AudioDe
 }
 
 async fn run_simulator_device(device_id: String, cycle_time: Duration, info: AudioDeviceInfo, mut rx_cmd: mpsc::Receiver<DeviceCommand>) {
-  let mut clients = HashMap::new();
+  let mut clients: HashMap<String, mpsc::Sender<DeviceClientCommand>> = HashMap::new();
   let mut new_clients = HashMap::new();
   let mut waiting_for = HashMap::new();
 
@@ -42,6 +41,13 @@ async fn run_simulator_device(device_id: String, cycle_time: Duration, info: Aud
             } else {
               // spurious flip finished
             }
+          },
+          DeviceCommand::Terminate => {
+            for device in clients.values_mut() {
+              let _  = device.try_send(DeviceClientCommand::Unregistered {device_id: device_id.clone()});
+            }
+
+            break;
           }
         }
       }
@@ -68,5 +74,28 @@ async fn run_simulator_device(device_id: String, cycle_time: Duration, info: Aud
         }
       }
     }
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use crate::audio_device::AudioDevices;
+
+  use super::*;
+
+  #[tokio::test]
+  async fn test_create_delete() {
+    let simulator = new_simulator_device("test".to_string(), AudioDeviceInfo { latency:     0,
+                                                                               buffer_size: 512,
+                                                                               sample_rate: 192_000,
+                                                                               num_inputs:  2,
+                                                                               num_outputs: 2, });
+
+    let mut devices = AudioDevices::default();
+    devices.add_device("test".to_string(), simulator);
+
+    let _ = tokio::time::sleep(Duration::from_secs(1));
+
+    devices.terminate_device("test");
   }
 }
