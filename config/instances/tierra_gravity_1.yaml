@@ -1,18 +1,18 @@
 host: better-pi
-#power:
-#  powerController: ppdu_r1_up_l
-#  driverNeedsPower: true
-#  powerOn:
-#    parameter: power
-#    channel: 4
-#    value: 1
-#  powerOff:
-#    parameter: power
-#    channel: 4
-#    value: 0
-#  warmUpMs: 1000
-#  coolDownMs: 2000
-#  idleMs: 300000
+# power:
+#   powerController: ppdu_r1_up_l
+#   driverNeedsPower: true
+#   powerOn:
+#     parameter: power
+#     channel: 4
+#     value: 1
+#   powerOff:
+#     parameter: power
+#     channel: 4
+#     value: 0
+#   warmUpMs: 1000
+#   coolDownMs: 2000
+#   idleMs: 300000
 model:
   parameters:
     threshold:
