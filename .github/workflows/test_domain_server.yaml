@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - * # any branch
+      - '**'
 jobs:
   test_domain_server:
     runs-on: ubuntu-latest
