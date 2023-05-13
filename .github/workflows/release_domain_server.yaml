@@ -30,7 +30,7 @@ jobs:
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-arm64.list
           echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-arm64.list
           sudo apt-get update -qq
-          sudo apt-get install -yqq gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-user-static g++-aarch64-linux-gnu libstdc++-10-dev-arm64-cross libasound2-dev:arm64 libcurl4-openssl-dev:arm64libudev-dev:arm64 libusb-dev:arm64  
+          sudo apt-get install -yqq gcc-aarch64-linux-gnu libc6-dev-arm64-cross qemu-user-static g++-aarch64-linux-gnu libstdc++-10-dev-arm64-cross libasound2-dev:arm64 libcurl4-openssl-dev:arm64 libudev-dev:arm64 libusb-dev:arm64  
           sudo apt-get clean
       - name: Setup dependencies (armhf)
         if: ${{ matrix.target == 'armhf' }}
