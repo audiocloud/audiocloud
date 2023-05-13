@@ -100,17 +100,19 @@ jobs:
     needs: build_linux
     runs-on: ubuntu-latest
     steps:
-      - name: Download math result for job 2
+      - name: Download previously generated artefacts
         uses: actions/download-artifact@v3
+      - name: troubleshoot
+        run: |
+          pwd
+          ls -l .
 
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            audiocloud/domain-server-aarch64
-            audiocloud/domain-server-armhf
-            audiocloud/domain-server-x86_64
+            /home/runner/work/audiocloud/audiocloud/*
           tag_name: ${{ github.ref }}
           body: |
             **Changes**
