@@ -103,13 +103,13 @@ jobs:
       - name: troubleshoot
         run: |
           pwd
-          ls -la
+          ls -laR
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            domain-server-*
+            */*
           tag_name: ${{ github.ref_name }}
           body: |
             **Changes**
