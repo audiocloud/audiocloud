@@ -4,9 +4,10 @@ import {
   InstancePowerControl,
   InstancePowerState,
   InstanceSpec,
+  RtEvent,
+  RtRequest,
   SetInstanceParameter,
-} from "./instance";
-import { RtEvent, RtRequest } from "./rt";
+} from "./types";
 import { nanoid } from "nanoid";
 import { match } from "ts-pattern";
 
@@ -181,12 +182,6 @@ export function createMessageHandler(
       )
       .with({ type: "setInstanceSpec" }, ({ instanceId, spec }) => {
         handler.instanceSpec(instanceId, spec);
-      })
-      .with({ type: "offerPeerConnection" }, async ({ offer }) => {
-        peerConnectionHandler?.offerPeerConnection(offer);
-      })
-      .with({ type: "offerPeerConnectionCandidate" }, ({ candidate }) => {
-        peerConnectionHandler?.offerIceCandidate(candidate);
       })
       .exhaustive();
   };

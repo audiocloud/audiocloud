@@ -1,6 +1,8 @@
 use std::marker::PhantomData;
 
 pub use chrono::{DateTime, Utc};
+use schemars::schema::RootSchema;
+use schemars_zod::merge_schemas;
 
 pub mod instance;
 pub mod media;
@@ -85,4 +87,8 @@ impl<Content> BucketName<Content> {
     Self { phantom_content: PhantomData,
            name }
   }
+}
+
+pub fn schema() -> RootSchema {
+  merge_schemas([instance::schema(), media::schema(), rt::schema(), task::schema(), user::schema()].into_iter())
 }

@@ -1,0 +1,72 @@
+on:
+  push:
+    branches:
+      - main
+jobs:
+  build_linux:
+    strategy:
+      matrix:
+        target: [ aarch64, armhf, x86_64 ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1s
+        with:
+          toolchain: stable
+          override: true
+      - name: Setup general dependencies
+        run: |
+          sudo apt-get install -yqq build-essential pkg-config cmake
+      - name: Setup dependencies (aarch64)
+        if: ${{ matrix.target == 'aarch64' }}
+        shell: bash
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo sed -i "s/deb http/deb [arch=amd64] http/" /etc/apt/sources.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/ports-arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-arm64.list
+          echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-arm64.list
+          sudo apt-get update -qq
+          sudo apt-get install -yqq gcc-aarch64-linux-gnu libc6-dev-aarch64-cross qemu-user-static g++-aarch64-linux-gnu libstdc++-10-dev-aarch64-cross libasound2-dev:arm64 libcurl4-openssl-dev:arm64libudev-dev:arm64 libusb-dev:arm64  
+          sudo apt-get clean
+      - name: Setup dependencies (armhf)
+        run: |
+          sudo dpkg --add-architecture armhf
+          sudo sed -i "s/deb http/deb [arch=amd64] http/" /etc/apt/sources.list
+          echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/ports-armhf.list
+          echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-armhf.list
+          echo "deb [arch=armhf] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-armhf.list
+          sudo apt-get update -qq
+          sudo apt-get install -yqq gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-arm-static g++-arm-linux-gnueabihf libstdc++-10-dev-armhf-cross libasound2-dev:armhf libcurl4-openssl-dev:armhf libudev-dev:armhf libusb-dev:armhf
+          sudo apt-get clean
+      - name: Setup dependencies (x86_64)
+        if: ${{ matrix.target == 'x86_64' }}
+        run: |
+          sudo apt-get install -yqq libasound2-dev libcurl4-openssl-dev libudev-dev libusb-dev
+      - name: Build (aarch64)
+        if: ${{ matrix.target == 'aarch64' }}
+        env:
+          PKG_CONFIG_ALLOW_CROSS: 1
+          PKG_CONFIG_DIR: /usr/lib/aarch64-linux-gnu/pkgconfig
+          PKG_CONFIG_LIBDIR: /usr/lib/aarch64-linux-gnu/pkgconfig
+          PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu/sysroot
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+        run: |
+          cargo build --release --target -p domain-server --target aarch64-unknown-linux-gnu
+      - name: Build (armhf)
+        if: ${{ matrix.target == 'armhf' }}
+        env:
+          PKG_CONFIG_ALLOW_CROSS: 1
+          PKG_CONFIG_DIR: /usr/lib/arm-linux-gnueabihf/pkgconfig
+          PKG_CONFIG_LIBDIR: /usr/lib/arm-linux-gnueabihf/pkgconfig
+          PKG_CONFIG_SYSROOT_DIR: /usr/arm-linux-gnueabihf/sysroot
+          CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
+        run: |
+          cargo build --release -p domain-server --target armv7-unknown-linux-gnueabihf --bin domain_server
+      - name: Build (x86_64)
+        if: ${{ matrix.target == 'x86_64' }}
+        run: |
+          cargo build --release -p domain-server --bin domain_server

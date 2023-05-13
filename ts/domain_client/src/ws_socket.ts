@@ -1,6 +1,6 @@
 import { parseURL, serializeURL } from "whatwg-url";
 import WebSocket from "isomorphic-ws";
-import { RtRequest } from "./rt";
+import { RtRequest } from "./types";
 import {
   createMessageHandler,
   PeerConnectionHandler,

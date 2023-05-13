@@ -322,12 +322,12 @@ impl UsbHidDriver {
   }
 }
 
-pub async fn run_usb_driver(instance_id: String,
-                            config: UsbHidDriverConfig,
-                            rx_cmd: flume::Receiver<InstanceDriverCommand>,
-                            tx_evt: flume::Sender<InstanceDriverEvent>,
-                            scripting_engine: ScriptingEngine)
-                            -> Result {
+pub async fn run_usb_hid_driver(instance_id: String,
+                                config: UsbHidDriverConfig,
+                                rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                                tx_evt: flume::Sender<InstanceDriverEvent>,
+                                scripting_engine: ScriptingEngine)
+                                -> Result {
   let usb_thread = async_thread::spawn(move || run_usb_driver_sync(instance_id, config, rx_cmd, tx_evt, scripting_engine));
 
   match usb_thread.join().await {

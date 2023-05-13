@@ -2,8 +2,6 @@ use std::io::Write;
 
 use anyhow::bail;
 use byteorder::{WriteBytesExt, LE};
-use futures::channel::mpsc;
-use futures::{SinkExt, StreamExt};
 use rosc::{encoder, OscBundle, OscMessage, OscPacket, OscTime, OscType};
 use serde_json::{json, Value};
 use tokio::{net, select};
@@ -23,8 +21,8 @@ const IMMEDIATELY: OscTime = OscTime { seconds:    0,
 
 pub async fn run_osc_driver(instance_id: String,
                             config: OscDriverConfig,
-                            rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                            tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                            rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                            tx_evt: flume::Sender<InstanceDriverEvent>,
                             scripting: ScriptingEngine)
                             -> Result {
   if config.use_tcp {
@@ -36,15 +34,15 @@ pub async fn run_osc_driver(instance_id: String,
 
 async fn run_tcp_osc_driver(_instance_id: String,
                             config: OscDriverConfig,
-                            mut rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                            mut tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                            rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                            tx_evt: flume::Sender<InstanceDriverEvent>,
                             scripting: ScriptingEngine)
                             -> Result {
   use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
   let mut tcp_stream = net::TcpStream::connect((config.host.clone(), config.port)).await?;
   let (mut tcp_rx, mut tcp_tx) = tcp_stream.split();
-  let _ = tx_evt.send(InstanceDriverEvent::Connected { connected: true }).await;
+  let _ = tx_evt.send_async(InstanceDriverEvent::Connected { connected: true }).await;
 
   loop {
     let mut buf = [0u8; 1024];
@@ -52,7 +50,7 @@ async fn run_tcp_osc_driver(_instance_id: String,
       _ = tcp_rx.read(&mut buf[..]) => {
         // just ignore the data
       },
-      Some(cmd) = rx_cmd.next() => {
+      Ok(cmd) = rx_cmd.recv_async() => {
         match cmd {
           | InstanceDriverCommand::SetParameters(req, complete) => {
             let Ok(serialized) = serialize_changes_to_bundle(&config, req.changes, &scripting).await else {
@@ -147,8 +145,8 @@ async fn serialize_changes_to_bundle(config: &OscDriverConfig,
 
 async fn run_udp_osc_driver(instance_id: String,
                             config: OscDriverConfig,
-                            rx_cmd: mpsc::Receiver<InstanceDriverCommand>,
-                            tx_evt: mpsc::Sender<InstanceDriverEvent>,
+                            rx_cmd: flume::Receiver<InstanceDriverCommand>,
+                            tx_evt: flume::Sender<InstanceDriverEvent>,
                             scripting: ScriptingEngine)
                             -> Result {
   Ok(())
