@@ -10,7 +10,11 @@ set(NEEDS_WEB_BROWSER OFF)
 
 add_subdirectory(JUCE)
 
-add_library(audio_engine_juce STATIC ffi/juce.cpp PUBLIC JUCE_ASIO=1)
+add_library(
+        audio_engine_juce
+        STATIC
+        ffi/juce.cpp
+)
 
 target_compile_definitions(
         audio_engine_juce
