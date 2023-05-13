@@ -100,14 +100,16 @@ jobs:
     steps:
       - name: Download previously generated artefacts
         uses: actions/download-artifact@v3
+      - name: troubleshoot
+        run: |
+          pwd
+          ls -la
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            domain-server-linux-aarch64
-            domain-server-linux-armhf
-            domain-server-linux-x86_64
+            domain-server-*
           tag_name: ${{ github.ref_name }}
           body: |
             **Changes**
