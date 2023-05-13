@@ -1,0 +1,22 @@
+on:
+  push:
+    branches:
+      - * # any branch
+jobs:
+  test_domain_server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Linux Deps
+        run: |
+          sudo apt-get update -yqq
+          sudo apt-get install -yqq build-essential pkg-config cmake qemu-user-static libasound2-dev libcurl4-openssl-dev libudev-dev libusb-dev
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - uses: Swatinem/rust-cache@v2
+      - name: Execute test
+        run:
+          cargo test

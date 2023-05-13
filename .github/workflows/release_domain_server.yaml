@@ -1,7 +1,5 @@
 on:
   push:
-    branches:
-      - main
     tags:
       - v*
 jobs:
@@ -82,19 +80,19 @@ jobs:
         if: ${{ matrix.target == 'aarch64' }}
         uses: actions/upload-artifact@v3
         with:
-          name: domain-server-aarch64
+          name: domain-server-linux-aarch64
           path: target/aarch64-unknown-linux-gnu/release/domain_server
       - name: Upload (armhf)
         if: ${{ matrix.target == 'armhf' }}
         uses: actions/upload-artifact@v3
         with:
-          name: domain-server-armhf
+          name: domain-server-linux-armhf
           path: target/armv7-unknown-linux-gnueabihf/release/domain_server
       - name: Upload (x86_64)
         if: ${{ matrix.target == 'x86_64' }}
         uses: actions/upload-artifact@v3
         with:
-          name: domain-server-x86_64
+          name: domain-server-linux-x86_64
           path: target/release/domain_server
   release:
     needs: build_linux
@@ -102,18 +100,15 @@ jobs:
     steps:
       - name: Download previously generated artefacts
         uses: actions/download-artifact@v3
-      - name: troubleshoot
-        run: |
-          pwd
-          ls -l .
-
       - name: Publish Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            /home/runner/work/audiocloud/audiocloud/*
-          tag_name: ${{ github.ref }}
+            domain-server-linux-aarch64
+            domain-server-linux-armhf
+            domain-server-linux-x86_64
+          tag_name: ${{ github.ref_name }}
           body: |
             **Changes**
             ${{ steps.changes.outputs.changes }}
