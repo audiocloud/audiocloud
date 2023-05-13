@@ -10,7 +10,7 @@ use api::instance::spec::SetParameterCommand;
 use api::media::spec::MediaId;
 use api::task::graph::{AudioGraphSpec, InputId, NodeId, OutputId};
 use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead, PlayId, PlayerControlCommand};
-use api::task::{DesiredTaskPlayState, PlayRequest};
+use api::task::PlayRequest;
 
 use crate::audio_device::{AudioDevices, DeviceClientCommand};
 use crate::buffer::NodeBuffers;
@@ -19,12 +19,12 @@ use crate::player::work_set::WorkSet;
 use crate::BoxedNode;
 use crate::{NodeInfo, Result};
 
+mod command;
 mod device;
 mod error;
 mod init;
 mod structure;
 mod work_set;
-mod command;
 
 pub trait MediaResolver: Send + Sync {
   fn resolve(&self, media_id: &MediaId) -> Result<String>;
@@ -114,31 +114,15 @@ pub struct GraphPlayerHandle {
 
 impl GraphPlayerHandle {
   pub async fn set_play(&mut self, request: PlayRequest) -> Result {
-    self.play_id = request.play_id;
-    let desired = DesiredTaskPlayState::Play(request);
-
-    self.tx_control
-        .send(PlayerControlCommand::SetDesiredPlaybackState { desired })
-        .await?;
-
-    Ok(())
+    todo!()
   }
 
   pub async fn stop(&mut self) -> Result {
-    self.tx_control
-        .send(PlayerControlCommand::SetDesiredPlaybackState { desired: DesiredTaskPlayState::Idle, })
-        .await?;
-
-    Ok(())
+    todo!()
   }
 
   pub async fn seek(&mut self, seek_to: u64) -> Result {
-    self.tx_control
-        .send(PlayerControlCommand::Seek { play_id: self.play_id,
-                                           seek_to })
-        .await?;
-
-    Ok(())
+    todo!()
   }
 
   pub fn new(devices: AudioDevices,

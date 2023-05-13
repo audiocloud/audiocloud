@@ -3,10 +3,12 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use anyhow::anyhow;
+use argon2::{Algorithm, Argon2, Version};
 use async_nats::Client;
 use chrono::{Duration, Utc};
 use clap::{Parser, Subcommand};
 use futures::StreamExt;
+use password_hash::{PasswordHasher, SaltString};
 use tracing::{info, instrument};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -20,6 +22,8 @@ use api::media::buckets::{media_upload_spec_key, media_upload_state_key};
 use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::media_download_state_key;
 use api::task::player::PlayId;
+use api::user::UserSpec;
+use api::BucketKey;
 use domain_server::nats::Nats;
 
 const LOG_DEFAULTS: &'static str = "warn";
@@ -45,6 +49,11 @@ enum Command {
   Media {
     #[clap(subcommand)]
     command: MediaCommand,
+  },
+  /// User management
+  User {
+    #[clap(subcommand)]
+    command: UserCommand,
   },
   /// Key-value database management
   KV {
@@ -125,6 +134,35 @@ enum MediaCommand {
     id:      MediaId,
     #[clap(subcommand)]
     command: MediaUploadCommand,
+  },
+}
+
+#[derive(Debug, Subcommand)]
+enum UserCommand {
+  /// Create a user
+  Create {
+    /// User id
+    id: String,
+  },
+  /// Delete a user
+  Delete {
+    /// User id
+    id: String,
+  },
+  /// List users
+  List {
+    /// Output format
+    #[clap(short, long, default_value = "yaml")]
+    format: OutputFormat,
+  },
+  /// Describe a user
+  Describe {
+    /// User id
+    id: String,
+  },
+  SetPassword {
+    /// User id
+    id: String,
   },
 }
 
@@ -212,6 +250,7 @@ async fn main() -> anyhow::Result<()> {
   match args.command {
     | Command::Instance { command } => instance_command(Nats::new(client, false).await?, command).await,
     | Command::Media { command } => media_command(Nats::new(client, false).await?, command).await,
+    | Command::User { command } => user_command(Nats::new(client, false).await?, command).await,
     | Command::KV { command } => kv_command(client, command).await,
   }
 }
@@ -452,4 +491,65 @@ async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String
   println!("Instance spec updated with revision {revision}");
 
   Ok(())
+}
+
+async fn user_command(nats: Nats, command: UserCommand) -> Result {
+  match command {
+    | UserCommand::Create { id } => create_user(nats, id).await,
+    | UserCommand::Delete { id } => delete_user(nats, id).await,
+    | UserCommand::List { format } => list_users(nats, format).await,
+    | UserCommand::Describe { id } => describe_user(nats, id).await,
+    | UserCommand::SetPassword { id } => set_password(nats, id).await,
+  }
+}
+
+async fn create_user(nats: Nats, id: String) -> Result {
+  let salt = create_salt();
+  println!("Salt: {salt}");
+
+  let password1 = rpassword::prompt_password("Password: ")?;
+  let password2 = rpassword::prompt_password("Repeat: ")?;
+
+  if &password1 != &password2 {
+    return Err(anyhow!("Passwords do not match"));
+  }
+
+  let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, argon2::Params::default());
+  let salt = create_salt();
+  let password = argon.hash_password(password1.as_bytes(), &salt)
+                      .map_err(|e| anyhow!("Failed to hash password: {e}"))?;
+  let password = format!("{password}");
+
+  println!("Hashed: {password}");
+
+  nats.user_spec.put(BucketKey::new(&id), UserSpec { id, password }).await?;
+
+  Ok(())
+}
+
+async fn delete_user(nats: Nats, id: String) -> Result {
+  todo!()
+}
+
+async fn list_users(nats: Nats, p1: OutputFormat) -> Result {
+  todo!()
+}
+
+async fn describe_user(nats: Nats, id: String) -> Result {
+  todo!()
+}
+
+async fn set_password(nats: Nats, id: String) -> Result {
+  let password1 = rpassword::prompt_password("Password: ")?;
+  let password2 = rpassword::prompt_password("Repeat: ")?;
+
+  if &password1 != &password2 {
+    return Err(anyhow!("Passwords do not match"));
+  }
+
+  todo!()
+}
+
+fn create_salt() -> SaltString {
+  SaltString::generate(rand::thread_rng())
 }

@@ -6,6 +6,7 @@ pub mod instance;
 pub mod media;
 pub mod rt;
 pub mod task;
+pub mod user;
 
 pub type Timestamp = DateTime<Utc>;
 

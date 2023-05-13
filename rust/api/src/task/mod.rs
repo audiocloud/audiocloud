@@ -9,6 +9,7 @@ use graph::{modify::AudioGraphModification, AudioGraphSpec};
 use player::{GraphPlayerEvent, PlayId};
 
 use crate::instance::driver::events::InstanceDriverEvent;
+use crate::task::graph::{SinkId, SinkSpec};
 use crate::task::spec::TaskSpec;
 use crate::Timestamp;
 
@@ -87,6 +88,7 @@ pub struct PlayRequest {
   pub end:        u64,
   pub start_from: u64,
   pub looping:    bool,
+  pub sinks:      HashMap<SinkId, SinkSpec>,
 }
 
 impl Default for DesiredTaskPlayState {
@@ -146,5 +148,9 @@ pub mod subjects {
 }
 
 pub fn schema() -> RootSchema {
-  merge_schemas([schema_for!(TaskSpec), schema_for!(DesiredTaskPlayState)].into_iter())
+  merge_schemas([schema_for!(TaskSpec),
+                 schema_for!(DesiredTaskPlayState),
+                 schema_for!(TaskEvent),
+                 schema_for!(CreateTaskRequest),
+                 schema_for!(CreateTaskResponse)].into_iter())
 }

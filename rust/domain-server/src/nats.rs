@@ -31,7 +31,8 @@ use api::media::spec::{MediaDownloadSpec, MediaId, MediaUploadSpec};
 use api::media::state::{MediaDownloadState, MediaUploadState};
 use api::task::spec::TaskSpec;
 use api::task::DesiredTaskPlayState;
-use api::{instance, media, task, BucketKey, BucketName, Events, Request};
+use api::user::UserSpec;
+use api::{instance, media, task, user, BucketKey, BucketName, Events, Request};
 
 pub type WatchStream<K, T> = Pin<Box<dyn Stream<Item = (K, Option<T>)> + Send>>;
 
@@ -113,6 +114,7 @@ pub struct Nats {
   pub media_upload_state:        Bucket<MediaId, MediaUploadState>,
   pub task_spec:                 Bucket<String, TaskSpec>,
   pub task_state:                Bucket<String, ()>,
+  pub user_spec:                 Bucket<String, UserSpec>,
   pub task_ctrl:                 Bucket<String, DesiredTaskPlayState>,
 }
 
@@ -140,6 +142,7 @@ impl Nats {
               media_upload_state:        Bucket::new(js, &media::buckets::UPLOAD_STATE, three_days, recreate).await?,
               task_spec:                 Bucket::new(js, &task::buckets::TASK_SPEC, forever, recreate).await?,
               task_state:                Bucket::new(js, &task::buckets::TASK_STATE, forever, recreate).await?,
+              user_spec:                 Bucket::new(js, &user::buckets::USER_SPEC, forever, recreate).await?,
               task_ctrl:                 Bucket::new(js, &task::buckets::TASK_CONTROL, forever, recreate).await?, })
   }
 
