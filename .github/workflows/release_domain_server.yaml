@@ -76,30 +76,36 @@ jobs:
         if: ${{ matrix.target == 'x86_64' }}
         run: |
           cargo build --release -p domain-server --bin domain_server
+      - name: Rename
+        run: |
+          find . -name domain_server -exec mv {} domain-server-${{ matrix.target }}
       - name: Upload (aarch64)
         if: ${{ matrix.target == 'aarch64' }}
         uses: actions/upload-artifact@v3
         with:
           name: domain-server-linux-aarch64
-          path: target/aarch64-unknown-linux-gnu/release/domain_server
+          path: target/aarch64-unknown-linux-gnu/release/domain-server-${{ matrix.target }}
       - name: Upload (armhf)
         if: ${{ matrix.target == 'armhf' }}
         uses: actions/upload-artifact@v3
         with:
           name: domain-server-linux-armhf
-          path: target/armv7-unknown-linux-gnueabihf/release/domain_server
+          path: target/armv7-unknown-linux-gnueabihf/release/domain-server-${{ matrix.target }}
       - name: Upload (x86_64)
         if: ${{ matrix.target == 'x86_64' }}
         uses: actions/upload-artifact@v3
         with:
           name: domain-server-linux-x86_64
-          path: target/release/domain_server
+          path: target/release/domain-server-${{ matrix.target }}
   release:
     needs: build_linux
     runs-on: ubuntu-latest
     steps:
       - name: Download previously generated artefacts
         uses: actions/download-artifact@v3
+        with:
+          name: domain-server-linux-aarch64
+          path: target/aarch64-unknown-linux-gnu/release/domain_server
       - name: troubleshoot
         run: |
           pwd
