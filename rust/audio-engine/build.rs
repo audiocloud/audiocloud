@@ -38,7 +38,7 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=Metal");
     println!("cargo:rustc-link-lib=iconv");
   } else if target_os.contains("linux") {
-    // no special libs needed, CMake propagates deps correctly
+    println!("cargo:rustc-link-lib=asound");
   } else {
     panic!("Unsupported target OS: {}", target_os);
   }

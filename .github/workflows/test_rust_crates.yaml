@@ -32,4 +32,4 @@ jobs:
           restore-keys: ${{ runner.os }}-x86_64-cargo-
       - name: Execute test
         run: |
-          cargo test -p domain-server
+          cargo test
