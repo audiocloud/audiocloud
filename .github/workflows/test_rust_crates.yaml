@@ -9,10 +9,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { name: ubuntu-x86_64, os: ubuntu-latest, rust_target: x86_64-unknown-linux-gnu, arch: x86_64, pkg_arch: '', pkg_config_arch: '', build_pkgs: '' }
-          - { name: ubuntu-aarch64, os: ubuntu-latest, rust_target: aarch64-unknown-linux-gnu, arch: arm64, pkg_arch: ':arm64', pkg_config_arch: aarch64-linux-gnu, build_pkgs: 'gcc-aarch64-linux-gnu libc6-dev-arm64-cross g++-aarch64-linux-gnu libstdc++-10-dev-arm64-cross' }
-          - { name: ubuntu-gnueabihf, os: ubuntu-latest, rust_target: armv7-unknown-linux-gnueabihf, arch: armhf, pkg_arch: ':armhf', pkg_config_arch: arm-linux-gnueabihf, build_pkgs: 'gcc-arm-linux-gnueabihf libc6-dev-armhf-cross g++-arm-linux-gnueabihf libstdc++-10-dev-armhf-cross' }
-          - { name: macos-aarch64, os: macos-latest, rust_target: aarch64-apple-darwin, arch: arm64 }
+          - { os: ubuntu-latest, rust_target: x86_64-unknown-linux-gnu, arch: x86_64, pkg_arch: '', pkg_config_arch: '', build_pkgs: '' }
+          - { os: ubuntu-latest, rust_target: aarch64-unknown-linux-gnu, arch: arm64, pkg_arch: ':arm64', pkg_config_arch: aarch64-linux-gnu, build_pkgs: 'gcc-aarch64-linux-gnu libc6-dev-arm64-cross g++-aarch64-linux-gnu libstdc++-10-dev-arm64-cross' }
+          - { os: ubuntu-latest, rust_target: armv7-unknown-linux-gnueabihf, arch: armhf, pkg_arch: ':armhf', pkg_config_arch: arm-linux-gnueabihf, build_pkgs: 'gcc-arm-linux-gnueabihf libc6-dev-armhf-cross g++-arm-linux-gnueabihf libstdc++-10-dev-armhf-cross' }
+          - { os: macos-latest, rust_target: aarch64-apple-darwin, arch: arm64 }
     steps:
       - uses: actions/checkout@v3
         with:
@@ -68,6 +68,10 @@ jobs:
         if: ${{ matrix.rust_target == 'aarch64-apple-darwin' }}
         run: |
           echo MACOSX_DEPLOYMENT_TARGET=10.13 >> $GITHUB_ENV
-      - name: Execute test
+      - name: Build
+        run: |
+          cargo build --target ${{ matrix.rust_target }}
+      - name: Test (x86_64-unknown-linux-gnu)
+        if: ${{ matrix.rust_target == 'x86_64-unknown-linux-gnu' }}
         run: |
           cargo test --target ${{ matrix.rust_target }} -- --show-output
