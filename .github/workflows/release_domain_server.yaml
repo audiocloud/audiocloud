@@ -2,6 +2,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - v*
 jobs:
   build_linux:
     strategy:
@@ -9,7 +11,7 @@ jobs:
         target: [ aarch64, armhf, x86_64 ]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up Rust
@@ -17,6 +19,9 @@ jobs:
         with:
           toolchain: stable
           override: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
       - name: Setup general dependencies
         run: |
           sudo apt-get install -yqq build-essential pkg-config cmake qemu-user-static
@@ -75,19 +80,19 @@ jobs:
           cargo build --release -p domain-server --bin domain_server
       - name: Upload (aarch64)
         if: ${{ matrix.target == 'aarch64' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: domain-server-aarch64
           path: target/aarch64-unknown-linux-gnu/release/domain_server
       - name: Upload (armhf)
         if: ${{ matrix.target == 'armhf' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: domain-server-armhf
           path: target/armv7-unknown-linux-gnueabihf/release/domain_server
       - name: Upload (x86_64)
         if: ${{ matrix.target == 'x86_64' }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: domain-server-x86_64
           path: target/release/domain_server
