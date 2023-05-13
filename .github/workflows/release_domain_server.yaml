@@ -100,9 +100,6 @@ jobs:
     steps:
       - name: Download previously generated artefacts
         uses: actions/download-artifact@v3
-        with:
-          name: domain-server-linux-aarch64
-          path: target/aarch64-unknown-linux-gnu/release/domain_server
       - name: troubleshoot
         run: |
           pwd
@@ -112,7 +109,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            */*
+            **/*
           tag_name: ${{ github.ref_name }}
           body: |
             Audio Cloud Domain Server ${{ github.ref_name }}.
