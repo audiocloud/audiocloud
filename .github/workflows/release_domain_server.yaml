@@ -108,9 +108,9 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            domain-server-aarch64
-            domain-server-armhf
-            domain-server-x86_64
+            audiocloud/domain-server-aarch64
+            audiocloud/domain-server-armhf
+            audiocloud/domain-server-x86_64
           tag_name: ${{ github.ref }}
           body: |
             **Changes**
