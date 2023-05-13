@@ -203,7 +203,9 @@ int32_t file_reader_read_samples(AudioFormatReader *reader,
         return 0;
     }
 
-    auto num_read = std::min(reader->lengthInSamples, start_pos + num_samples) - start_pos;
+    auto num_read =
+            std::min(static_cast<int64_t>(reader->lengthInSamples), static_cast<int64_t>(start_pos + num_samples)) -
+            start_pos;
     return reader->read(buffers, num_channels, start_pos, num_samples) ? static_cast<int32_t>(num_read) : -1;
 }
 
