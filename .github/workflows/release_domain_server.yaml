@@ -56,7 +56,8 @@ jobs:
           PKG_CONFIG_SYSROOT_DIR: /usr/aarch64-linux-gnu/sysroot
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
         run: |
-          cargo build --release --target -p domain-server --target aarch64-unknown-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+          cargo build --release -p domain-server --target aarch64-unknown-linux-gnu
       - name: Build (armhf)
         if: ${{ matrix.target == 'armhf' }}
         env:
@@ -66,8 +67,49 @@ jobs:
           PKG_CONFIG_SYSROOT_DIR: /usr/arm-linux-gnueabihf/sysroot
           CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER: arm-linux-gnueabihf-gcc
         run: |
+          rustup target add armv7-unknown-linux-gnueabihf
           cargo build --release -p domain-server --target armv7-unknown-linux-gnueabihf --bin domain_server
       - name: Build (x86_64)
         if: ${{ matrix.target == 'x86_64' }}
         run: |
           cargo build --release -p domain-server --bin domain_server
+      - name: Upload (aarch64)
+        if: ${{ matrix.target == 'aarch64' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: domain-server-aarch64
+          path: target/aarch64-unknown-linux-gnu/release/domain_server
+      - name: Upload (armhf)
+        if: ${{ matrix.target == 'armhf' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: domain-server-armhf
+          path: target/armv7-unknown-linux-gnueabihf/release/domain_server
+      - name: Upload (x86_64)
+        if: ${{ matrix.target == 'x86_64' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: domain-server-x86_64
+          path: target/release/domain_server
+  release:
+    needs: build_linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download math result for job 2
+        uses: actions/download-artifact@v3
+        with:
+          path: releases
+
+      - name: Publish Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            releases/*
+          tag_name: ${{ github.ref }}
+          body: |
+            **Changes**
+            ${{ steps.changes.outputs.changes }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
