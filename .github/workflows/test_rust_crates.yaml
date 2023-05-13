@@ -63,7 +63,10 @@ jobs:
           echo PKG_CONFIG_LIBDIR=/usr/lib/arm-linux-gnueabihf/pkgconfig >> $GITHUB_ENV
           echo PKG_CONFIG_SYSROOT_DIR=/usr/arm-linux-gnueabihf/sysroot >> $GITHUB_ENV
           echo CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER=arm-linux-gnueabihf-gcc >> $GITHUB_ENV
+      - name: Setup env (aarch64-apple-darwin)
+        if: ${{ matrix.rust_target == 'aarch64-apple-darwin' }}
+        run: |
+          echo MACOSX_DEPLOYMENT_TARGET=10.13 >> $GITHUB_ENV
       - name: Execute test
-        env:
         run: |
           cargo test --target ${{ matrix.rust_target }} -- --show-output
