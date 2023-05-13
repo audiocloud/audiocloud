@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - name: Install Linux Deps
+      - name: Setup general dependencies
         run: |
           sudo apt-get update -yqq
           sudo apt-get install -yqq build-essential pkg-config cmake qemu-user-static libasound2-dev libcurl4-openssl-dev libudev-dev libusb-dev

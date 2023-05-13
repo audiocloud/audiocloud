@@ -31,6 +31,7 @@ jobs:
           restore-keys: ${{ runner.os }}-${{ matrix.target }}-cargo-
       - name: Setup general dependencies
         run: |
+          sudo apt-get update -yqq
           sudo apt-get install -yqq build-essential pkg-config cmake qemu-user-static
       - name: Setup dependencies (aarch64)
         if: ${{ matrix.target == 'aarch64' }}
