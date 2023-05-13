@@ -3,7 +3,8 @@ on:
     branches:
       - '**'
 jobs:
-  test_domain_server:
+  test_all_crates:
+    name: Test all rust crates
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -17,9 +18,9 @@ jobs:
         with:
           submodules: recursive
       - name: Setup Specific dependencies
-        if: ${{ matrix.arch != '' && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.arch != 'x86_64' && matrix.os == 'ubuntu-latest' }}
         run: |
-          sudo dpkg --add-architecture arm64
+          sudo dpkg --add-architecture ${{ matrix.arch }}
           sudo sed -i "s/deb http/deb [arch=amd64] http/" /etc/apt/sources.list
           echo "deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/ports-${{ matrix.arch }}.list
           echo "deb [arch=${{ matrix.arch }}] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-${{ matrix.arch }}.list
