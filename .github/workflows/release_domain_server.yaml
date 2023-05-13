@@ -95,8 +95,48 @@ jobs:
           name: domain-server-linux-${{ matrix.target }}
           path: domain-server-linux-${{ matrix.target }}-${{ github.ref_name }}
           if-no-files-found: error
+  build_macos:
+    name: Build macOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@nightly
+        with:
+          # The macOS AArch64 build is done from an x86_64 macOS CI runner, so
+          # it needs to be cross compiled
+          targets: aarch64-apple-darwin
+      - name: Set up cargo cache
+        uses: actions/cache@v3
+        continue-on-error: false
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-macos-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-macos-cargo-
+      - name: Build
+        env:
+          MACOSX_DEPLOYMENT_TARGET: 10.13
+        run: |
+          cargo build --release -p domain-server --bin domain_server
+      - name: Rename
+        run: |
+          find . -type f -name domain_server -exec mv {} domain-server-macos-${{ github.ref_name }} \;
+      - name: Upload build
+        uses: actions/upload-artifact@v3
+        with:
+          name: domain-server-macos
+          path: domain-server-macos-${{ github.ref_name }}
+          if-no-files-found: error
   release:
-    needs: build_linux
+    needs:
+      - build_linux
+      - build_macos
     runs-on: ubuntu-latest
     steps:
       - name: Download previously generated artefacts
