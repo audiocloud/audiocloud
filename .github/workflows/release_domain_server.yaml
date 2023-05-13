@@ -13,7 +13,7 @@ jobs:
         with:
           submodules: recursive
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1s
+        uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
