@@ -97,14 +97,15 @@ jobs:
     steps:
       - name: Download math result for job 2
         uses: actions/download-artifact@v3
-        with:
-          path: releases
 
       - name: Publish Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            releases/*
+            domain-server-aarch64
+            domain-server-armhf
+            domain-server-x86_64
           tag_name: ${{ github.ref }}
           body: |
             **Changes**
