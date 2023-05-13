@@ -31,7 +31,7 @@ jobs:
           sudo apt-get update -yqq
           sudo apt-get install -yqq build-essential pkg-config cmake qemu-user-static libasound2-dev${{ matrix.pkg_arch }} libcurl4-openssl-dev${{ matrix.pkg_arch }} libudev-dev${{ matrix.pkg_arch }} libusb-dev${{ matrix.pkg_arch }} ${{matrix.build_pkgs }}
       - name: Set up Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: stable
           override: true
