@@ -80,7 +80,7 @@ jobs:
           curl -L https://download.steinberg.net/sdk_downloads/asiosdk_2.3.3_2019-06-14.zip -o asiosdk.zip
           mkdir -p sdks/asio || true
           unzip -q asiosdk.zip -d sdks/asio
-          ls -laR sdks
+          dir /s /w sdks
       - name: Build
         run: |
           cargo build --target ${{ matrix.rust_target }}
