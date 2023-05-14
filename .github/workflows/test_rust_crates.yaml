@@ -79,7 +79,8 @@ jobs:
         run: |
           curl -L https://download.steinberg.net/sdk_downloads/asiosdk_2.3.3_2019-06-14.zip -o asiosdk.zip
           unzip -q asiosdk.zip
-          Get-ChildItem -Recurse
+          Move-Item -Path asiosdk_2.3.3_2019-06-14 -Destination rust\audio-engine\sdks\asio
+          Get-ChildItem -Path rust\audio-engine\sdks -Recurse
       - name: Build
         run: |
           cargo build --target ${{ matrix.rust_target }}
