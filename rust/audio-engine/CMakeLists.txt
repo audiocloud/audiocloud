@@ -27,7 +27,7 @@ if (WIN32)
     target_include_directories(
             audio_engine_juce
             PUBLIC
-            sdks/asio/common
+            sdks/asio/asiosdk_2.3.3_2019-06-14/common
     )
 endif ()
 
