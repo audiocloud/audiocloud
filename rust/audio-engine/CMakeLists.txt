@@ -2,11 +2,14 @@ cmake_minimum_required(VERSION 3.24)
 
 project(audio_engine_juce)
 
-set(JUCE_MODULES_ONLY ON)
-
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Support macOS down to High Sierra")
+
+set(JUCE_MODULES_ONLY ON)
 set(NEEDS_CURL OFF)
 set(NEEDS_WEB_BROWSER OFF)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(JUCE)
 
