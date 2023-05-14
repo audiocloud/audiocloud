@@ -8,6 +8,7 @@ fn main() {
   let target_os = get_os_from_triple(target.as_str()).unwrap();
 
   println!("cargo:rustc-link-search=native={}/build", dst.display());
+  println!("cargo:rustc-link-search=native={}", dst.display());
   println!("cargo:rustc-link-lib=static=audio_engine_juce");
 
   if target_os.contains("windows") {
