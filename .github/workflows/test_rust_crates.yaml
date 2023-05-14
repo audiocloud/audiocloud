@@ -74,6 +74,12 @@ jobs:
         if: ${{ matrix.rust_target == 'aarch64-apple-darwin' }}
         run: |
           echo MACOSX_DEPLOYMENT_TARGET=10.13 >> $GITHUB_ENV
+      - name: Download external SDK
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          curl -L https://download.steinberg.net/sdk_downloads/asiosdk_2.3.3_2019-06-14.zip -o asiosdk.zip
+          mkdir -p sdks/asio || true
+          unzip -q asiosdk.zip -d sdks/asio
       - name: Build
         run: |
           cargo build --target ${{ matrix.rust_target }}

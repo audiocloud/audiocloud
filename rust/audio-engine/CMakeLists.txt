@@ -23,6 +23,14 @@ add_library(
         ffi/juce.cpp
 )
 
+if (WIN32)
+    target_include_directories(
+            audio_engine_juce
+            PUBLIC
+            sdks/asio/common
+    )
+endif ()
+
 target_compile_definitions(
         audio_engine_juce
         PUBLIC
