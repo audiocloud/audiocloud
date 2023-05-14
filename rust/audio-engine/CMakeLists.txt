@@ -11,6 +11,10 @@ set(NEEDS_WEB_BROWSER OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if (MSVC)
+    set(CMAKE_CXX_FLAGS "/EHsc")
+endif ()
+
 add_subdirectory(JUCE)
 
 add_library(
