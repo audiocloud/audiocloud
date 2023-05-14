@@ -24,11 +24,7 @@ add_library(
 )
 
 if (WIN32)
-    target_include_directories(
-            juce::juce_audio_devices
-            PUBLIC
-            sdks/asio/common
-    )
+    include_directories(sdks/asio/asiosdk_2.3.3_2019-06-14/common)
 endif ()
 
 target_compile_definitions(

@@ -79,8 +79,7 @@ jobs:
         run: |
           curl -L https://download.steinberg.net/sdk_downloads/asiosdk_2.3.3_2019-06-14.zip -o asiosdk.zip
           mkdir -p sdks/asio || true
-          unzip -q asiosdk.zip "asiosdk_2.3.3_2019-06-14/*" -d sdks/asio
-          Get-ChildItem -Path sdks/asio -Recurse
+          unzip -q asiosdk.zip -d sdks/asio
       - name: Build
         run: |
           cargo build --target ${{ matrix.rust_target }}
