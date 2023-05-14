@@ -10,10 +10,6 @@ set(NEEDS_WEB_BROWSER OFF)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (MSVC)
-    set(CMAKE_CXX_FLAGS "/EHsc")
-endif ()
-
 add_subdirectory(JUCE)
 
 add_library(
@@ -24,6 +20,12 @@ add_library(
 
 if (WIN32)
     include_directories(sdks/asio/asiosdk_2.3.3_2019-06-14/common)
+endif ()
+
+if (WIN32)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHsc")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MD /O2")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MDd /Zi /Od")
 endif ()
 
 target_compile_definitions(
