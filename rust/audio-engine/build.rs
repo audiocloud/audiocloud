@@ -11,6 +11,12 @@ fn main() {
   println!("cargo:rustc-link-lib=static=audio_engine_juce");
 
   if target_os.contains("windows") {
+    if cfg!(debug_assertions) {
+      println!("cargo:rustc-link-search=native={}/build/debug", dst.display());
+    } else {
+      println!("cargo:rustc-link-search=native={}/build/release", dst.display());
+    }
+
     println!("cargo:rustc-link-lib=shell32");
     println!("cargo:rustc-link-lib=user32");
     println!("cargo:rustc-link-lib=gdi32");
@@ -38,11 +44,6 @@ fn main() {
     println!("cargo:rustc-link-lib=framework=Metal");
     println!("cargo:rustc-link-lib=iconv");
   } else if target_os.contains("linux") {
-    println!("cargo:rustc-link-search=native={}/build", dst.display());
-    println!("cargo:rustc-link-search=native={}/lib", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/lib", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/debug", dst.display());
-    println!("cargo:rustc-link-search=native={}/build/release", dst.display());
     println!("cargo:rustc-link-lib=asound");
   } else {
     panic!("Unsupported target OS: {}", target_os);
