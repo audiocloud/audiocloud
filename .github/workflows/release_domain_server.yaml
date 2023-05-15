@@ -110,7 +110,9 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: domain-server-${{ matrix.name }}
-          path: domain-server-${{ matrix.name }}-${{ github.ref_name }}.exe
+          path: |
+            domain-server-${{ matrix.name }}-${{ github.ref_name }}.exe
+            ac-${{ matrix.name }}-${{ github.ref_name }}.exe
           if-no-files-found: error
   release:
     needs:
