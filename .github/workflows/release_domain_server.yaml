@@ -13,6 +13,7 @@ jobs:
           - { name: linux-aarch64, os: ubuntu-latest, rust_target: aarch64-unknown-linux-gnu, arch: arm64, pkg_arch: ':arm64', pkg_config_arch: aarch64-linux-gnu, build_pkgs: 'gcc-aarch64-linux-gnu libc6-dev-arm64-cross g++-aarch64-linux-gnu libstdc++-10-dev-arm64-cross' }
           - { name: linux-armhf, os: ubuntu-latest, rust_target: armv7-unknown-linux-gnueabihf, arch: armhf, pkg_arch: ':armhf', pkg_config_arch: arm-linux-gnueabihf, build_pkgs: 'gcc-arm-linux-gnueabihf libc6-dev-armhf-cross g++-arm-linux-gnueabihf libstdc++-10-dev-armhf-cross' }
           - { name: macos-aarch64, os: macos-latest, rust_target: aarch64-apple-darwin, arch: arm64 }
+          - { name: windows-x86_64, os: windows-latest, rust_target: x86_64-pc-windows-msvc, arch: x86_64 }
     steps:
       - uses: actions/checkout@v3
         with:
@@ -36,6 +37,11 @@ jobs:
           toolchain: stable
           override: true
           targets: ${{ matrix.rust_target }}
+      - name: Set up MSVC on Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: TheMrMilchmann/setup-msvc-dev@v2
+        with:
+          arch: x64
       - name: Set up cargo cache
         uses: actions/cache@v3
         continue-on-error: false
@@ -68,17 +74,37 @@ jobs:
         if: ${{ matrix.rust_target == 'aarch64-apple-darwin' }}
         run: |
           echo MACOSX_DEPLOYMENT_TARGET=10.13 >> $GITHUB_ENV
+      - name: Download external SDK
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          curl -L https://download.steinberg.net/sdk_downloads/asiosdk_2.3.3_2019-06-14.zip -o asiosdk.zip
+          unzip -q asiosdk.zip
+          Move-Item -Path asiosdk_2.3.3_2019-06-14 -Destination rust\audio-engine\sdks\asio
+          Get-ChildItem -Path rust\audio-engine\sdks -Recurse
       - name: Build
         run: |
           cargo build --release --target ${{ matrix.rust_target }} -p domain-server --bin domain_server
-      - name: Rename binary
+      - name: Rename binary (POSIX)
+        if: ${{ matrix.os != 'windows-latest' }}
         run: |
           find . -type f -name domain_server -exec mv {} domain-server-${{ matrix.name }}-${{ github.ref_name }} \;
-      - name: Upload binary
+      - name: Rename binary (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          find . -type f -name domain_server.exe -exec mv {} domain-server-${{ matrix.name }}-${{ github.ref_name }}.exe \;
+      - name: Upload binary (POSIX)
+        if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-artifact@v2
         with:
           name: domain-server-${{ matrix.name }}
           path: domain-server-${{ matrix.name }}-${{ github.ref_name }}
+          if-no-files-found: error
+      - name: Upload binary (Windows)
+        if: ${{ matrix.os == 'windows-latest' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: domain-server-${{ matrix.name }}
+          path: domain-server-${{ matrix.name }}-${{ github.ref_name }}.exe
           if-no-files-found: error
   release:
     needs:

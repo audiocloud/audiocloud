@@ -3,7 +3,7 @@ use std::env;
 use cmake;
 
 fn main() {
-  let dst = cmake::build(".");
+  let dst = cmake::Config::new(".").profile("Release").build();
   let target = env::var("TARGET").expect("Cargo build scripts always have TARGET");
   let target_os = get_os_from_triple(target.as_str()).unwrap();
 
@@ -11,11 +11,7 @@ fn main() {
   println!("cargo:rustc-link-lib=static=audio_engine_juce");
 
   if target_os.contains("windows") {
-    if cfg!(debug_assertions) {
-      println!("cargo:rustc-link-search=native={}/build/debug", dst.display());
-    } else {
-      println!("cargo:rustc-link-search=native={}/build/release", dst.display());
-    }
+    println!("cargo:rustc-link-search=native={}/build/release", dst.display());
 
     println!("cargo:rustc-link-lib=shell32");
     println!("cargo:rustc-link-lib=user32");

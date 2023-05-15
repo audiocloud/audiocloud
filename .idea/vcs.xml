@@ -3,7 +3,6 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/rust/audio-engine/JUCE" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/rust/r8brain-rs" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/rust/r8brain-rs/r8brain" vcs="Git" />
   </component>
 </project>
