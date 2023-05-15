@@ -90,6 +90,7 @@ jobs:
           find . -type f -name domain_server -exec mv {} domain-server-${{ matrix.name }}-${{ github.ref_name }} \;
       - name: Rename binary (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
+        shell: bash
         run: |
           find . -type f -name domain_server.exe -exec mv {} domain-server-${{ matrix.name }}-${{ github.ref_name }}.exe \;
       - name: Upload binary (POSIX)
