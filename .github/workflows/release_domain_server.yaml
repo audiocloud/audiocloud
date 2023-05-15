@@ -52,8 +52,8 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-${{ matrix.arch }}-cargo-
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.arch }}-cargo-release
       - name: Setup env (aarch64-unknown-linux-gnu)
         if: ${{ matrix.rust_target == 'aarch64-unknown-linux-gnu' }}
         run: |
@@ -81,24 +81,29 @@ jobs:
           unzip -q asiosdk.zip
           Move-Item -Path asiosdk_2.3.3_2019-06-14 -Destination rust\audio-engine\sdks\asio
           Get-ChildItem -Path rust\audio-engine\sdks -Recurse
-      - name: Build
+      - name: Build release ${{ matrix.rust_target }}
         run: |
           cargo build --release --target ${{ matrix.rust_target }} -p domain-server --bin domain_server
+          cargo build --release --target ${{ matrix.rust_target }} -p domain-server --bin ac
       - name: Rename binary (POSIX)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           find . -type f -name domain_server -exec mv {} domain-server-${{ matrix.name }}-${{ github.ref_name }} \;
+          find . -type f -name ac -exec mv {} ac-${{ matrix.name }}-${{ github.ref_name }} \;
       - name: Rename binary (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
         shell: bash
         run: |
           find . -type f -name domain_server.exe -exec mv {} domain-server-${{ matrix.name }}-${{ github.ref_name }}.exe \;
+          find . -type f -name ac.exe -exec mv {} ac-${{ matrix.name }}-${{ github.ref_name }}.exe \;
       - name: Upload binary (POSIX)
         if: ${{ matrix.os != 'windows-latest' }}
         uses: actions/upload-artifact@v2
         with:
           name: domain-server-${{ matrix.name }}
-          path: domain-server-${{ matrix.name }}-${{ github.ref_name }}
+          path: |
+            domain-server-${{ matrix.name }}-${{ github.ref_name }}
+            ac-${{ matrix.name }}-${{ github.ref_name }}
           if-no-files-found: error
       - name: Upload binary (Windows)
         if: ${{ matrix.os == 'windows-latest' }}
