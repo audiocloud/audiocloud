@@ -2316,7 +2316,6 @@ dependencies = [
 [[package]]
 name = "r8brain-rs"
 version = "0.3.1"
-source = "git+https://github.com/audiocloud/r8brain-rs#20a4e8dda966f454544e1b0d4f6e520514c546fd"
 dependencies = [
  "cmake",
 ]

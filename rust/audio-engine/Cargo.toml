@@ -34,8 +34,7 @@ features = ["macros", "sync", "rt-multi-thread", "time"]
 version = "0.3"
 
 [dependencies.r8brain-rs]
-git = "https://github.com/audiocloud/r8brain-rs"
-# path = "../../../r8brain-rs"
+path = "../r8brain-rs"
 
 [dependencies.api]
 path = "../api"

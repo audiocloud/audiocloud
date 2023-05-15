@@ -355,3 +355,6 @@ Temporary Items
 
 #.vscode
 .vscode
+
+build/
+CMakeFiles/

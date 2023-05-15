@@ -2,13 +2,13 @@ cmake_minimum_required(VERSION 3.24)
 
 project(audio_engine_juce)
 
-set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Support macOS down to High Sierra")
+set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum OS X deployment version")
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 set(JUCE_MODULES_ONLY ON)
 set(NEEDS_CURL OFF)
 set(NEEDS_WEB_BROWSER OFF)
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (WIN32)

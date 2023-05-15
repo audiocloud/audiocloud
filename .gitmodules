@@ -1,3 +1,6 @@
 [submodule "rust/audio-engine/JUCE"]
 	path = rust/audio-engine/JUCE
 	url = https://github.com/juce-framework/JUCE.git
+[submodule "rust/r8brain-rs/r8brain"]
+	path = rust/r8brain-rs/r8brain
+	url = https://github.com/avaneev/r8brain-free-src.git

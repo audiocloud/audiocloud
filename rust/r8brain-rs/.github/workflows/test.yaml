@@ -1,0 +1,51 @@
+name: Test package
+on:
+  push: {}
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build: "x86_64-unknown-linux-gnu"
+            os: "ubuntu-latest"
+          - build: "x86_64-pc-windows-msvc"
+            os: "windows-latest"
+          - build: "x86_64-apple-darwin"
+            os: "macos-latest"
+
+    name: (${{ matrix.build }}) Test
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      - name: Cache build artifacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ matrix.build }}-r8brain-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ matrix.build }}-r8brain-${{ env.cache-name }}-
+            ${{ matrix.build }}-r8brain-
+      - name: Setup MSVC toolchain
+        if: matrix.os == 'windows-latest'
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Install rust toolchain
+        run: |
+          rustup update --no-self-update stable
+          rustup target add ${{ matrix.build }}
+      - name: Build library
+        run: |
+          cargo build --target=${{ matrix.build }} ${{ matrix.features }}
+
+      - name: Run tests
+        run: |
+          cargo test --target=${{ matrix.build }} ${{ matrix.features }}
