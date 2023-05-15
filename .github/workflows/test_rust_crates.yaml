@@ -88,7 +88,11 @@ jobs:
         if: ${{ matrix.arch == 'x86_64' }}
         run: |
           cargo test --target ${{ matrix.rust_target }} -- --show-output
-      - name: Troubleshooting
-        if: always()
+      - name: Troubleshooting (Windows)
+        if: ${{ matrix.os == 'windows-latest' && failure() }}
+        run: |
+          Get-ChildItem -Path target -Recurse
+      - name: Troubleshooting (POSIX)
+        if: ${{ matrix.os != 'windows-latest' && failure() }}
         run: |
           Get-ChildItem -Path target -Recurse
