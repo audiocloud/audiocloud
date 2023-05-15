@@ -181,10 +181,12 @@ mod test {
 
     let path = media_id.to_folder_path("/tmp".into());
 
+    #[cfg(unix)]
     assert_eq!(path.to_str().unwrap(), "/tmp/test/90");
 
     let path = media_id.to_path("/tmp".into());
 
+    #[cfg(unix)]
     assert_eq!(path.to_str().unwrap(), "/tmp/test/90/12345678");
   }
 }
