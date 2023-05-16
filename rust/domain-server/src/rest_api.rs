@@ -17,7 +17,7 @@ pub fn rest_api(router: Router<Service>, service: Service) -> Router<Service> {
   let auth_layer = || middleware::from_fn_with_state(service.clone(), auth);
 
   router.route("/api/v1/instances/:filter/specs", get(list_instances).route_layer(auth_layer()))
-        .route("/api/v1/users/login", post(login_user_handler).route_layer(auth_layer()))
+        .route("/api/v1/users/login", post(login_user_handler))
         .route("/api/v1/users/logout", get(logout_user_handler).route_layer(auth_layer()))
         .route("/ws", get(web_socket).route_layer(auth_layer()))
 }
