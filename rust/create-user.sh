@@ -7,5 +7,4 @@ set -o xtrace
 
 export NATS_URL=${NATS_URL:-10.1.0.10:4222}
 
-./target/release/ac kv reset
-#cargo run --bin ac -- kv reset
+./target/release/ac --nats-url="${NATS_URL}" user create 'rok' 'rok.kroflic@gmail.com'
