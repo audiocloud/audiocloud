@@ -1,22 +1,22 @@
 host: better-pi
-attachment:
-  device: galaxy@macmini
-  inputs: [ 0, 1 ]
-  outputs: [ 0, 1 ]
-power:
-  powerController: ppdu_r1_up_l
-  driverNeedsPower: true
-  powerOn:
-    parameter: power
-    channel: 3
-    value: 1
-  powerOff:
-    parameter: power
-    channel: 3
-    value: 0
-  warmUpMs: 1000
-  coolDownMs: 2000
-  idleMs: 300000
+# attachment:
+#   device: galaxy@macmini
+#   inputs: [ 0, 1 ]
+#   outputs: [ 0, 1 ]
+# power:
+#   powerController: ppdu_r1_up_l
+#   driverNeedsPower: true
+#   powerOn:
+#     parameter: power
+#     channel: 3
+#     value: 1
+#   powerOff:
+#     parameter: power
+#     channel: 3
+#     value: 0
+#   warmUpMs: 1000
+#   coolDownMs: 2000
+#   idleMs: 300000
 model:
   parameters:
     inputLevel:
