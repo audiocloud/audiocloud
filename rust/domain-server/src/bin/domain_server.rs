@@ -20,7 +20,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 use domain_server::instance::driver::scripting::new_scripting_engine;
 use domain_server::media::service::MediaService;
 use domain_server::nats::Nats;
-use domain_server::service::Service;
+use domain_server::service::{Service, ServiceConfig};
 use domain_server::Result;
 
 const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
@@ -88,16 +88,18 @@ async fn main() -> Result {
                                 .init();
 
   let args = Arguments::parse();
+  let config = ServiceConfig { jwt_secret: args.jwt_secret.clone(), };
 
   debug!(url = &args.nats_url, "Connecting to NATS");
   let nats = async_nats::connect(&args.nats_url).await?;
   let service = Nats::new(nats, args.reset_kv_database).await?;
-  let service = Service { nats: service.clone() };
+  let service = Service { nats:   service.clone(),
+                          config: Arc::new(config), };
 
   let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
   let router = Router::new().fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true));
 
-  let router = domain_server::rest_api::rest_api(router);
+  let router = domain_server::rest_api::rest_api(router, service.clone());
 
   let (tx_internal, mut rx_internal) = mpsc::channel(0xff);
 
