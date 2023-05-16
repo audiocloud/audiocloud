@@ -142,7 +142,9 @@ enum UserCommand {
   /// Create a user
   Create {
     /// User id
-    id: String,
+    id:    String,
+    /// User email, if any
+    email: String,
   },
   /// Delete a user
   Delete {
@@ -495,7 +497,7 @@ async fn put_instance(nats: Nats, id: String, path: PathBuf, host: Option<String
 
 async fn user_command(nats: Nats, command: UserCommand) -> Result {
   match command {
-    | UserCommand::Create { id } => create_user(nats, id).await,
+    | UserCommand::Create { id, email } => create_user(nats, id, email).await,
     | UserCommand::Delete { id } => delete_user(nats, id).await,
     | UserCommand::List { format } => list_users(nats, format).await,
     | UserCommand::Describe { id } => describe_user(nats, id).await,
@@ -503,7 +505,7 @@ async fn user_command(nats: Nats, command: UserCommand) -> Result {
   }
 }
 
-async fn create_user(nats: Nats, id: String) -> Result {
+async fn create_user(nats: Nats, id: String, email: String) -> Result {
   let salt = create_salt();
   println!("Salt: {salt}");
 
@@ -522,7 +524,7 @@ async fn create_user(nats: Nats, id: String) -> Result {
 
   println!("Hashed: {password}");
 
-  nats.user_spec.put(BucketKey::new(&id), UserSpec { id, password }).await?;
+  nats.user_spec.put(BucketKey::new(&id), UserSpec { id, email, password }).await?;
 
   Ok(())
 }

@@ -59,8 +59,11 @@ struct Arguments {
   #[clap(long, env, default_value = "192000")]
   pub native_sample_rate:      u32,
   /// Reset the key value database before starting
-  #[clap(long)]
+  #[clap(long, env)]
   pub reset_kv_database:       bool,
+  /// Secret used to sign the Json Web Tokens (JWTs) used for authentication
+  #[clap(long, env, default_value = "6ChatwwXQMLRYo9GbtqhwshxhzauquhY")]
+  pub jwt_secret:              String,
 }
 
 enum InternalEvent {

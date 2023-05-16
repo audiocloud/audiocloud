@@ -47,6 +47,12 @@ password-hash = "0.5"
 argon2 = "0.5"
 rand = "0.8"
 rpassword = "7"
+jsonwebtoken = "8"
+time = "0.3"
+
+[dependencies.axum-extra]
+version = "0.7"
+features = ["cookie"]
 
 [dependencies.boa_engine]
 version = "0.16"

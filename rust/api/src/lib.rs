@@ -62,7 +62,7 @@ impl<Key, Content> BucketKey<Key, Content> {
                 key:             "*".to_string(), }
   }
 
-  pub fn new<T: ToString>(key: &T) -> Self {
+  pub fn new<T: ToString>(key: &T) -> Self where T: ?Sized {
     Self { phantom_key:     Default::default(),
            phantom_content: Default::default(),
            key:             key.to_string(), }

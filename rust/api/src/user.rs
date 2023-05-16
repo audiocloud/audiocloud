@@ -6,18 +6,20 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UserSummary {
-  pub id: String,
+  pub id:    String,
+  pub email: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateUserRequest {
+pub struct RegisterUserRequest {
   pub password: String,
+  pub email:    String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CreateUserResponse {
+pub struct RegisterUserResponse {
   pub id: String,
 }
 
@@ -45,6 +47,14 @@ pub struct DeleteUserResponse {
 #[serde(rename_all = "camelCase")]
 pub struct UserSpec {
   pub id:       String,
+  pub email:    String,
+  pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginUserRequest {
+  pub id:       String,
   pub password: String,
 }
 
@@ -53,6 +63,10 @@ pub struct UserSpec {
 pub struct LoginUserResponse {
   pub token: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct LogoutUserResponse;
 
 pub mod buckets {
   use crate::BucketName;
@@ -64,9 +78,10 @@ pub mod buckets {
 
 pub fn schema() -> RootSchema {
   merge_schemas([schema_for!(UserSummary),
-                 schema_for!(CreateUserRequest),
-                 schema_for!(CreateUserResponse),
+                 schema_for!(RegisterUserRequest),
+                 schema_for!(RegisterUserResponse),
                  schema_for!(DeleteUserResponse),
                  schema_for!(UserSpec),
+                 schema_for!(LoginUserRequest),
                  schema_for!(LoginUserResponse)].into_iter())
 }
