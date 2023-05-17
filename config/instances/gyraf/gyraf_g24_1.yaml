@@ -78,7 +78,7 @@ driver:
   parameters:
     treshold:
       - position:
-          byte: 
+          byte:
             -2
             -8
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
