@@ -78,43 +78,43 @@ driver:
   parameters:
     treshold:
       - position:
-          byte:
-            - 2
-            - 8
+          byte: 2
+      - position:
+          byte: 8
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
         default: 100
     ratio:
       - position:
-          byte:
-            - 3
-            - 9
+          byte: 3
+      - position:
+          byte: 9
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
         default: 30
     attack:
       - position:
-          byte: 
-            - 4
-            - 10
+          byte:  4
+      - position:
+          byte: 10
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
         default: 20
     release:
       - position:
-          byte: 
-            - 5
-            - 11
+          byte:  5
+      - position:
+          byte: 11
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
         default: 100
     feed:
       - position:
-          byte: 
-            - 6
-            - 12
+          byte:  6
+      - position:
+          byte: 12
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
     elliptic:
       - position:
-          byte: 
-            - 7
-            - 13
+          byte:  7
+      - position:
+          byte: 13
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
         default: 50
     control:

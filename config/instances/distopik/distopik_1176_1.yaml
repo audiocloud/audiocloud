@@ -82,42 +82,42 @@ driver:
           bit: [ 4, 0 ]
     inputLevel:
       - position:
-          bytes:
-            - [ 6, 7 ]
-            - [ 20, 21 ]
+          bytes: [ 6, 7 ]
+      - position:
+          bytes: [ 20, 21 ]
         rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
         packing: uint16le
     outputLevel:
       - position:
-          bytes:
-            - [ 8, 9 ]
-            - [ 18, 19 ]
+          bytes: [ 8, 9 ]
+      - position:
+          bytes: [ 18, 19 ]
         rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
         packing: uint16le
     release:
       - position:
-          bytes:
-            - [ 10, 11 ]
-            - [ 24, 25 ]
+          bytes: [ 10, 11 ]
+      - position:
+          bytes: [ 24, 25 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
         packing: uint16le
     attack:
       - position:
-          bytes:
-            - [ 8, 9 ]
-            - [ 18, 19 ]
+          bytes: [ 8, 9 ]
+      - position:
+          bytes: [ 18, 19 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
         packing: uint16le
     gainReductionDisable:
       - position:
-          bit:
-            - [ 14, 0 ]
-            - [ 28, 0 ]
+          bit: [ 14, 0 ]
+      - position:
+          bit: [ 28, 0 ]
     ratio:
       - position:
-          bytes:
-            - [ 16, 17 ]
-            - [ 26, 27 ]
+          bytes: [ 16, 17 ]
+      - position:
+          bytes: [ 26, 27 ]
         remap:
           type: linear
           values: *ratioList
