@@ -23,7 +23,7 @@ pub struct MediaDownloadTaskData {
   pub id:       Thing,
   pub spec:     MediaDownloadSpec,
   pub state:    MediaDownloadState,
-  pub media:    Thing,
+  pub media:    String,
   pub revision: u64,
 }
 
@@ -32,7 +32,7 @@ pub struct MediaUploadTaskData {
   pub id:       Thing,
   pub spec:     MediaUploadSpec,
   pub state:    MediaUploadState,
-  pub media:    Thing,
+  pub media:    String,
   pub revision: u64,
 }
 
@@ -87,12 +87,12 @@ impl Db {
 
     Ok(self.db
            .create("media_download_task")
-           .merge(json!({
-                    "spec": spec,
-                    "state": state,
-                    "media": media_id,
-                    "revision": 0
-                  }))
+           .content(json!({
+                      "spec": spec,
+                      "state": state,
+                      "media": media_id,
+                      "revision": 0
+                    }))
            .await?)
   }
 
@@ -169,5 +169,27 @@ mod tests {
   }
 
   #[tokio::test]
-  async fn test_download() {}
+  async fn test_download() -> Result {
+    let db = Db::new_in_mem().await?;
+
+    let media = db.create_or_replace_media("1", "test", "sha256", 100, true).await?;
+    assert_eq!(media.id.id, Id::from("1"), "media id should be 1");
+
+    let download = db.create_download("1",
+                                      MediaDownloadSpec { sha256:   "sha256".to_string(),
+                                                          size:     100,
+                                                          from_url: "http://example.com".to_string(), },
+                                      MediaDownloadState::default())
+                     .await?;
+
+    assert_eq!(download.media,
+               Thing::from(("media", "1")).to_raw(),
+               "download media id should be 1");
+    assert_eq!(download.spec.sha256, "sha256", "download spec sha256 should be sha256");
+    assert_eq!(download.spec.size, 100, "download spec size should be 100");
+    assert_eq!(download.spec.from_url, "http://example.com",
+               "download spec from_url should be http://example.com");
+
+    Ok(())
+  }
 }
