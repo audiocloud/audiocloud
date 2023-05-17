@@ -9,7 +9,8 @@ use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
-use api::user::{LoginUserRequest, LoginUserResponse, LogoutUserResponse};
+use api::auth::Auth;
+use api::user::{LoginUserRequest, LoginUserResponse, LogoutUserResponse, UserSummary};
 
 use crate::service::Service;
 
@@ -73,7 +74,8 @@ pub async fn auth<B>(cookie_jar: CookieJar,
                    (StatusCode::UNAUTHORIZED, Json(json_error))
                  })?;
 
-  req.extensions_mut().insert(user);
+  req.extensions_mut().insert(Auth::User(UserSummary { id:    user.id,
+                                                       email: user.email, }));
 
   Ok(next.run(req).await)
 }

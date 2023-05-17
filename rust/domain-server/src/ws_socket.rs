@@ -8,13 +8,14 @@ use futures::{SinkExt, StreamExt};
 use tokio::{select, spawn};
 use tracing::{instrument, warn};
 
+use api::auth::Auth;
 use api::rt::{RtEvent, RtRequest};
 
 use crate::rt_socket::run_socket;
 use crate::service::Service;
 
 #[instrument(skip(service, web_socket))]
-pub async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr) {
+pub async fn handle_socket(service: Service, web_socket: WebSocket, from: SocketAddr, auth: Auth) {
   let (mut tx_ws, mut rx_ws) = web_socket.split();
   let (tx_rt_evt, mut rx_rt_evt) = mpsc::channel(0xff);
   let (mut tx_rt_cmd, rx_rt_cmd) = mpsc::channel(0xff);

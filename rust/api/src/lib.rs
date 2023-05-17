@@ -9,6 +9,7 @@ pub mod media;
 pub mod rt;
 pub mod task;
 pub mod user;
+pub mod auth;
 
 pub type Timestamp = DateTime<Utc>;
 

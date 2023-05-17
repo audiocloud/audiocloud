@@ -13,6 +13,7 @@ pub struct UserSummary {
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RegisterUserRequest {
+  pub id:       String,
   pub password: String,
   pub email:    String,
 }

@@ -5,6 +5,7 @@ use crate::nats::Nats;
 pub mod instance;
 pub mod media;
 pub mod users;
+pub mod tasks;
 
 #[derive(Clone)]
 pub struct Service {

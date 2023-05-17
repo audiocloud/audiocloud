@@ -30,16 +30,17 @@ impl Service {
     Ok(self.nats.user_spec.get(BucketKey::new(id)).await?)
   }
 
-  pub async fn register_user(&self, id: String, create: RegisterUserRequest) -> Result<RegisterUserResponse> {
+  pub async fn register_user(&self, create: RegisterUserRequest) -> Result<RegisterUserResponse> {
     let salt = create_salt();
     let hash = PASSWORD_HASHER.hash_password(create.password.as_bytes(), &salt)
                               .map_err(|err| anyhow!("Failed to hash password: {err}"))?;
-    let user = UserSpec { id:       id.clone(),
+    let user = UserSpec { id:       create.id,
                           email:    create.email,
                           password: hash.to_string(), };
-    self.nats.user_spec.put(BucketKey::new(&user.id), user).await?;
 
-    Ok(RegisterUserResponse { id })
+    self.nats.user_spec.put(BucketKey::new(&user.id), user.clone()).await?;
+
+    Ok(RegisterUserResponse { id: user.id })
   }
 
   pub async fn update_user(&self, id: String, update: UpdateUserRequest) -> Result<UpdateUserResponse> {
