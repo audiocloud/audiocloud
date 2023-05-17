@@ -1,0 +1,13 @@
+#V2
+SELECT * FROM instance;
+CREATE instance:1 CONTENT {revision: 1, state: "foo"}
+SELECT * FROM instance;
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=3
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=3;
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=2;
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=3 RETURN DIFF;
+live select * from instance
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=3 RETURN DIFF;
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=4 RETURN DIFF;
+UPDATE instance:1 SET state="frog", revision = revision + 1 WHERE revision=5 RETURN DIFF;
+UPDATE Foo:1 MERGE {a: 34}

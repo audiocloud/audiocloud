@@ -172,7 +172,7 @@ async fn main() -> Result {
       let mut tx_internal = tx_internal.clone();
       info!("REST API listening on {bind}");
       spawn(async move {
-              let router = router.layer(cors::CorsLayer::permissive())
+              let router = router.layer(cors::CorsLayer::very_permissive())
                                  .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
                                  .with_state(service.clone());
 
