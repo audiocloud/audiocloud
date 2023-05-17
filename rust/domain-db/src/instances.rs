@@ -41,7 +41,8 @@ impl Db {
            .content(json!({
                       "spec": spec, "revision": 0
                     }))
-           .await?)
+           .await?
+           .unwrap())
   }
 
   pub async fn set_instance_power_state(&self, id: &str, power_state: Option<InstancePowerState>) -> Result<Option<InstanceData>> {

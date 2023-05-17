@@ -16,7 +16,11 @@ impl Db {
   }
 
   pub async fn register_user(&self, id: &str, password: &str) -> Result<UserData> {
-    Ok(self.db.create(("user", id)).content(json!({ "password": password })).await?)
+    Ok(self.db
+           .create(("user", id))
+           .content(json!({ "password": password }))
+           .await?
+           .unwrap())
   }
 
   pub async fn list_users(&self, skip: usize, limit: usize, search: Option<&str>) -> Result<Vec<UserData>> {

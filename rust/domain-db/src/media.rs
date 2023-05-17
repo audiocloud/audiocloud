@@ -50,7 +50,8 @@ impl Db {
                                            "present": present,
                                            "revision": 0
                                          }))
-                                  .await?;
+                                  .await?
+                                  .unwrap();
 
     Ok(received)
   }
@@ -84,29 +85,33 @@ impl Db {
   pub async fn create_download(&self, media_id: &str, spec: MediaDownloadSpec, state: MediaDownloadState) -> Result<MediaDownloadTaskData> {
     let media_id = Thing::from(("media", media_id));
 
-    Ok(self.db
-           .create("media_download_task")
-           .content(json!({
-                      "spec": spec,
-                      "state": state,
-                      "media": media_id,
-                      "revision": 0
-                    }))
-           .await?)
+    let created: Vec<MediaDownloadTaskData> = self.db
+                                                  .create("media_download_task")
+                                                  .content(json!({
+                                                             "spec": spec,
+                                                             "state": state,
+                                                             "media": media_id,
+                                                             "revision": 0
+                                                           }))
+                                                  .await?;
+
+    Ok(created.into_iter().next().unwrap())
   }
 
   pub async fn create_upload(&self, media_id: &str, spec: MediaUploadSpec, state: MediaUploadState) -> Result<MediaUploadTaskData> {
     let media_id = Thing::from(("media", media_id));
 
-    Ok(self.db
-           .create("media_upload_task")
-           .content(json!({
-                      "spec": spec,
-                      "state": state,
-                      "media": media_id,
-                      "revision": 0
-                    }))
-           .await?)
+    let created: Vec<MediaUploadTaskData> = self.db
+                                                .create("media_upload_task")
+                                                .content(json!({
+                                                           "spec": spec,
+                                                           "state": state,
+                                                           "media": media_id,
+                                                           "revision": 0
+                                                         }))
+                                                .await?;
+
+    Ok(created.into_iter().next().unwrap())
   }
 
   pub async fn list_media_downloads(&self,
