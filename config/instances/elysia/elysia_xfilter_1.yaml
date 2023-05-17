@@ -19,12 +19,12 @@ host: better-pi
 #   idleMs: 300000
 model:
   parameters:
-    treshold: &percent2
+    treshold: &-16to16dB
       range:
         type: bounded
-        min: 0
-        max: 100
-      unit: percent
+        min: -16
+        max: 16
+      unit: dB
     ratio: *percent2
     attack: *percent2
     release: *percent2
