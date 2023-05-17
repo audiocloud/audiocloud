@@ -1,0 +1,145 @@
+host: better-pi
+# attachment:
+#   device: galaxy@macmini
+#   inputs: [ 0, 1 ]
+#   outputs: [ 0, 1 ]
+# power:
+#   powerController: ppdu_r1_up_l
+#   driverNeedsPower: true
+#   powerOn:
+#     parameter: power
+#     channel: 3
+#     value: 1
+#   powerOff:
+#     parameter: power
+#     channel: 3
+#     value: 0
+#   warmUpMs: 1000
+#   coolDownMs: 2000
+#   idleMs: 300000
+model:
+  parameters:
+    treshold:
+      range:
+        type: bounded
+        min: 22
+        max: -42
+      unit: dB
+    attack:
+      range:
+        type: bounded
+        min: 22
+        max: -42
+      unit: percent
+
+    control: &percent1
+      range:
+        type: bounded
+        min: 0
+        max: 100
+      unit: percent
+      channels: 1
+    emphasis: *percent1
+    output: *percent1
+    outputType:
+      range:
+        type: bounded
+        min: 0
+        max: 2
+      unit: hz
+      channels: 1
+
+
+  reports:
+    gainReduction:
+      unit: dB
+      range:
+        type: bounded
+        min: -20
+        max: 0
+
+driver:
+  type: USBHID
+  vendorId: 1155
+  productId: 22353
+  serial_number: '000000000624'
+  pageMask: 0xF
+  parameterPages:
+    - page: 0
+      size: 64
+      copyFromReportPage: 0
+      header: [ 0x80, 0x00 ]
+  reportPages:
+    - page: 0
+      size: 64
+
+  parameters:
+    treshold:
+      - position:
+          byte: 
+            -2
+            -8
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 100
+    ratio:
+      - position:
+          byte: 
+            -3
+            -9
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 30
+    attack:
+      - position:
+          byte: 
+            -4
+            -10
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 20
+    release:
+      - position:
+          byte: 
+            -5
+            -11
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 100
+    feed:
+      - position:
+          byte: 
+            -6
+            -12
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+    elliptic:
+      - position:
+          byte: 
+            -7
+            -13
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 50
+    control:
+      - position:
+          byte: 14
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+    emphasis:
+      - position:
+          byte: 15
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 50
+    output:
+      - position:
+          byte: 16
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
+        default: 90
+    outputType:
+      - position:
+          byte: 17
+        default: 2
+
+
+
+  reports:
+    gainReduction:
+      - page: 1
+        packing: uint16le
+        position:
+          bytes: [ 18, 19 ]
+        transform: gainFactorToDb(value / 1024)
