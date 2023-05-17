@@ -3,6 +3,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use axum::http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST, IF_MATCH, IF_NONE_MATCH, IF_UNMODIFIED_SINCE};
+use axum::http::Method;
 use axum::Router;
 use clap::Parser;
 use futures::channel::mpsc;
@@ -11,6 +13,7 @@ use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
 use tokio::{select, spawn};
 use tower_http::cors;
+use tower_http::cors::AllowOrigin;
 use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{debug, error, info, warn};
@@ -172,7 +175,23 @@ async fn main() -> Result {
       let mut tx_internal = tx_internal.clone();
       info!("REST API listening on {bind}");
       spawn(async move {
-              let router = router.layer(cors::CorsLayer::very_permissive())
+              let router = router.layer(cors::CorsLayer::new().allow_credentials(true)
+                                                              .allow_headers([AUTHORIZATION,
+                                                                              ACCEPT,
+                                                                              CONTENT_TYPE,
+                                                                              CACHE_CONTROL,
+                                                                              HOST,
+                                                                              IF_MATCH,
+                                                                              IF_NONE_MATCH,
+                                                                              IF_UNMODIFIED_SINCE,
+                                                                              COOKIE])
+                                                              .allow_methods([Method::GET,
+                                                                              Method::POST,
+                                                                              Method::PUT,
+                                                                              Method::DELETE,
+                                                                              Method::OPTIONS,
+                                                                              Method::CONNECT])
+                                                              .allow_origin(AllowOrigin::mirror_request()))
                                  .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
                                  .with_state(service.clone());
 
