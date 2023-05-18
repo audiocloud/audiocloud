@@ -79,44 +79,45 @@ driver:
     treshold:
       - position:
           byte: 2
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
       - position:
           byte: 8
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 100
     ratio:
       - position:
           byte: 3
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
       - position:
           byte: 9
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 30
     attack:
       - position:
           byte:  4
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
       - position:
           byte: 10
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 20
     release:
       - position:
           byte:  5
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
       - position:
           byte: 11
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 100
     feed:
       - position:
           byte:  6
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
       - position:
           byte: 12
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
     elliptic:
       - position:
           byte:  7
+        rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
       - position:
           byte: 13
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 50
     control:
       - position:
           byte: 14
@@ -125,16 +126,13 @@ driver:
       - position:
           byte: 15
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 50
     output:
       - position:
           byte: 16
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
-        default: 90
     outputType:
       - position:
           byte: 17
-        default: 2
 
 
 
