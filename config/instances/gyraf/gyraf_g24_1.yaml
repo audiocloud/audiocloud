@@ -19,7 +19,7 @@ host: better-pi
 #   idleMs: 300000
 model:
   parameters:
-    treshold: &percent2
+    threshold: &percent2
       range:
         type: bounded
         min: 0
@@ -76,7 +76,7 @@ driver:
       size: 64
 
   parameters:
-    treshold:
+    threshold:
       - position:
           byte: 2
         rescale: [ [ 0, 100 ], [ 0, 0x7f ] ]
