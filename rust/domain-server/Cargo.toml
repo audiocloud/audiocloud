@@ -49,6 +49,11 @@ rand = "0.8"
 rpassword = "7"
 jsonwebtoken = "8"
 time = "0.3"
+hostname = "0.3"
+
+[dependencies.axum-server]
+version = "0.5"
+features = ["tls-rustls"]
 
 [dependencies.axum-extra]
 version = "0.7"
