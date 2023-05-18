@@ -2,7 +2,9 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
+use axum::http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST, IF_MATCH, IF_NONE_MATCH, IF_UNMODIFIED_SINCE};
+use axum::http::Method;
 use axum::Router;
 use clap::Parser;
 use futures::channel::mpsc;
@@ -11,6 +13,7 @@ use governor::{Quota, RateLimiter};
 use nonzero_ext::*;
 use tokio::{select, spawn};
 use tower_http::cors;
+use tower_http::cors::AllowOrigin;
 use tower_http::services::ServeDir;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::{debug, error, info, warn};
@@ -49,9 +52,9 @@ struct Arguments {
   /// REST API listen address and port
   #[clap(long, env, default_value = "127.0.0.1:7200")]
   pub rest_api_bind:           SocketAddr,
-  /// The host name of the domain server
-  #[clap(long, env, default_value = "localhost.localdomain")]
-  pub driver_host_name:        String,
+  /// Host name used for instance driver selection and HTTPS certificate generation
+  #[clap(long, env)]
+  pub host_name:               Option<String>,
   /// Media root directory
   #[clap(long, env, default_value = ".media")]
   pub media_root:              PathBuf,
@@ -105,13 +108,16 @@ async fn main() -> Result {
 
   let (scripting_engine, scripting_handle) = new_scripting_engine();
 
+  let Some(host_name) = args.host_name.clone().or_else(|| hostname::get().map(|s| s.to_string_lossy().to_string()).ok()) else {
+    bail!("Unable to determine host name")
+  };
+
   let create_instance_drivers = || {
     if args.enable_instance_drivers {
       let mut tx_internal = tx_internal.clone();
-      info!("Starting instance driver service: {}", args.driver_host_name);
-      let service = domain_server::instance::driver::server::DriverService::new(service.clone(),
-                                                                                scripting_engine.clone(),
-                                                                                args.driver_host_name.clone());
+      info!("Starting instance driver service: {}", host_name);
+      let service =
+        domain_server::instance::driver::server::DriverService::new(service.clone(), scripting_engine.clone(), host_name.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance driver service exited: {res:?}");
                            let _ = tx_internal.send(InstanceDriversFinished).await;
@@ -172,7 +178,23 @@ async fn main() -> Result {
       let mut tx_internal = tx_internal.clone();
       info!("REST API listening on {bind}");
       spawn(async move {
-              let router = router.layer(cors::CorsLayer::very_permissive())
+              let router = router.layer(cors::CorsLayer::new().allow_credentials(true)
+                                                              .allow_headers([AUTHORIZATION,
+                                                                              ACCEPT,
+                                                                              CONTENT_TYPE,
+                                                                              CACHE_CONTROL,
+                                                                              HOST,
+                                                                              IF_MATCH,
+                                                                              IF_NONE_MATCH,
+                                                                              IF_UNMODIFIED_SINCE,
+                                                                              COOKIE])
+                                                              .allow_methods([Method::GET,
+                                                                              Method::POST,
+                                                                              Method::PUT,
+                                                                              Method::DELETE,
+                                                                              Method::OPTIONS,
+                                                                              Method::CONNECT])
+                                                              .allow_origin(AllowOrigin::mirror_request()))
                                  .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
                                  .with_state(service.clone());
 

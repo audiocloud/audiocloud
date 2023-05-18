@@ -5,6 +5,7 @@ pub type Result<T = ()> = anyhow::Result<T>;
 pub mod instances;
 pub mod users;
 pub mod media;
+pub mod tasks;
 
 pub struct Db {
   db: surrealdb::Surreal<Any>,

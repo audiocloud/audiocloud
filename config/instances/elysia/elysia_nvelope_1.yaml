@@ -1,0 +1,122 @@
+host: better-pi
+# attachment:
+#   device: galaxy@macmini
+#   inputs: [ 0, 1 ]
+#   outputs: [ 0, 1 ]
+# power:
+#   powerController: ppdu_r1_up_l
+#   driverNeedsPower: true
+#   powerOn:
+#     parameter: power
+#     channel: 3
+#     value: 1
+#   powerOff:
+#     parameter: power
+#     channel: 3
+#     value: 0
+#   warmUpMs: 1000
+#   coolDownMs: 2000
+#   idleMs: 300000
+model:
+  parameters:
+    attack: &-15to15dB
+      range:
+        type: bounded
+        min: -15
+        max: 15
+      unit: dB
+    sustain: *-15to15dB
+    freqA:
+      range:
+        type: list
+        values: &frequenciesA [ 20, 21, 22, 23, 25, 26, 27, 29, 30, 35, 42, 50, 60, 70, 80, 90, 105, 120, 140, 150, 165, 183, 200, 230, 260, 290, 330, 420, 510, 590, 790, 990, 1200, 1900, 2600, 3300, 4000, 5300, 6600, 8000]
+      unit: hz
+    freqS:
+      range:
+        type: list
+        values: &frequenciesS [50, 52, 55, 56, 57, 58, 60, 75, 88, 100, 130, 150, 180, 210, 240, 270, 300, 325, 350, 370, 395, 420, 455, 490, 525, 560, 600, 830, 1100, 1300, 1700, 2100, 2500, 3600, 4800, 5900, 7000, 9600, 12200, 15000]
+      unit: hz
+    linkPairs:
+      range:
+        type: toggle
+      channels: 1
+    autoGain:
+      range:
+        type: toggle
+      channels: 1
+    lrOn: &toggle
+      range:
+        type: toggle
+    eqMode: *toggle
+    fullRange: *toggle
+
+
+
+
+driver:
+  type: USBHID
+  vendorId: 1155
+  productId: 22353
+  serial_number: '00000000E101'
+  pageMask: 0xF
+  parameterPages:
+    - page: 0
+      size: 64
+      copyFromReportPage: 0
+      header: [ 0x80, 0x00 ]
+  reportPages:
+    - page: 0
+      size: 64
+
+  parameters:
+    attack:
+      - position:
+          byte: 2
+      - position:
+          byte: 6
+        rescale: [ [ -15, 15 ], [ 0, 0x7f ] ]
+        default: 0
+    freqA:
+      - position:
+          byte: 3
+      - position:
+          byte: 7
+        remap:
+          type: linear
+          values: *frequenciesA
+    sustain:
+      - position:
+          byte: 4
+      - position:
+          byte: 8
+        rescale: [ [ -15, 15 ], [ 0, 0x7f ] ]
+        default: 0
+    freqS:
+      - position:
+          byte: 5
+      - position:
+          byte: 9
+        remap:
+          type: linear
+          values: *frequenciesS
+    linkPairs:
+      - position:
+          bit: [ 13, 0 ]
+    lrOn:
+      - position:
+          bit: [ 10, 0 ]
+      - position:
+          bit: [ 14, 0 ]
+    eqMode:
+      - position:
+          bit: [ 11, 0 ]
+      - position:
+          bit: [ 15, 0 ]
+    fullRange:
+      - position:
+          bit: [ 12, 0 ]
+      - position:
+          bit: [ 16, 0 ]
+    autoGain:
+      - position:
+          bit: [ 17, 0 ]

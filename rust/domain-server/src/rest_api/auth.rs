@@ -1,3 +1,4 @@
+use axum::extract::Query;
 use axum::{
   extract::State,
   http::{header, Request, StatusCode},
@@ -28,23 +29,33 @@ pub struct TokenClaims {
   iat:   usize,
 }
 
+#[derive(Deserialize)]
+pub struct TokenQuery {
+  #[serde(default)]
+  token: Option<String>,
+}
+
 pub async fn auth<B>(cookie_jar: CookieJar,
                      State(service): State<Service>,
+                     Query(token_query): Query<TokenQuery>,
                      mut req: Request<B>,
                      next: Next<B>)
                      -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-  let token = cookie_jar.get("token").map(|cookie| cookie.value().to_string()).or_else(|| {
-                                                                                req.headers()
-                                                                                   .get(header::AUTHORIZATION)
-                                                                                   .and_then(|auth_header| auth_header.to_str().ok())
-                                                                                   .and_then(|auth_value| {
-                                                                                     if auth_value.starts_with("Bearer ") {
-                                                                                       Some(auth_value[7..].to_owned())
-                                                                                     } else {
-                                                                                       None
-                                                                                     }
-                                                                                   })
-                                                                              });
+  let token = cookie_jar.get("token")
+                        .map(|cookie| cookie.value().to_string())
+                        .or_else(|| {
+                          req.headers()
+                             .get(header::AUTHORIZATION)
+                             .and_then(|auth_header| auth_header.to_str().ok())
+                             .and_then(|auth_value| {
+                               if auth_value.starts_with("Bearer ") {
+                                 Some(auth_value[7..].to_owned())
+                               } else {
+                                 None
+                               }
+                             })
+                        })
+                        .or_else(|| token_query.token);
 
   let token = token.ok_or_else(|| {
                      let json_error = ErrorResponse { status:  "fail",
@@ -105,7 +116,7 @@ pub async fn login_user_handler(State(service): State<Service>,
 
   let cookie = Cookie::build("token", token.to_owned()).path("/")
                                                        .max_age(time::Duration::hours(1))
-                                                       .same_site(SameSite::Lax)
+                                                       .same_site(SameSite::None)
                                                        .http_only(true)
                                                        .finish();
 
@@ -120,7 +131,7 @@ pub async fn login_user_handler(State(service): State<Service>,
 pub async fn logout_user_handler() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
   let cookie = Cookie::build("token", "").path("/")
                                          .max_age(time::Duration::hours(-1))
-                                         .same_site(SameSite::Lax)
+                                         .same_site(SameSite::None)
                                          .http_only(true)
                                          .finish();
 

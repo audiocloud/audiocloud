@@ -1,11 +1,8 @@
 #!/bin/bash
 
-set -o errexit
-set -o nounset
-set -o pipefail
-set -o xtrace
+set -euxo pipefail
 
 export NATS_URL=${NATS_URL:-10.1.0.10:4222}
+export PATH=$PATH:./target/release
 
-./target/release/ac kv reset
-#cargo run --bin ac -- kv reset
+ac kv reset

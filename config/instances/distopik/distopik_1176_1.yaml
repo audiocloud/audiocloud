@@ -101,6 +101,8 @@ driver:
     release:
       - position:
           bytes: [ 10, 11 ]
+        rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
+        packing: uint16le
       - position:
           bytes: [ 24, 25 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
@@ -108,6 +110,8 @@ driver:
     attack:
       - position:
           bytes: [ 8, 9 ]
+        rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
+        packing: uint16le
       - position:
           bytes: [ 18, 19 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
@@ -120,6 +124,10 @@ driver:
     ratio:
       - position:
           bytes: [ 16, 17 ]
+        remap:
+          type: linear
+          values: *ratioList
+        packing: uint16le
       - position:
           bytes: [ 26, 27 ]
         remap:
