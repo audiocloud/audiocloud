@@ -3,6 +3,7 @@
 set -euxo pipefail
 
 export NATS_URL=${NATS_URL:-10.1.0.10:4222}
-export PATH=$PATH:./target/release
+
+PATH=$PATH:./target/release
 
 ac kv reset
