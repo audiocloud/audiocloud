@@ -1,9 +1,6 @@
 #!/bin/bash
 
-set -o errexit
-set -o nounset
-set -o pipefail
-set -o xtrace
+set -euxo pipefail
 
 TARGET_DIR="/Users/distopik2/audiocloud/target/release"
 

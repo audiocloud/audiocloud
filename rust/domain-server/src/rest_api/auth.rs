@@ -1,12 +1,12 @@
 use axum::{
   extract::State,
   http::{header, Request, StatusCode},
+  Json,
   middleware::Next,
   response::IntoResponse,
-  Json,
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use jsonwebtoken::{decode, DecodingKey, encode, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
 use api::auth::Auth;
@@ -105,7 +105,7 @@ pub async fn login_user_handler(State(service): State<Service>,
 
   let cookie = Cookie::build("token", token.to_owned()).path("/")
                                                        .max_age(time::Duration::hours(1))
-                                                       .same_site(SameSite::Lax)
+                                                       .same_site(SameSite::None)
                                                        .http_only(true)
                                                        .finish();
 
@@ -120,7 +120,7 @@ pub async fn login_user_handler(State(service): State<Service>,
 pub async fn logout_user_handler() -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
   let cookie = Cookie::build("token", "").path("/")
                                          .max_age(time::Duration::hours(-1))
-                                         .same_site(SameSite::Lax)
+                                         .same_site(SameSite::None)
                                          .http_only(true)
                                          .finish();
 
