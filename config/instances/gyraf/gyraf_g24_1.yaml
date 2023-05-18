@@ -48,7 +48,6 @@ model:
         type: bounded
         min: 0
         max: 2
-      unit: hz
       channels: 1
 
 

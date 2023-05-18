@@ -15,7 +15,7 @@ host: better-pi
 #  idleMs: 300000
 model:
   parameters:
-    linkPairs: &toggle
+    link: &toggle
       range:
         type: toggle
       channels: 1
@@ -77,7 +77,7 @@ driver:
       size: 64
 
   parameters:
-    linkPairs:
+    link:
       - position:
           bit: [ 4, 0 ]
     inputLevel:

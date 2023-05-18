@@ -10,6 +10,6 @@ export RUST_LOG=warn
 export NATS_URL=10.1.0.10:4222
 export REST_API_BIND=0.0.0.0:7200
 
-PATH=$PATH:./target/release
+# PATH=$PATH:./target/release
 
-domain_server --nats-url=${NATS_URL} --enable-api --enable-instances --rest-api-bind=${REST_API_BIND}
+./target/release/domain_server --nats-url=${NATS_URL} --enable-api --enable-instances --rest-api-bind=${REST_API_BIND}
