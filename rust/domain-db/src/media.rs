@@ -1,4 +1,3 @@
-use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use surrealdb::sql::Thing;
@@ -51,7 +50,8 @@ impl Db {
                                            "present": present,
                                            "revision": 0
                                          }))
-                                  .await?;
+                                  .await?
+                                  .unwrap();
 
     Ok(received)
   }
@@ -85,34 +85,113 @@ impl Db {
   pub async fn create_download(&self, media_id: &str, spec: MediaDownloadSpec, state: MediaDownloadState) -> Result<MediaDownloadTaskData> {
     let media_id = Thing::from(("media", media_id));
 
-    Ok(self.db
-           .create("media_download_task")
-           .content(json!({
-                      "spec": spec,
-                      "state": state,
-                      "media": media_id,
-                      "revision": 0
-                    }))
-           .await?)
+    let created: Vec<MediaDownloadTaskData> = self.db
+                                                  .create("media_download_task")
+                                                  .content(json!({
+                                                             "spec": spec,
+                                                             "state": state,
+                                                             "media": media_id,
+                                                             "revision": 0
+                                                           }))
+                                                  .await?;
+
+    Ok(created.into_iter().next().unwrap())
   }
 
-  pub async fn list_media_downloads(&self, state_done: Option<bool>, offset: usize, limit: usize) -> Result<Vec<MediaDownloadTaskData>> {
+  pub async fn create_upload(&self, media_id: &str, spec: MediaUploadSpec, state: MediaUploadState) -> Result<MediaUploadTaskData> {
+    let media_id = Thing::from(("media", media_id));
+
+    let created: Vec<MediaUploadTaskData> = self.db
+                                                .create("media_upload_task")
+                                                .content(json!({
+                                                           "spec": spec,
+                                                           "state": state,
+                                                           "media": media_id,
+                                                           "revision": 0
+                                                         }))
+                                                .await?;
+
+    Ok(created.into_iter().next().unwrap())
+  }
+
+  pub async fn list_media_downloads(&self,
+                                    state_done: Option<bool>,
+                                    media_id: Option<&str>,
+                                    offset: usize,
+                                    limit: usize)
+                                    -> Result<Vec<MediaDownloadTaskData>> {
     let mut query = "SELECT * from media_download_task WHERE ".to_string();
     let mut conds = vec!["1=1"];
+
+    let media_id = media_id.map(|id| Thing::from(("media", id)));
 
     if state_done.is_some() {
       conds.push("state.done = $state_done");
     }
 
+    if media_id.is_some() {
+      conds.push("media = $media_id");
+    }
+
     query.push_str(conds.join(" AND ").as_str());
     query.push_str(" ORDER BY id LIMIT $limit START $offset");
 
-    Ok(self.db.query(query).bind(("state_done", state_done)).await?.take(0)?)
+    Ok(self.db
+           .query(query)
+           .bind(("state_done", state_done))
+           .bind(("offset", offset))
+           .bind(("limit", limit))
+           .bind(("media_id", media_id))
+           .await?
+           .take(0)?)
   }
 
-  pub async fn get_unfinished_media_uploads(&self) -> Result<Vec<MediaDownloadTaskData>> {
+  pub async fn list_media_uploads(&self,
+                                  state_done: Option<bool>,
+                                  media_id: Option<&str>,
+                                  offset: usize,
+                                  limit: usize)
+                                  -> Result<Vec<MediaUploadTaskData>> {
+    let mut query = "SELECT * from media_upload_task WHERE ".to_string();
+    let mut conds = vec!["1=1"];
+
+    let media_id = media_id.map(|id| Thing::from(("media", id)));
+
+    if state_done.is_some() {
+      conds.push("state.done = $state_done");
+    }
+
+    if media_id.is_some() {
+      conds.push("media = $media_id");
+    }
+
+    query.push_str(conds.join(" AND ").as_str());
+    query.push_str(" ORDER BY id LIMIT $limit START $offset");
+
     Ok(self.db
-           .query("SELECT * from media_download_task WHERE state.done IS NULL")
+           .query(query)
+           .bind(("state_done", state_done))
+           .bind(("offset", offset))
+           .bind(("limit", limit))
+           .bind(("media_id", media_id))
+           .await?
+           .take(0)?)
+  }
+
+  pub async fn set_media_download_state(&self, id: &str, state: MediaDownloadState) -> Result<Option<MediaDownloadTaskData>> {
+    Ok(self.db
+           .query("UPDATE $media_download_task SET state = $state, revision = revision + 1")
+           .bind(("media_download_task", Thing::from(("media_download_task", id))))
+           .bind(("state", state))
+           .await?
+           .take(0)?)
+  }
+
+  pub async fn set_media_upload_state(&self, id: &str, state: MediaUploadState) -> Result<Option<MediaUploadTaskData>> {
+    Ok(self.db
+           .query("UPDATE $media_upload_task SET state = $state, revision = revision + 1")
+           .bind(("media_upload_task", Thing::from(("media_upload_task", id))))
+           .bind(("state", state))
            .await?
            .take(0)?)
   }
@@ -189,6 +268,12 @@ mod tests {
     assert_eq!(download.spec.size, 100, "download spec size should be 100");
     assert_eq!(download.spec.from_url, "http://example.com",
                "download spec from_url should be http://example.com");
+
+    let downloads = db.list_media_downloads(None, Some("1"), 0, 10).await?;
+    assert_eq!(downloads.len(), 1, "download list should have 1 item");
+    assert_eq!(downloads[0].media,
+               Thing::from(("media", "1")).to_raw(),
+               "download list item 1 media id should be 1");
 
     Ok(())
   }

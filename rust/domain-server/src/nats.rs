@@ -114,8 +114,8 @@ pub struct Nats {
   pub media_upload_state:        Bucket<MediaId, MediaUploadState>,
   pub task_spec:                 Bucket<String, TaskSpec>,
   pub task_state:                Bucket<String, ()>,
-  pub user_spec:                 Bucket<String, UserSpec>,
   pub task_ctrl:                 Bucket<String, DesiredTaskPlayState>,
+  pub user_spec:                 Bucket<String, UserSpec>,
 }
 
 impl Nats {

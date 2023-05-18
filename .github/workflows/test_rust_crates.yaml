@@ -77,7 +77,7 @@ jobs:
       - name: Setup env (aarch64-apple-darwin)
         if: ${{ matrix.rust_target == 'aarch64-apple-darwin' }}
         run: |
-          echo MACOSX_DEPLOYMENT_TARGET=10.13 >> $GITHUB_ENV
+          echo MACOSX_DEPLOYMENT_TARGET=10.14 >> $GITHUB_ENV
       - name: Download external SDK
         if: ${{ matrix.os == 'windows-latest' }}
         run: |
