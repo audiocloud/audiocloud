@@ -51,7 +51,7 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
             target/
-          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.arch }}-cargo-release-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
           restore-keys: ${{ runner.os }}-${{ matrix.arch }}-cargo-release
       - name: Setup env (aarch64-unknown-linux-gnu)
         if: ${{ matrix.rust_target == 'aarch64-unknown-linux-gnu' }}
