@@ -15,7 +15,7 @@ host: better-pi
 #  idleMs: 300000
 model:
   parameters:
-    linkPairs: &toggle
+    link: &toggle
       range:
         type: toggle
       channels: 1
@@ -77,12 +77,14 @@ driver:
       size: 64
 
   parameters:
-    linkPairs:
+    link:
       - position:
           bit: [ 4, 0 ]
     inputLevel:
       - position:
           bytes: [ 6, 7 ]
+        rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
+        packing: uint16le
       - position:
           bytes: [ 20, 21 ]
         rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
@@ -90,6 +92,8 @@ driver:
     outputLevel:
       - position:
           bytes: [ 8, 9 ]
+        rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
+        packing: uint16le
       - position:
           bytes: [ 18, 19 ]
         rescale: [ [ -60, 0 ], [ 0, 0x3f ] ]
@@ -97,6 +101,8 @@ driver:
     release:
       - position:
           bytes: [ 10, 11 ]
+        rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
+        packing: uint16le
       - position:
           bytes: [ 24, 25 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
@@ -104,6 +110,8 @@ driver:
     attack:
       - position:
           bytes: [ 8, 9 ]
+        rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
+        packing: uint16le
       - position:
           bytes: [ 18, 19 ]
         rescale: [ [ 1, 7 ], [ 0, 0x3f ] ]
@@ -116,6 +124,10 @@ driver:
     ratio:
       - position:
           bytes: [ 16, 17 ]
+        remap:
+          type: linear
+          values: *ratioList
+        packing: uint16le
       - position:
           bytes: [ 26, 27 ]
         remap:
