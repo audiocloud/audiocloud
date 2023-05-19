@@ -1,0 +1,117 @@
+[package]
+name = "domain-service"
+version = "0.1.0"
+edition = "2021"
+authors = [
+    "Bojan Šernek",
+    "Gabrijela Hladnik",
+    "Rok Kroflič",
+    "Matej Šajn"
+]
+
+[dependencies]
+anyhow = "1"
+futures = "0.3"
+base64 = "0.21"
+async-trait = "0.1"
+async-stream = "0.3"
+governor = "0.5"
+serde_json = "1"
+serde_yaml = "0.9"
+rmp-serde = "1"
+bytes = "1"
+hidapi = "2"
+serialport = "4"
+byteorder = "1"
+tracing = "0.1"
+itertools = "0.10"
+lazy_static = "1"
+gc = "0.4"
+regex = "1"
+wildmatch = "2"
+maplit = "1"
+nonzero_ext = "0.3"
+async-thread = "0.1"
+lru = "0.10"
+rosc = "0.10"
+sha2 = "0.10"
+tempfile = "3"
+hex = "0.4"
+tokio-util = "0.7"
+derive_more = "0.99"
+crossbeam-channel = "0.5"
+rayon = "1"
+libflac-sys = "0.3"
+dasp_sample = "0.11"
+password-hash = "0.5"
+argon2 = "0.5"
+rand = "0.8"
+rpassword = "7"
+jsonwebtoken = "8"
+time = "0.3"
+hostname = "0.3"
+
+[dependencies.axum-server]
+version = "0.5"
+features = ["tls-rustls"]
+
+[dependencies.axum-extra]
+version = "0.7"
+features = ["cookie"]
+
+[dependencies.boa_engine]
+version = "0.16"
+features = ["console"]
+
+[dependencies.reqwest]
+version = "0.11"
+default-features = false
+features = ["json", "stream", "deflate", "brotli", "gzip", "rustls-tls"]
+
+[dependencies.async-nats]
+git = "https://github.com/nats-io/nats.rs"
+
+[dependencies.flume]
+git = "https://github.com/zesterer/flume"
+
+[dependencies.clap]
+version = "4"
+features = ["color", "derive", "env"]
+
+[dependencies.tower-http]
+version = "0.4.0"
+features = ["cors", "fs", "trace"]
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter"]
+
+[dependencies.tokio-stream]
+version = "0.1"
+features = ["sync"]
+
+[dependencies.schemars]
+version = "0.8"
+features = ["chrono"]
+
+[dependencies.axum]
+version = "0.6"
+features = ["json", "ws", "headers", "tokio"]
+
+[dependencies.tokio]
+version = "1"
+features = ["macros", "rt-multi-thread", "fs", "process", "signal"]
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.api]
+path = "../api"
+
+[dependencies.audio-engine]
+path = "../audio-engine"
