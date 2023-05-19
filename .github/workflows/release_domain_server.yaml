@@ -82,8 +82,8 @@ jobs:
           Get-ChildItem -Path rust\audio-engine\sdks -Recurse
       - name: Build release ${{ matrix.rust_target }}
         run: |
-          cargo build --release --target ${{ matrix.rust_target }} -p domain-server --bin domain_server
-          cargo build --release --target ${{ matrix.rust_target }} -p domain-server --bin ac
+          cargo build --release --target ${{ matrix.rust_target }} -p domain-server
+          cargo build --release --target ${{ matrix.rust_target }} -p ac
       - name: Rename binary (POSIX)
         if: ${{ matrix.os != 'windows-latest' }}
         run: |

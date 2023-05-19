@@ -24,7 +24,7 @@ use api::media::state::media_download_state_key;
 use api::task::player::PlayId;
 use api::user::UserSpec;
 use api::BucketKey;
-use domain_server::nats::Nats;
+use domain_service::nats::Nats;
 
 const LOG_DEFAULTS: &'static str = "warn";
 

@@ -24,6 +24,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "api",
+ "argon2",
+ "async-nats",
+ "chrono",
+ "clap 4.2.7",
+ "domain-service",
+ "futures",
+ "password-hash",
+ "rand",
+ "rpassword",
+ "serde_json",
+ "serde_yaml",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "adler"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1071,6 +1093,28 @@ dependencies = [
 
 [[package]]
 name = "domain-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "api",
+ "async-nats",
+ "axum",
+ "axum-extra",
+ "axum-server",
+ "clap 4.2.7",
+ "domain-service",
+ "futures",
+ "governor",
+ "hostname",
+ "nonzero_ext",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "domain-service"
 version = "0.1.0"
 dependencies = [
  "anyhow",

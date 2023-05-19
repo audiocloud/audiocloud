@@ -1,34 +1,24 @@
 [package]
-name = "domain-server"
+name = "ac"
 version = "0.1.0"
 edition = "2021"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
-futures = "0.3"
-governor = "0.5"
-nonzero_ext = "0.3"
-tracing = "0.1"
-hostname = "0.3"
 anyhow = "1"
+argon2 = "0.5"
+chrono = "0.4"
+futures = "0.3"
+password-hash = "0.5"
+tracing = "0.1"
+rpassword = "7"
+rand = "0.8"
+serde_json = "1"
+serde_yaml = "0.9"
 
 [dependencies.async-nats]
 git = "https://github.com/nats-io/nats.rs"
-
-[dependencies.axum-server]
-version = "0.5"
-features = ["tls-rustls"]
-
-[dependencies.axum]
-version = "0.6"
-features = ["json", "ws", "headers", "tokio"]
-
-[dependencies.axum-extra]
-version = "0.7"
-features = ["cookie"]
-
-[dependencies.tower-http]
-version = "0.4.0"
-features = ["cors", "fs", "trace"]
 
 [dependencies.clap]
 version = "4"

@@ -6,7 +6,12 @@ use anyhow::{anyhow, bail};
 use axum::http::header::{ACCEPT, AUTHORIZATION, CACHE_CONTROL, CONTENT_TYPE, COOKIE, HOST, IF_MATCH, IF_NONE_MATCH, IF_UNMODIFIED_SINCE};
 use axum::http::Method;
 use axum::Router;
-use clap::Parser;
+use clap::{Args, Parser};
+use domain_service::instance::driver::scripting::new_scripting_engine;
+use domain_service::media::service::MediaService;
+use domain_service::nats::Nats;
+use domain_service::service::{Service, ServiceConfig};
+use domain_service::Result;
 use futures::channel::mpsc;
 use futures::{FutureExt, SinkExt, StreamExt};
 use governor::{Quota, RateLimiter};
@@ -20,53 +25,72 @@ use tracing::{debug, error, info, warn};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use domain_server::instance::driver::scripting::new_scripting_engine;
-use domain_server::media::service::MediaService;
-use domain_server::nats::Nats;
-use domain_server::service::{Service, ServiceConfig};
-use domain_server::Result;
-
 const LOG_DEFAULTS: &'static str = "info,domain_server=trace,tower_http=debug";
 
 #[derive(Debug, Parser, Clone)]
 #[command(author, version, about)]
 struct Arguments {
   /// Enables instance services
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub enable_instances:        bool,
   /// Enables instance driver services
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub enable_instance_drivers: bool,
   /// Enables task management services
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub enable_tasks:            bool,
   /// Enables REST API
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub enable_api:              bool,
   /// Enable media management services
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub enable_media:            bool,
   /// NATS JetStream URL
-  #[clap(long, env, default_value = "nats://localhost:4222")]
+  #[arg(long, env, default_value = "nats://localhost:4222")]
   pub nats_url:                String,
   /// REST API listen address and port
-  #[clap(long, env, default_value = "127.0.0.1:7200")]
+  #[arg(long, env, default_value = "127.0.0.1:7200")]
   pub rest_api_bind:           SocketAddr,
   /// Host name used for instance driver selection and HTTPS certificate generation
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub host_name:               Option<String>,
+  /// HTTPs listen address and port
+  #[command(flatten)]
+  pub https:                   Option<HttpsArguments>,
   /// Media root directory
-  #[clap(long, env, default_value = ".media")]
+  #[arg(long, env, default_value = ".media")]
   pub media_root:              PathBuf,
   /// Native (default) sample rate.
-  #[clap(long, env, default_value = "192000")]
+  #[arg(long, env, default_value = "192000")]
   pub native_sample_rate:      u32,
   /// Reset the key value database before starting
-  #[clap(long, env)]
+  #[arg(long, env)]
   pub reset_kv_database:       bool,
   /// Secret used to sign the Json Web Tokens (JWTs) used for authentication
-  #[clap(long, env, default_value = "6ChatwwXQMLRYo9GbtqhwshxhzauquhY")]
+  #[arg(long, env, default_value = "6ChatwwXQMLRYo9GbtqhwshxhzauquhY")]
   pub jwt_secret:              String,
+}
+
+#[derive(Debug, Args, Clone)]
+#[group(multiple = false, required = true)]
+struct HttpsArguments {
+  /// Enables self-signed HTTPs
+  #[arg(long, env, group = "https")]
+  pub https_self_signed: bool,
+
+  /// Lets encrypt
+  #[command(flatten)]
+  pub https_lets_encrypt: Option<HttpLetsEncryptArguments>,
+}
+
+#[derive(Debug, Args, Clone)]
+struct HttpLetsEncryptArguments {
+  /// Lets Encrypt account email
+  #[arg(long, env)]
+  pub https_lets_encrypt_email:     String,
+  /// Lets Encrypt directory
+  #[arg(long, env)]
+  pub https_lets_encrypt_cache_dir: PathBuf,
 }
 
 enum InternalEvent {
@@ -102,7 +126,7 @@ async fn main() -> Result {
   let assets_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets");
   let router = Router::new().fallback_service(ServeDir::new(assets_dir).append_index_html_on_directories(true));
 
-  let router = domain_server::rest_api::rest_api(router, service.clone());
+  let router = domain_service::rest_api::rest_api(router, service.clone());
 
   let (tx_internal, mut rx_internal) = mpsc::channel(0xff);
 
@@ -117,7 +141,7 @@ async fn main() -> Result {
       let mut tx_internal = tx_internal.clone();
       info!("Starting instance driver service: {}", host_name);
       let service =
-        domain_server::instance::driver::server::DriverService::new(service.clone(), scripting_engine.clone(), host_name.clone());
+        domain_service::instance::driver::server::DriverService::new(service.clone(), scripting_engine.clone(), host_name.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance driver service exited: {res:?}");
                            let _ = tx_internal.send(InstanceDriversFinished).await;
@@ -130,7 +154,7 @@ async fn main() -> Result {
     if args.enable_instances {
       let mut tx_internal = tx_internal.clone();
       info!("Starting instances service");
-      let service = domain_server::instance::service::InstanceService::new(service.clone());
+      let service = domain_service::instance::service::InstanceService::new(service.clone());
       spawn(service.run().then(|res| async move {
                            warn!("Instance service exited: {res:?}");
                            let _ = tx_internal.send(InstancesFinished).await;
