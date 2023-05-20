@@ -29,7 +29,7 @@ pub fn rest_api(router: Router<Service>, service: Service) -> Router<Service> {
         .route("/api/v1/users", post(register_user_handler).route_layer(auth_layer()))
         .route("/api/v1/users/:id", patch(update_user_handler).route_layer(auth_layer()))
         .route("/api/v1/users/logout", get(logout_user_handler))
-        .route("/api/v1/tasks", post(create_task_handler).route_layer(auth_layer()))
+        .route("/api/v1/tasks/:id", post(create_task_handler).route_layer(auth_layer()))
         .route("/ws", get(web_socket).route_layer(auth_layer()))
 }
 
