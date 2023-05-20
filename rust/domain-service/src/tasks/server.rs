@@ -81,7 +81,7 @@ impl TasksServer {
       if spec.from > Utc::now() {
         continue;
       }
-      if spec.host_id != self.host_id {
+      if spec.engine != self.host_id {
         continue;
       }
 

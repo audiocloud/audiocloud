@@ -9,8 +9,8 @@ use crate::Timestamp;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 pub struct TaskSpec {
-  pub app_id:     String,
-  pub host_id:    String,
+  pub app:        String,
+  pub engine:     String,
   pub from:       Timestamp,
   pub to:         Timestamp,
   pub requests:   HashMap<String, InstanceAllocationRequest>,

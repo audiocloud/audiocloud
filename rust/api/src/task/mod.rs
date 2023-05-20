@@ -20,9 +20,8 @@ pub mod spec;
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateTaskRequest {
-  #[serde(default)]
-  pub task_id:   Option<String>,
-  pub app_id:    String,
+  pub app:       String,
+  pub engine:    String,
   pub from:      Timestamp,
   pub to:        Timestamp,
   pub instances: HashMap<String, InstanceAllocationRequest>,
@@ -49,10 +48,41 @@ pub type SetTaskGraphRequest = AudioGraphSpec;
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SetTaskGraphResponse {
   Success,
+  NotFound,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SetTaskTimeRequest {
+  pub from: Timestamp,
+  pub to:   Timestamp,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SetTaskTimeResponse {
+  Success,
+  NotFound,
   Failure,
 }
 
 pub type ModifyTaskGraphRequest = Vec<AudioGraphModification>;
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum ModifyTaskGraphResponse {
+  Success,
+  NotFound,
+  Failure,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum DeleteTaskResponse {
+  Success,
+  NotFound,
+  Failure,
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
