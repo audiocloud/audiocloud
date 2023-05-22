@@ -10,6 +10,7 @@ use player::{GraphPlayerEvent, PlayId};
 
 use crate::instance::driver::events::InstanceDriverEvent;
 use crate::task::graph::{SinkId, SinkSpec};
+use crate::task::player::SetTaskSetting;
 use crate::task::spec::TaskSpec;
 use crate::Timestamp;
 
@@ -76,6 +77,36 @@ pub enum ModifyTaskGraphResponse {
   Failure,
 }
 
+pub type SetTaskInstancesRequest = HashMap<String, InstanceAllocationRequest>;
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SetTaskInstancesResponse {
+  Success,
+  NotFound,
+  Failure,
+}
+
+pub type SetTaskControlRequest = DesiredTaskPlayState;
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SetTaskControlResponse {
+  Success,
+  NotFound,
+  Failure,
+}
+
+pub type SetTaskSettingsRequest = Vec<SetTaskSetting>;
+
+#[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SetTaskSettingsResponse {
+  Success,
+  NotFound,
+  Failure,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum DeleteTaskResponse {
@@ -86,7 +117,11 @@ pub enum DeleteTaskResponse {
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct TaskSummary {}
+pub struct TaskSummary {
+  pub id:    String,
+  pub ctrl:  DesiredTaskPlayState,
+  pub state: (),
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type", content = "id")]

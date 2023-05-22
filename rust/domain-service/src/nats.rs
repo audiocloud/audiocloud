@@ -141,9 +141,9 @@ impl Nats {
               media_download_state:      Bucket::new(js, &media::buckets::DOWNLOAD_STATE, three_days, recreate).await?,
               media_upload_state:        Bucket::new(js, &media::buckets::UPLOAD_STATE, three_days, recreate).await?,
               task_spec:                 Bucket::new(js, &task::buckets::TASK_SPEC, forever, recreate).await?,
+              task_ctrl:                 Bucket::new(js, &task::buckets::TASK_CONTROL, forever, recreate).await?,
               task_state:                Bucket::new(js, &task::buckets::TASK_STATE, forever, recreate).await?,
-              user_spec:                 Bucket::new(js, &user::buckets::USER_SPEC, forever, recreate).await?,
-              task_ctrl:                 Bucket::new(js, &task::buckets::TASK_CONTROL, forever, recreate).await?, })
+              user_spec:                 Bucket::new(js, &user::buckets::USER_SPEC, forever, recreate).await?, })
   }
 
   pub fn subscribe_to_events<Evt>(&self, events: Events<Evt>) -> EventStream<Evt>

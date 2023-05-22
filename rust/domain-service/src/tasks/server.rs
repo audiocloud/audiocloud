@@ -8,8 +8,8 @@ use tokio::time::Interval;
 use tokio::{select, spawn};
 
 use api::task::spec::TaskSpec;
-use api::task::subjects::{get_task_list_req, set_task_graph_req};
-use api::task::{GetTaskListRequest, GetTaskListResponse, SetTaskGraphRequest, SetTaskGraphResponse, TaskSummary};
+use api::task::subjects::set_task_graph_req;
+use api::task::{SetTaskGraphRequest, SetTaskGraphResponse};
 
 use crate::nats::{Nats, RequestStream, WatchStream};
 use crate::tasks::run::RunDomainTask;
@@ -17,7 +17,6 @@ use crate::tasks::Result;
 
 pub struct TasksServer {
   host_id:        String,
-  get_task_list:  RequestStream<GetTaskListRequest, GetTaskListResponse>,
   set_task_graph: RequestStream<SetTaskGraphRequest, SetTaskGraphResponse>,
   watch_specs:    WatchStream<String, TaskSpec>,
   tasks:          HashMap<String, Task>,
@@ -30,13 +29,11 @@ impl TasksServer {
     let watch_specs = nats.task_spec.watch_all();
     let timer = tokio::time::interval(Duration::from_secs(1));
 
-    let get_task_list = nats.serve_requests(get_task_list_req());
     let set_task_graph = nats.serve_requests(set_task_graph_req());
 
     let tasks = HashMap::new();
 
     Self { host_id,
-           get_task_list,
            set_task_graph,
            watch_specs,
            tasks,
@@ -49,9 +46,6 @@ impl TasksServer {
       select! {
         Some((task_id, maybe_task_spec)) = self.watch_specs.next() => {
           self.task_spec_changed(task_id, maybe_task_spec);
-        },
-        Some((_, request, reply)) = self.get_task_list.next() => {
-          let _ = reply.send(self.get_task_list(request));
         },
         Some((_, request, reply)) = self.set_task_graph.next() => {
           let _ = reply.send(self.set_task_graph(request));
@@ -97,10 +91,6 @@ impl TasksServer {
                 | None => false,
                 | Some(spec) => spec.to > Utc::now(),
               });
-  }
-
-  fn get_task_list(&mut self, request: GetTaskListRequest) -> GetTaskListResponse {
-    GetTaskListResponse { tasks: self.tasks.iter().map(|(id, spec)| (id.clone(), TaskSummary {})).collect(), }
   }
 
   fn set_task_graph(&mut self, request: SetTaskGraphRequest) -> SetTaskGraphResponse {

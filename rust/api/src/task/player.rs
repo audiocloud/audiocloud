@@ -196,3 +196,12 @@ pub enum PlayerControlCommand {
     modifications: Vec<AudioGraphModification>,
   },
 }
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SetTaskSetting {
+  pub node:    NodeId,
+  pub setting: String,
+  pub channel: usize,
+  pub value:   f64,
+}

@@ -6,7 +6,9 @@ use api::auth::Auth;
 use api::task::spec::TaskSpec;
 use api::task::{
   CreateTaskRequest, CreateTaskResponse, DeleteTaskResponse, DesiredTaskPlayState, InstanceAllocationRequest, ModifyTaskGraphRequest,
-  ModifyTaskGraphResponse, SetTaskGraphRequest, SetTaskGraphResponse, SetTaskTimeRequest, SetTaskTimeResponse,
+  ModifyTaskGraphResponse, SetTaskControlRequest, SetTaskControlResponse, SetTaskGraphRequest, SetTaskGraphResponse,
+  SetTaskInstancesRequest, SetTaskInstancesResponse, SetTaskSettingsRequest, SetTaskSettingsResponse, SetTaskTimeRequest,
+  SetTaskTimeResponse, TaskSummary,
 };
 use api::{BucketKey, Timestamp};
 
@@ -66,8 +68,22 @@ impl Service {
     Ok(SetTaskTimeResponse::Success)
   }
 
+  pub async fn set_task_instances(&self, auth: Auth, id: String, set: SetTaskInstancesRequest) -> Result<SetTaskInstancesResponse> {
+    let Some(mut spec) = self.nats.task_spec.get(BucketKey::new(&id)).await? else { return Ok(SetTaskInstancesResponse::NotFound) };
+
+    // TODO: validate that no removed instances are used in the graph
+
+    let allocated = self.allocate_instances(spec.from, spec.to, &set, Some(&id)).await?;
+
+    spec.instances = allocated;
+
+    self.nats.task_spec.put(BucketKey::new(&id), spec).await?;
+
+    Ok(SetTaskInstancesResponse::Success)
+  }
+
   pub async fn modify_task_graph(&self, auth: Auth, id: String, modify: ModifyTaskGraphRequest) -> Result<ModifyTaskGraphResponse> {
-    let Some(mut spec) = self.nats.task_spec.get(BucketKey::new(&id)).await? else { return Ok(ModifyTaskGraphResponse::NotFound) };
+    let Some(spec) = self.nats.task_spec.get(BucketKey::new(&id)).await? else { return Ok(ModifyTaskGraphResponse::NotFound) };
 
     // TODO: apply modification
 
@@ -76,14 +92,34 @@ impl Service {
     Ok(ModifyTaskGraphResponse::Success)
   }
 
+  pub async fn set_task_control(&self, auth: Auth, id: String, control: SetTaskControlRequest) -> Result<SetTaskControlResponse> {
+    let Some(_) = self.nats.task_ctrl.get(BucketKey::new(&id)).await? else { return Ok(SetTaskControlResponse::NotFound) };
+
+    self.nats.task_ctrl.put(BucketKey::new(&id), control).await?;
+
+    Ok(SetTaskControlResponse::Success)
+  }
+
+  pub async fn set_task_settings(&self, auth: Auth, id: String, settings: SetTaskSettingsRequest) -> Result<SetTaskSettingsResponse> {
+    // TODO: send over NATS to the task service directly
+    bail!("Not implemented");
+  }
+
   pub async fn delete_task(&self, auth: Auth, id: String) -> Result<DeleteTaskResponse> {
-    let Some(mut spec) = self.nats.task_spec.get(BucketKey::new(&id)).await? else { return Ok(DeleteTaskResponse::NotFound) };
+    let Some(_) = self.nats.task_spec.get(BucketKey::new(&id)).await? else { return Ok(DeleteTaskResponse::NotFound) };
 
     self.nats.task_spec.delete(BucketKey::new(&id)).await?;
     self.nats.task_ctrl.delete(BucketKey::new(&id)).await?;
     self.nats.task_state.delete(BucketKey::new(&id)).await?;
 
     Ok(DeleteTaskResponse::Success)
+  }
+
+  pub async fn get_task_summary(&self, auth: Auth, id: String) -> Result<TaskSummary> {
+    let Some(ctrl) = self.nats.task_ctrl.get(BucketKey::new(&id)).await? else { bail!("Task not found") };
+    let Some(state) = self.nats.task_state.get(BucketKey::new(&id)).await? else { bail!("Task not found") };
+
+    Ok(TaskSummary { id, ctrl, state })
   }
 
   async fn allocate_instances(&self,
