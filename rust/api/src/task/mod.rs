@@ -217,5 +217,15 @@ pub fn schema() -> RootSchema {
                  schema_for!(DesiredTaskPlayState),
                  schema_for!(TaskEvent),
                  schema_for!(CreateTaskRequest),
-                 schema_for!(CreateTaskResponse)].into_iter())
+                 schema_for!(CreateTaskResponse),
+                 schema_for!(SetTaskInstancesRequest),
+                 schema_for!(SetTaskInstancesResponse),
+                 schema_for!(SetTaskTimeRequest),
+                 schema_for!(SetTaskTimeResponse),
+                 schema_for!(SetTaskGraphRequest),
+                 schema_for!(SetTaskGraphResponse),
+                 schema_for!(SetTaskSettingsRequest),
+                 schema_for!(SetTaskSettingsResponse),
+                 schema_for!(SetTaskControlRequest),
+                 schema_for!(SetTaskControlResponse)].into_iter())
 }
