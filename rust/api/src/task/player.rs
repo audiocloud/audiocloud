@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::instance::model::{ParameterModel, ReportModel};
+use crate::instance::spec::SetParameterCommand;
 use crate::task::graph::modify::AudioGraphModification;
 use crate::task::graph::{NodeId, SinkId, SinkSpec};
 
@@ -199,9 +200,7 @@ pub enum PlayerControlCommand {
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct SetTaskSetting {
+pub struct PlayerParameterCommand {
   pub node:    NodeId,
-  pub setting: String,
-  pub channel: usize,
-  pub value:   f64,
+  pub changes: Vec<SetParameterCommand>,
 }

@@ -6,10 +6,9 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::{mpsc, RwLock};
 use tokio::{select, spawn};
 
-use api::instance::spec::SetParameterCommand;
 use api::media::spec::MediaId;
 use api::task::graph::{AudioGraphSpec, InputId, NodeId, OutputId};
-use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead, PlayId, PlayerControlCommand};
+use api::task::player::{GraphPlayerEvent, NodeEvent, PlayHead, PlayId, PlayerControlCommand, PlayerParameterCommand};
 use api::task::PlayRequest;
 
 use crate::audio_device::{AudioDevices, DeviceClientCommand};
@@ -214,11 +213,6 @@ impl GraphPlayer {
         },
     }
   }
-}
-
-pub struct PlayerParameterCommand {
-  node:    NodeId,
-  changes: Vec<SetParameterCommand>,
 }
 
 #[derive(Debug)]

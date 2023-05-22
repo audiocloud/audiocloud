@@ -10,7 +10,7 @@ use player::{GraphPlayerEvent, PlayId};
 
 use crate::instance::driver::events::InstanceDriverEvent;
 use crate::task::graph::{SinkId, SinkSpec};
-use crate::task::player::SetTaskSetting;
+use crate::task::player::PlayerParameterCommand;
 use crate::task::spec::TaskSpec;
 use crate::Timestamp;
 
@@ -97,7 +97,7 @@ pub enum SetTaskControlResponse {
   Failure,
 }
 
-pub type SetTaskSettingsRequest = Vec<SetTaskSetting>;
+pub type SetTaskSettingsRequest = PlayerParameterCommand;
 
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase", tag = "type")]
