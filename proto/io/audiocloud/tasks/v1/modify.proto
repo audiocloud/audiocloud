@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package io.audiocloud.tasks.v1;
+
+import "io/audiocloud/tasks/v1/component.proto";
+import "io/audiocloud/tasks/v1/input.proto";
+import "io/audiocloud/tasks/v1/create.proto";
+
+message ModifyTaskStructure {
+  oneof modification {
+    CreatePlaylistItem create_playlist_item = 1;
+    RemovePlaylistItem remove_playlist_item = 2;
+    SetPlaylistItemMedia set_playlist_item_media = 3;
+
+    CreatePlaylistInput create_playlist = 10;
+    RemovePlaylistInput remove_playlist = 11;
+
+    CreateBus create_bus = 20;
+    RemoveBus remove_bus = 21;
+    SetBusChannels set_bus_channels = 22;
+    SetBusInputs set_bus_inputs = 23;
+
+    SetInstanceAllocation set_instance_allocation = 30;
+    SetInstanceInputs set_instance_inputs = 31;
+
+    DisconnectInput disconnect_input = 40;
+    ConnectInput connect_input = 41;
+  }
+}
+
+message CreatePlaylistItem {
+  string playlist_id = 1;
+  string item_id = 2;
+  PlaylistItem item = 3;
+}
+
+message RemovePlaylistItem {
+  string playlist_id = 1;
+  string item_id = 2;
+}
+
+message SetPlaylistItemMedia {
+  string playlist_id = 1;
+  string item_id = 2;
+  string media_id = 3;
+  double start_time = 4;
+  optional double end_time = 5;
+}
+
+message RemovePlaylistInput {
+  string playlist_id = 1;
+}
+
+message SetBusChannels {
+  string bus_id = 1;
+  uint32 input_count = 2;
+  uint32 output_count = 3;
+}
+
+message SetBusInputs {
+  string bus_id = 1;
+  repeated CreateInput inputs = 2;
+}
+
+message RemoveBus {
+  string bus_id = 1;
+}
+
+message SetInstanceAllocation {
+  string instance_id = 1;
+  string allocation_id = 2;
+}
+
+message SetInstanceInputs {
+  string instance_id = 1;
+  repeated CreateInput inputs = 2;
+}
+
+message DisconnectInput {
+  ComponentInputId input_id = 1;
+  ComponentOutputId output_id = 2;
+}
+
+message ConnectInput {
+  ComponentInputId input_id = 1;
+  ComponentOutputId output_id = 2;
+}

@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+message HttpInstanceDriverSpec {
+  string base_url = 1;
+  map<string, string> headers = 10;
+
+  repeated HttpPushRequest push = 20;
+  repeated HttpPullRequest pull = 30;
+}
+
+message HttpPullRequest {
+  string method = 1;
+  string url_code = 2;
+  string parse_body_code = 3;
+  uint32 poll_interval_ms = 4;
+  map<string, string> headers = 10;
+}
+
+message HttpPushRequest {
+  repeated string parameters = 1;
+  string url_code = 2;
+  string format_body_code = 3;
+  map<string, string> headers = 10;
+}

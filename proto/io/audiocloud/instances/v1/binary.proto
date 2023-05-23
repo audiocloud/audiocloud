@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+import "io/audiocloud/instances/v1/usb.proto";
+
+message BinaryInstanceDriverSpec {
+  string host = 1;
+
+  oneof device {
+    UsbHidConnection usb_hid = 10;
+    SpiConnection spi = 11;
+  }
+
+  map<string, BinaryParameter> parameters = 20;
+  map<string, BinaryReport> reports = 21;
+}
+
+message UsbHidConnection {
+  UsbConnection usb = 1;
+  optional uint32 timeout = 2;
+  optional uint32 poll_interval_ms = 3;
+
+  repeated UsbHidSendPage send_pages = 10;
+  repeated UsbHidReceivePage receive_pages = 11;
+}
+
+message UsbHidSendPage {
+  uint32 page = 1;
+  uint32 size = 2;
+  optional uint32 copy_from_receive_page = 3;
+}
+
+message UsbHidReceivePage {
+  uint32 page = 1;
+  uint32 size = 2;
+}
+
+message SpiConnection {
+  oneof device {
+    uint32 device_id = 1;
+    string device_path = 2;
+  }
+
+  optional bytes init_data = 4;
+  optional bytes prefix_data = 5;
+}
+
+message BinaryParameter {
+  BinaryPosition position = 1;
+  BinaryPacking packing = 2;
+}
+
+message BinaryReport {
+  BinaryPosition position = 1;
+  BinaryPacking packing = 2;
+}
+
+message BinaryPosition {
+  oneof position {
+    uint32 byte = 1;
+    ByteRange byte_range = 2;
+    Bit bit = 3;
+    BitRange bit_range = 4;
+  }
+}
+
+message ByteRange {
+  uint32 start = 1;
+  uint32 end = 2;
+}
+
+message Bit {
+  uint32 byte = 1;
+  uint32 bit = 2;
+}
+
+message BitRange {
+  repeated Bit bits = 1;
+}
+
+enum BinaryPacking {
+  UInt8 = 0;
+  UInt16LE = 1;
+  UInt16BE = 2;
+  UInt32LE = 3;
+  UInt32BE = 4;
+  Int8 = 5;
+  Int16LE = 6;
+  Int16BE = 7;
+  Int32LE = 8;
+  Int32BE = 9;
+  Float32LE = 10;
+  Float32BE = 11;
+  Float64LE = 12;
+  Float64BE = 13;
+}

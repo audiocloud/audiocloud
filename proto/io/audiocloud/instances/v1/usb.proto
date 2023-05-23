@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+message UsbConnection {
+  uint32 vendor_id = 1;
+  uint32 product_id = 2;
+  optional string serial_number = 9;
+}

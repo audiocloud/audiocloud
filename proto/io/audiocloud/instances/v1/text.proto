@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+import "io/audiocloud/instances/v1/usb.proto";
+
+message TextInstanceDriverSpec {
+  string host = 1;
+
+  oneof device {
+    UsbConnection usb_serial = 2;
+    string device_name = 3;
+  }
+}

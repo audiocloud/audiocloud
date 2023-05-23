@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package io.audiocloud.security.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message UserInfo {
+  string id = 1;
+  optional string email = 2;
+}
+
+enum GlobalPermission {
+  CreateTask = 0;
+  DeleteTask = 1;
+  InstanceInputOutput = 2;
+  InstancePower = 3;
+  InstanceMedia = 4;
+}
+
+enum TaskPermission {
+  ReadTask = 0;
+  SetTaskGraph = 1;
+  StreamTaskSinks = 2;
+  StreamTaskInputs = 3;
+  SetTaskParameters = 4;
+  SetTaskPlayPosition = 5;
+}
+
+message AppInfo {
+  string id = 1;
+  repeated GlobalPermission permissions = 2;
+}
+
+message ApiKeyInfo {
+  string key_id = 1;
+
+  oneof principal {
+    string user_id = 10;
+    string app_id = 11;
+  }
+
+  optional string task_id = 20;
+  repeated GlobalPermission global_permissions = 21;
+  repeated TaskPermission task_permissions = 22;
+
+  optional google.protobuf.Timestamp invalidated_at = 30;
+}
+
+message AuthorizationTokenInfo {
+  oneof principal {
+    string user_id = 1;
+    string app_id = 2;
+  }
+
+  optional string task_id = 20;
+  repeated GlobalPermission global_permissions = 21;
+  repeated TaskPermission task_permissions = 22;
+
+  optional google.protobuf.Timestamp invalidated_at = 30;
+}

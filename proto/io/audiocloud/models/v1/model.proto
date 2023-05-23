@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package io.audiocloud.models.v1;
+
+import "google/protobuf/any.proto";
+
+message ModelId {
+  string manufacturer = 1;
+  string name = 2;
+  string version = 3;
+}
+
+message ModelSpec {
+  map<string, ParameterSpec> parameters = 1;
+  map<string, ReportSpec> reports = 2;
+  uint32 audio_inputs = 3;
+  uint32 audio_outputs = 4;
+}
+
+message ParameterSpec {
+  oneof range {
+    Toggle toggle = 1;
+    Bounded bounded = 2;
+    List list = 3;
+  }
+
+  optional double step = 10;
+  optional string unit = 11;
+  uint32 channels = 12;
+
+  map<string, google.protobuf.Any> metadata = 1000;
+}
+
+message Toggle {}
+
+message Bounded {
+  double min = 1;
+  double max = 2;
+}
+
+message List {
+  repeated double values = 1;
+}
+
+message ReportSpec {
+  oneof range {
+    Toggle toggle = 1;
+    Bounded bounded = 2;
+    List list = 3;
+  }
+
+  optional double step = 10;
+  optional string unit = 11;
+  uint32 channels = 12;
+
+  map<string, google.protobuf.Any> metadata = 1000;
+}

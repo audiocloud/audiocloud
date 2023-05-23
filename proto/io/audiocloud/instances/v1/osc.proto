@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+message OscInstanceDriverSpec {
+  string host = 1;
+  int32 port = 2;
+  OscProtocol protocol = 3;
+}
+
+enum OscProtocol {
+  Udp = 0;
+  LengthPrefixedS16Tcp = 1;
+}

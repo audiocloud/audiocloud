@@ -169,7 +169,7 @@ impl InstanceService {
           needs_update = true;
         }
 
-        for trigger in &media_spec.report_triggers {
+        for trigger in &media_spec.play_state_triggers {
           if trigger.is_triggered(&report.report_id, report.value) {
             if entry.play_request.set_actual(match trigger.then {
                                    | InstancePlayStateTransition::SetRewinding => InstancePlayState::Rewinding,

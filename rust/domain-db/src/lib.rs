@@ -1,22 +1,19 @@
 use surrealdb::engine::any::Any;
+use surrealdb::Surreal;
+
+pub mod security;
+
+pub struct Db {
+  surreal: Surreal<Any>,
+}
 
 pub type Result<T = ()> = anyhow::Result<T>;
 
-pub mod instances;
-pub mod users;
-pub mod media;
-pub mod tasks;
-
-pub struct Db {
-  db: surrealdb::Surreal<Any>,
-}
-
 impl Db {
   pub async fn new_in_mem() -> Result<Self> {
-    let db = surrealdb::engine::any::connect("mem://").await?;
+    let surreal = surrealdb::engine::any::connect("mem://").await?;
+    surreal.use_ns("audiocloud").use_db("audiocloud").await?;
 
-    db.use_ns("audiocloud").use_db("domain").await?;
-
-    Ok(Self { db })
+    Ok(Self { surreal })
   }
 }

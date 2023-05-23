@@ -1,0 +1,193 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+import "io/audiocloud/instances/v1/spec.proto";
+import "io/audiocloud/instances/v1/state.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+import "google/protobuf/empty.proto";
+
+service DomainInstanceService {
+  rpc SetInstanceSpec(SetInstanceSpecRequest) returns (SetInstanceSpecResponse);
+  rpc SubscribeInstanceEvents(SubscribeInstanceEventsRequest) returns (stream InstanceEvent);
+}
+
+service DomainInstanceDriverService {
+  rpc SetParameter(SetInstanceParameterRequest) returns (SetInstanceParameterResponse);
+  rpc SubscribeInstanceEvents(SubscribeInstanceEventsRequest) returns (stream InstanceDriverEvent);
+  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse);
+  rpc ClaimInstance(ClaimInstanceRequest) returns (google.protobuf.Empty);
+  rpc ReleaseInstance(ReleaseInstanceRequest) returns (google.protobuf.Empty);
+  rpc SetInstanceDesiredMediaState(SetInstanceDesiredMediaStateRequest) returns (google.protobuf.Empty);
+  rpc AddInstanceMaintenance(AddInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
+  rpc UpdateInstanceMaintenance(UpdateInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
+  rpc ListInstanceMaintenance(ListInstanceMaintenanceRequest) returns (ListInstanceMaintenanceResponse);
+}
+
+message SetInstanceSpecRequest {
+  string instance_id = 1;
+  InstanceSpec spec = 2;
+}
+
+message SetInstanceSpecResponse {
+}
+
+message SetInstanceParameterRequest {
+  string instance_id = 1;
+  repeated SetParameterCommand parameters = 2;
+}
+
+message SetInstanceParameterResponse {
+}
+
+message SubscribeInstanceEventsRequest {
+  string instance_id = 1;
+}
+
+message InstanceDriverEvent {
+  string host = 1;
+  string instance_id = 2;
+
+  oneof event {
+    InstanceConnectionEvent connected = 10;
+    InstanceReportEvent report = 20;
+  }
+}
+
+message InstanceConnectionEvent {
+  bool connected = 1;
+  google.protobuf.Timestamp last_connect_attempt_at = 2;
+}
+
+message InstanceReportEvent {
+  repeated InstanceReport reports = 1;
+}
+
+message InstanceReport {
+  string report = 1;
+  uint32 channel = 2;
+  double value = 3;
+}
+
+message InstancePowerEvent {
+  InstancePowerState current = 1;
+  DesiredInstancePowerState desired = 2;
+  google.protobuf.Timestamp current_changed_at = 3;
+  google.protobuf.Timestamp desired_changed_at = 4;
+  google.protobuf.Timestamp last_change_attempt_at = 5;
+}
+
+message InstanceMediaEvent {
+  InstanceMediaState current = 1;
+  DesiredInstanceMediaState desired = 2;
+  google.protobuf.Timestamp current_changed_at = 3;
+  google.protobuf.Timestamp desired_changed_at = 4;
+  google.protobuf.Timestamp last_change_attempt_at = 5;
+}
+
+message InstanceClaimEvent {
+  string task_id = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+message InstanceEvent {
+  string host = 1;
+  string instance_id = 2;
+
+  oneof event {
+    InstanceConnectionEvent connected = 10;
+    InstanceReportEvent report = 20;
+    InstancePowerEvent power = 30;
+    InstanceMediaEvent media = 40;
+    InstanceClaimEvent claim = 50;
+  }
+}
+
+message ListInstancesRequest {
+  optional string filter_host = 1;
+  optional string filter_attachment = 2;
+  optional string filter_instance_id = 3;
+
+  optional uint32 limit = 4;
+  optional uint32 offset = 5;
+
+  bool include_specs = 10;
+}
+
+message ListInstancesResponse {
+  repeated InstanceSummary instances = 1;
+}
+
+message InstanceSummary {
+  string instance_id = 1;
+  string host = 2;
+
+  optional InstancePowerState current_power = 10;
+  optional InstanceMediaState current_media = 11;
+
+  optional InstanceSpec spec = 20;
+}
+
+message ClaimInstanceRequest {
+  string instance_id = 1;
+  string task_id = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message ReleaseInstanceRequest {
+  string instance_id = 1;
+  string task_id = 2;
+}
+
+message SetInstanceDesiredMediaStateRequest {
+  string instance_id = 1;
+  DesiredInstanceMediaState state = 2;
+  optional google.protobuf.Duration duration = 3;
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+message AddInstanceMaintenanceRequest {
+  string title = 1;
+  string description = 2;
+  repeated string instance_ids = 3;
+
+  google.protobuf.Timestamp starts_at = 10;
+  optional google.protobuf.Timestamp ends_at = 11;
+}
+
+message UpdateInstanceMaintenanceRequest {
+  string maintenance_id = 1;
+  optional string update_title = 2;
+  optional string update_description = 3;
+  optional string add_comment = 4;
+
+  optional google.protobuf.Timestamp update_starts_at = 10;
+  optional google.protobuf.Timestamp update_ends_at = 11;
+  bool clear_ends_at = 12;
+}
+
+message ListInstanceMaintenanceRequest {
+  optional string filter_instance_id = 1;
+  optional google.protobuf.Timestamp filter_starts_after = 10;
+  optional google.protobuf.Timestamp filter_ends_before = 11;
+
+  optional uint32 limit = 3;
+  optional uint32 offset = 4;
+}
+
+message ListInstanceMaintenanceResponse {
+  repeated InstanceMaintenanceDetails maintenance = 1;
+}
+
+message InstanceMaintenanceDetails {
+  string maintenance_id = 1;
+  string title = 2;
+  string description = 3;
+  repeated string instance_ids = 4;
+  repeated string comments = 5;
+
+  google.protobuf.Timestamp starts_at = 10;
+  optional google.protobuf.Timestamp ends_at = 11;
+}

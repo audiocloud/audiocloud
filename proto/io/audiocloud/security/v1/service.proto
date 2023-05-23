@@ -1,0 +1,129 @@
+syntax = "proto3";
+
+package io.audiocloud.security.v1;
+
+import "io/audiocloud/security/v1/principal.proto";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/duration.proto";
+
+service DomainSecurityService {
+  /// Login a user and return an authorization token
+  rpc UserLogin(UserLoginRequest) returns (UserLoginResponse);
+
+  /// Return information about the authorization token (provided by the client when connecting to the server)
+  rpc DescribeToken(DescribeTokenRequest) returns (AuthorizationTokenInfo);
+
+  /// Register a user
+  rpc RegisterUser(RegisterUserRequest) returns (google.protobuf.Empty);
+
+  /// Register an application
+  rpc RegisterApp(RegisterAppRequest) returns (google.protobuf.Empty);
+
+  /// Create an API key
+  rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);
+
+  /// Invalidate an API key
+  rpc InvalidateApiKey(InvalidateApiKeyRequest) returns (InvalidateApiKeyResponse);
+
+  /// List users
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  /// List apps
+  rpc ListApps(ListAppsRequest) returns (ListAppsResponse);
+
+  /// List API keys
+  rpc ListApiKeys(ListApiKeysRequest) returns (ListApiKeysResponse);
+}
+
+message UserLoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message UserLoginResponse {
+  string authorization_token = 1;
+}
+
+message RegisterUserRequest {
+  string username = 1;
+  string password = 2;
+  optional string email = 3;
+  repeated GlobalPermission permissions = 4;
+}
+
+message RegisterUserResponse {
+}
+
+message RegisterAppRequest {
+  string id = 1;
+  repeated GlobalPermission permissions = 2;
+}
+
+message DescribeTokenRequest {
+  string authorization_token = 1;
+  optional string task_id = 2;
+}
+
+message CreateApiKeyRequest {
+  optional string name = 1;
+  optional string task_id = 2;
+  repeated GlobalPermission global_permissions = 3;
+  repeated TaskPermission task_permissions = 4;
+
+  oneof principal {
+    string user_id = 10;
+    string machine_id = 11;
+  }
+
+  google.protobuf.Duration duration = 20;
+}
+
+message CreateApiKeyResponse {
+  string api_key_id = 1;
+  string authorization_token = 2;
+}
+
+message InvalidateApiKeyRequest {
+  string key_id = 1;
+}
+
+message InvalidateApiKeyResponse {
+  bool invalidated = 1;
+}
+
+message ListUsersRequest {
+  optional string filter_id = 1;
+  optional string filter_email = 2;
+
+  optional uint32 limit = 4;
+  optional uint32 offset = 5;
+}
+
+message ListUsersResponse {
+  repeated UserInfo users = 1;
+}
+
+message ListAppsRequest {
+  optional string filter_id = 1;
+
+  optional uint32 limit = 4;
+  optional uint32 offset = 5;
+}
+
+message ListAppsResponse {
+  repeated AppInfo apps = 1;
+}
+
+message ListApiKeysRequest {
+  optional string filter_user_id = 1;
+  optional string filter_app_id = 2;
+
+  optional uint32 limit = 4;
+  optional uint32 offset = 5;
+}
+
+message ListApiKeysResponse {
+  repeated ApiKeyInfo api_keys = 1;
+}

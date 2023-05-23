@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package io.audiocloud.models.v1;
+
+import "io/audiocloud/models/v1/model.proto";
+
+service DomainModelService {
+  rpc GetModelSpec(ModelId) returns (ModelSpec);
+  rpc ListModels(ListDomainModelsRequest) returns (ListDomainModelsResponse);
+  rpc RegisterModel(RegisterDomainModelRequest) returns (RegisterDomainModelResponse);
+}
+
+message ListDomainModelsRequest {
+  string filter_manufacturer = 1;
+  string filter_name = 2;
+  string filter_version = 3;
+
+  uint32 offset = 10;
+  uint32 limit = 11;
+}
+
+message ListDomainModelsResponse {
+  repeated ModelSpec models = 1;
+}
+
+message RegisterDomainModelRequest {
+  ModelId id = 1;
+  ModelSpec spec = 2;
+}
+
+message RegisterDomainModelResponse {
+  ModelId id = 1;
+}

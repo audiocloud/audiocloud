@@ -1,5 +1,5 @@
 [package]
-name = "domain-service"
+name = "domain-db"
 version = "0.1.0"
 edition = "2021"
 
@@ -16,8 +16,8 @@ git = "https://github.com/surrealdb/surrealdb.git"
 tag = "v1.0.0-beta.9"
 features = ["kv-mem", "kv-rocksdb"]
 
-[dependencies.api]
-path = "../api"
+[dependencies.api-proto]
+path = "../api-proto"
 
 [dependencies.serde]
 version = "1"

@@ -51,13 +51,13 @@ impl InstancePowerSpec {
 #[derive(Debug, Serialize, Deserialize, Clone, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct InstanceMediaSpec {
-  pub duration_ms:     u64,
+  pub duration_ms:         u64,
   #[serde(default = "default_position_report")]
-  pub position_report: String,
-  pub report_triggers: Vec<PlayStateReportTrigger>,
-  pub play:            SetParameterCommand,
-  pub stop:            SetParameterCommand,
-  pub rewind:          SetParameterCommand,
+  pub position_report:     String,
+  pub play_state_triggers: Vec<PlayStateReportTrigger>,
+  pub play:                SetParameterCommand,
+  pub stop:                SetParameterCommand,
+  pub rewind:              SetParameterCommand,
 }
 
 impl InstanceMediaSpec {

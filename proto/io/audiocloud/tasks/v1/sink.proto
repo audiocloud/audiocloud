@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package io.audiocloud.tasks.v1;
+
+import "io/audiocloud/tasks/v1/input.proto";
+
+message CreateStreamingSink {
+  StreamingCodec codec = 1;
+  uint32 sample_rate = 2;
+  uint32 channels = 3;
+
+  repeated CreateInput input_ports = 10;
+}
+
+enum StreamingCodec {
+  Flac16 = 0;
+  Flac24 = 1;
+}
+
+message CreateDeviceSink {
+  string device = 1;
+  repeated uint32 output_channels = 2;
+
+  repeated CreateInput input_ports = 10;
+}
+
+message CreateMediaSink {
+  MediaCodec codec = 1;
+
+  repeated CreateInput input_ports = 10;
+}
+
+enum MediaCodec {
+  Wav16 = 0;
+  Wav24 = 1;
+  Wav32 = 2;
+}

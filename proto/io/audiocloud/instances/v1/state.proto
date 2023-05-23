@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+enum InstancePowerState {
+  PowerUnknown = 0;
+  PoweredOff = 1;
+  PoweringOff = 2;
+  PoweredOn = 3;
+  PoweringOn = 4;
+}
+
+enum DesiredInstancePowerState {
+  DesiredPoweredOff = 0;
+  DesiredPoweredOn = 1;
+}
+
+enum InstanceMediaState {
+  MediaUnknown = 0;
+  MediaStopped = 1;
+  MediaStopping = 2;
+  MediaPlaying = 3;
+  MediaRewinding = 4;
+}
+
+enum DesiredInstanceMediaState {
+  DesiredMediaStopped = 0;
+  DesiredMediaPlaying = 1;
+}
