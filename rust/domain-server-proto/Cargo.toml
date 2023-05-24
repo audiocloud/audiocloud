@@ -5,10 +5,36 @@ edition = "2021"
 
 [dependencies]
 axum-connect = "0.1"
-axum = "0.6"
 anyhow = "1"
 serde_json = "1"
 serde_yaml = "0.9"
+jwt = "0.16"
+password-hash = "0.5"
+argon2 = "0.5"
+hmac = "0.12"
+sha2 = "0.10"
+rand = "0.8"
+tracing = "0.1"
+
+[dependencies.tower-http]
+version = "0.4"
+features = ["cors", "fs", "trace"]
+
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter"]
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.axum]
+version = "0.6"
+features = ["headers"]
 
 [dependencies.tokio]
 version = "1"
@@ -16,3 +42,6 @@ features = ["rt-multi-thread", "macros", "time", "sync"]
 
 [dependencies.api-proto]
 path = "../api-proto"
+
+[dependencies.domain-db]
+path = "../domain-db"

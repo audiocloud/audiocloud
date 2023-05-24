@@ -12,14 +12,26 @@ service DomainSecurityService {
   /// Login a user and return an authorization token
   rpc UserLogin(UserLoginRequest) returns (UserLoginResponse);
 
+  /// Exchange an API key for a token
+  rpc CreateToken(google.protobuf.Empty) returns (CreateTokenResponse);
+
+  /// Invalidate a token
+  rpc InvalidateToken(InvalidateTokenRequest) returns (InvalidateTokenResponse);
+
   /// Return information about the authorization token (provided by the client when connecting to the server)
   rpc DescribeToken(DescribeTokenRequest) returns (AuthorizationTokenInfo);
 
   /// Register a user
   rpc RegisterUser(RegisterUserRequest) returns (google.protobuf.Empty);
 
+  /// Update a user
+  rpc UpdateUser(UpdateUserRequest) returns (google.protobuf.Empty);
+
   /// Register an application
   rpc RegisterApp(RegisterAppRequest) returns (google.protobuf.Empty);
+
+  /// Update an application
+  rpc UpdateApp(UpdateAppRequest) returns (google.protobuf.Empty);
 
   /// Create an API key
   rpc CreateApiKey(CreateApiKeyRequest) returns (CreateApiKeyResponse);
@@ -44,6 +56,12 @@ message UserLoginRequest {
 
 message UserLoginResponse {
   string authorization_token = 1;
+  optional string email = 2;
+  repeated GlobalPermission permissions = 3;
+}
+
+message CreateTokenResponse {
+  string authorization_token = 1;
 }
 
 message RegisterUserRequest {
@@ -51,9 +69,6 @@ message RegisterUserRequest {
   string password = 2;
   optional string email = 3;
   repeated GlobalPermission permissions = 4;
-}
-
-message RegisterUserResponse {
 }
 
 message RegisterAppRequest {
@@ -126,4 +141,29 @@ message ListApiKeysRequest {
 
 message ListApiKeysResponse {
   repeated ApiKeyInfo api_keys = 1;
+}
+
+message UpdateUserRequest {
+  string user_id = 1;
+  optional bool clear_email = 2;
+  optional string set_email = 3;
+  optional string set_password = 4;
+  repeated GlobalPermission set_permissions = 5;
+  optional bool clear_disabled_at = 6;
+  optional google.protobuf.Timestamp set_disabled_at = 7;
+}
+
+message UpdateAppRequest {
+  string app_id = 1;
+  repeated GlobalPermission set_permissions = 2;
+  optional bool clear_disabled_at = 3;
+  optional google.protobuf.Timestamp set_disabled_at = 4;
+}
+
+message InvalidateTokenRequest {
+  string token_id = 1;
+}
+
+message InvalidateTokenResponse {
+  bool invalidated = 1;
 }

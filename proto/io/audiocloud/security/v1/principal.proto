@@ -7,6 +7,8 @@ import "google/protobuf/timestamp.proto";
 message UserInfo {
   string id = 1;
   optional string email = 2;
+  repeated GlobalPermission permissions = 3;
+  optional google.protobuf.Timestamp disabled_at = 4;
 }
 
 enum GlobalPermission {
@@ -29,6 +31,7 @@ enum TaskPermission {
 message AppInfo {
   string id = 1;
   repeated GlobalPermission permissions = 2;
+  optional google.protobuf.Timestamp disabled_at = 3;
 }
 
 message ApiKeyInfo {
@@ -47,14 +50,13 @@ message ApiKeyInfo {
 }
 
 message AuthorizationTokenInfo {
+  string token_id = 1;
+  repeated GlobalPermission permissions = 2;
+
   oneof principal {
-    string user_id = 1;
-    string app_id = 2;
+    string user_id = 10;
+    string app_id = 11;
   }
 
-  optional string task_id = 20;
-  repeated GlobalPermission global_permissions = 21;
-  repeated TaskPermission task_permissions = 22;
-
-  optional google.protobuf.Timestamp invalidated_at = 30;
+  google.protobuf.Timestamp expires_at = 20;
 }
