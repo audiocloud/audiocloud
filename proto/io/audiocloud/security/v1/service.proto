@@ -97,7 +97,7 @@ message CreateApiKeyRequest {
 
 message CreateApiKeyResponse {
   string api_key_id = 1;
-  string authorization_token = 2;
+  string secret_value = 2;
 }
 
 message InvalidateApiKeyRequest {
@@ -145,19 +145,27 @@ message ListApiKeysResponse {
 
 message UpdateUserRequest {
   string user_id = 1;
-  optional bool clear_email = 2;
-  optional string set_email = 3;
-  optional string set_password = 4;
-  repeated GlobalPermission set_permissions = 5;
-  optional bool clear_disabled_at = 6;
-  optional google.protobuf.Timestamp set_disabled_at = 7;
+
+  bool use_set_email = 10;
+  optional string set_email = 11;
+
+  optional string set_password = 20;
+
+  bool use_set_permissions = 30;
+  repeated GlobalPermission set_permissions = 31;
+
+  bool use_set_disabled_at = 40;
+  optional google.protobuf.Timestamp set_disabled_at = 41;
 }
 
 message UpdateAppRequest {
   string app_id = 1;
-  repeated GlobalPermission set_permissions = 2;
-  optional bool clear_disabled_at = 3;
-  optional google.protobuf.Timestamp set_disabled_at = 4;
+
+  bool use_set_permissions = 30;
+  repeated GlobalPermission set_permissions = 31;
+
+  bool use_set_disabled_at = 40;
+  optional google.protobuf.Timestamp set_disabled_at = 41;
 }
 
 message InvalidateTokenRequest {

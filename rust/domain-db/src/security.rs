@@ -26,11 +26,14 @@ pub struct DbAppData {
 pub struct DbUpdateUser {
   pub set_email:       Option<Option<String>>,
   pub set_permissions: Option<Vec<GlobalPermission>>,
+  pub set_password:    Option<String>,
+  pub set_disabled_at: Option<Option<Timestamp>>,
 }
 
 #[derive(Default)]
 pub struct DbUpdateApp {
   pub set_permissions: Option<Vec<GlobalPermission>>,
+  pub set_disabled_at: Option<Option<Timestamp>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -91,6 +94,7 @@ pub struct DbCreateApp {
 }
 
 pub struct DbCreateApiKey {
+  pub name:             String,
   pub hash:             String,
   pub task:             Option<String>,
   pub permissions:      Vec<GlobalPermission>,
@@ -98,13 +102,55 @@ pub struct DbCreateApiKey {
   pub expires_at:       Timestamp,
 }
 
+pub struct DbUpdateApiKey {
+  pub set_expires_at: Option<Timestamp>,
+}
+
 impl Db {
   pub async fn get_user_by_id(&self, id: &str) -> Result<Option<DbUserData>> {
     Ok(self.surreal.select(("user", id)).await?)
   }
 
+  pub async fn list_users(&self, filter_id: Option<&str>, filter_email: Option<&str>, limit: u32, offset: u32) -> Result<Vec<DbUserData>> {
+    let mut conditions = vec!["1=1"];
+    if filter_id.is_some() {
+      conditions.push("id = $filter_id");
+    }
+    if filter_email.is_some() {
+      conditions.push("email = $filter_email");
+    }
+
+    let conditions = conditions.join(" AND ");
+
+    Ok(self.surreal
+           .query(format!("select * from user where {conditions} limit $limit start $offset"))
+           .bind(("filter_id", filter_id))
+           .bind(("filter_email", filter_email))
+           .bind(("limit", limit))
+           .bind(("offset", offset))
+           .await?
+           .take(0)?)
+  }
+
   pub async fn get_app_by_id(&self, id: &str) -> Result<Option<DbAppData>> {
     Ok(self.surreal.select(("app", id)).await?)
+  }
+
+  pub async fn list_apps(&self, filter_id: Option<&str>, limit: u32, offset: u32) -> Result<Vec<DbAppData>> {
+    let mut conditions = vec!["1=1"];
+    if filter_id.is_some() {
+      conditions.push("id = $filter_id");
+    }
+
+    let conditions = conditions.join(" AND ");
+
+    Ok(self.surreal
+           .query(format!("select * from app where {conditions} limit $limit start $offset"))
+           .bind(("filter_id", filter_id))
+           .bind(("limit", limit))
+           .bind(("offset", offset))
+           .await?
+           .take(0)?)
   }
 
   pub async fn create_user(&self, username: &str, create: DbCreateUser) -> Result<DbUserData> {
@@ -228,5 +274,18 @@ impl Db {
       | Some(id) => Ok(self.surreal.update(("api_key", id.as_str())).content(create).await?),
       | None => Ok(self.surreal.create("api_key").content(create).await?),
     }
+  }
+
+  pub async fn update_api_key(&self, id: &str, db_update: DbUpdateApiKey) -> Result<Option<DbApiKeyData>> {
+    let mut update = serde_json::Map::new();
+
+    if let Some(expires_at) = db_update.set_expires_at {
+      update.insert("expires_at".to_owned(), serde_json::to_value(expires_at)?);
+    }
+
+    Ok(self.surreal
+           .update(("api_key", id))
+           .merge(serde_json::Value::Object(update))
+           .await?)
   }
 }

@@ -10,11 +10,11 @@ use tower_http::trace::{DefaultMakeSpan, TraceLayer};
 use tracing::info;
 use tracing_subscriber::prelude::*;
 
-use api_proto::{CreateTaskRequest, CreateTaskResponse, DomainSecurityService, DomainTaskService, GlobalPermission, TaskPermission};
+use api_proto::{DomainSecurityService, GlobalPermission, TaskPermission};
 use domain_db::security::{DbCreateApiKey, DbCreateApp, DbPrincipal};
 use domain_db::Db;
 
-use crate::context::{ServiceContext, ServiceContextFactory};
+use crate::context::ServiceContextFactory;
 
 pub mod context;
 pub mod error;
@@ -40,7 +40,8 @@ async fn main() -> anyhow::Result<()> {
 
   let api_key = in_mem_db.create_api_key(Some("admin".to_owned()),
                                          DbPrincipal::App("admin".to_owned()),
-                                         DbCreateApiKey { hash:             hashed_password,
+                                         DbCreateApiKey { name:             format!("Automatically generated API key"),
+                                                          hash:             hashed_password,
                                                           task:             Some("task123".to_owned()),
                                                           permissions:      vec![GlobalPermission::CreateTask],
                                                           task_permissions: vec![TaskPermission::ReadTask],
@@ -57,7 +58,13 @@ async fn main() -> anyhow::Result<()> {
                          .rpc(DomainSecurityService::invalidate_token(security::invalidate_token_handler))
                          .rpc(DomainSecurityService::describe_token(security::describe_token_handler))
                          .rpc(DomainSecurityService::register_user(security::register_user_handler))
-                         .rpc(DomainTaskService::create_task(create_task_handler))
+                         .rpc(DomainSecurityService::register_app(security::register_app_handler))
+                         .rpc(DomainSecurityService::update_app(security::update_app_handler))
+                         .rpc(DomainSecurityService::create_api_key(security::create_api_key_handler))
+                         .rpc(DomainSecurityService::invalidate_api_key(security::invalidate_api_key_handler))
+                         .rpc(DomainSecurityService::list_users(security::list_users_handler))
+                         .rpc(DomainSecurityService::list_apps(security::list_apps_handler))
+                         .rpc(DomainSecurityService::list_api_keys(security::list_api_keys_handler))
                          .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
                          .with_state(factory);
 
@@ -66,10 +73,4 @@ async fn main() -> anyhow::Result<()> {
   axum::Server::bind(&addr).serve(app.into_make_service()).await.unwrap();
 
   Ok(())
-}
-
-async fn create_task_handler(context: ServiceContext, request: CreateTaskRequest) -> Result<CreateTaskResponse, RpcError> {
-  info!("create_task_handler: {request:?}, {context:?}");
-
-  Err(RpcError::new(RpcErrorCode::Internal, "not implemented".to_string()))
 }

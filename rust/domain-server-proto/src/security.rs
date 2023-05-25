@@ -8,13 +8,21 @@ use axum_connect::prelude::*;
 use chrono::{LocalResult, TimeZone, Utc};
 use jwt::{Header, SignWithKey, Token, VerifyWithKey, VerifyingAlgorithm};
 use password_hash::{PasswordHash, SaltString};
+use rand::distributions::Alphanumeric;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use api_proto::{
-  authorization_token_info, AppInfo, AuthorizationTokenInfo, CreateTokenResponse, DescribeTokenRequest, GlobalPermission,
-  InvalidateTokenRequest, InvalidateTokenResponse, RegisterUserRequest, UserInfo, UserLoginRequest, UserLoginResponse,
+  authorization_token_info, AppInfo, AuthorizationTokenInfo, CreateApiKeyRequest, CreateApiKeyResponse, CreateTokenResponse,
+  DescribeTokenRequest, GlobalPermission, InvalidateApiKeyRequest, InvalidateApiKeyResponse, InvalidateTokenRequest,
+  InvalidateTokenResponse, ListApiKeysRequest, ListApiKeysResponse, ListAppsRequest, ListAppsResponse, ListUsersRequest, ListUsersResponse,
+  RegisterAppRequest, RegisterUserRequest, TaskPermission, UpdateAppRequest, UpdateUserRequest, UserInfo, UserLoginRequest,
+  UserLoginResponse,
 };
-use domain_db::security::{DbAppData, DbCreateUser, DbPrincipal, DbTokenResolvedData, DbUserData};
+use domain_db::security::{
+  DbAppData, DbCreateApiKey, DbCreateApp, DbCreateUser, DbPrincipal, DbTokenResolvedData, DbUpdateApiKey, DbUpdateApp, DbUpdateUser,
+  DbUserData,
+};
 use domain_db::{Db, Timestamp};
 
 use crate::context::{Principal, ServiceContext, ServiceContextFactory, TaskContext};
@@ -115,7 +123,7 @@ pub async fn register_user_handler(context: ServiceContext, request: RegisterUse
   for p in &request.permissions {
     let Some(p) = GlobalPermission::from_i32(*p) else { return invalid_argument_error(format!("Invalid permission")) };
     if !context.permissions.contains(&p) {
-      return auth_error(format!("Permission {p:?} cannot be given to new user if you don't have it"));
+      return auth_error(format!("Permission {p:?} cannot be given to a user if you don't have it"));
     }
   }
 
@@ -129,6 +137,120 @@ pub async fn register_user_handler(context: ServiceContext, request: RegisterUse
   }).await else { return internal_error(format!("Failed to create user")) };
 
   Ok(Empty {})
+}
+
+pub async fn update_user_handler(context: ServiceContext, request: UpdateUserRequest) -> Result<Empty, RpcError> {
+  let set_password = match request.set_password {
+    | None => None,
+    | Some(new_password) => {
+      let salt = SaltString::generate(rand::thread_rng());
+      let Ok(hashed_password) = PasswordHash::generate(Argon2::default(), new_password.as_bytes(), &salt) else { return internal_error(format!("Failed to hash new password")) };
+      Some(hashed_password.to_string())
+    }
+  };
+
+  let Ok(_) = context.db.update_user(&request.user_id, DbUpdateUser {
+    set_password,
+    set_email: if request.use_set_email { None } else { Some(request.set_email) },
+    set_permissions: if request.use_set_permissions { Some(request.set_permissions.into_iter().filter_map(|p| GlobalPermission::from_i32(p)).collect()) } else { None },
+    set_disabled_at: if request.use_set_disabled_at { Some(request.set_disabled_at.map(|t| t.try_into().unwrap())) } else { None },
+  }).await else { return internal_error(format!("Failed to update user")) };
+
+  Ok(Empty {})
+}
+
+pub async fn register_app_handler(context: ServiceContext, request: RegisterAppRequest) -> Result<Empty, RpcError> {
+  if request.id.len() < 3 {
+    return invalid_argument_error(format!("App id must be at least 3 characters long"));
+  }
+
+  for p in &request.permissions {
+    let Some(p) = GlobalPermission::from_i32(*p) else { return invalid_argument_error(format!("Invalid permission")) };
+    if !context.permissions.contains(&p) {
+      return auth_error(format!("Permission {p:?} cannot be given to an app if you don't have it"));
+    }
+  }
+
+  let Ok(_) = context.db.create_app(&request.id, DbCreateApp {
+    permissions: request.permissions.into_iter().filter_map(|p| GlobalPermission::from_i32(p)).collect(),
+  }).await else { return internal_error(format!("Failed to create app")) };
+
+  Ok(Empty {})
+}
+
+pub async fn update_app_handler(context: ServiceContext, request: UpdateAppRequest) -> Result<Empty, RpcError> {
+  let Ok(_) = context.db.update_app(&request.app_id, DbUpdateApp {
+    set_permissions: if request.use_set_permissions { Some(request.set_permissions.into_iter().filter_map(|p| GlobalPermission::from_i32(p)).collect()) } else { None },
+    set_disabled_at: if request.use_set_disabled_at { Some(request.set_disabled_at.map(|t| t.try_into().unwrap())) } else { None },
+  }).await else { return internal_error(format!("Failed to update app")) };
+
+  Ok(Empty {})
+}
+
+pub async fn create_api_key_handler(context: ServiceContext, request: CreateApiKeyRequest) -> Result<CreateApiKeyResponse, RpcError> {
+  let secret_value = rand::thread_rng().sample_iter(&Alphanumeric)
+                                       .take(32)
+                                       .map(char::from)
+                                       .collect::<String>();
+
+  let salt = SaltString::generate(rand::thread_rng());
+
+  let Ok(generated_hash) = PasswordHash::generate(Argon2::default(), secret_value.as_bytes(), &salt) else { return internal_error(format!("Failed to hash secret value")) };
+
+  let Ok(duration) = request.duration
+                            .map(|d| d.try_into().ok())
+                            .flatten()
+                            .map(chrono::Duration::from_std)
+                            .unwrap_or_else(|| Ok(chrono::Duration::days(31))) else { return invalid_argument_error(format!("Invalid duration")) };
+
+  let principal = match &context.principal {
+    | Principal::User(user) => DbPrincipal::User(user.id.clone()),
+    | Principal::App(app) => DbPrincipal::App(app.id.clone()),
+  };
+
+  let Ok(api_key) = context.db.create_api_key(None, principal, DbCreateApiKey {
+    name: request.name.unwrap_or_else(|| format!("API key created at {}", chrono::Utc::now().to_rfc3339())),
+    hash: generated_hash.to_string(),
+    task: request.task_id,
+    permissions: request.global_permissions.into_iter().filter_map(|p| GlobalPermission::from_i32(p)).collect(), // TODO: reject unassignable
+    task_permissions: request.task_permissions.into_iter().filter_map(|p| TaskPermission::from_i32(p)).collect(),
+    expires_at: Utc::now() + duration
+  }).await else { return internal_error(format!("Failed to create api key")) };
+
+  Ok(CreateApiKeyResponse { api_key_id: api_key.id.to_string(),
+                            secret_value })
+}
+
+pub async fn invalidate_api_key_handler(context: ServiceContext,
+                                        request: InvalidateApiKeyRequest)
+                                        -> Result<InvalidateApiKeyResponse, RpcError> {
+  let Ok(Some(existing)) = context.db.update_api_key(&request.key_id, DbUpdateApiKey { set_expires_at: Some(Utc::now()) }).await else { return internal_error(format!("Failed to invalidate api key")) };
+
+  Ok(InvalidateApiKeyResponse { invalidated: existing.expires_at <= Utc::now(), })
+}
+
+pub async fn list_users_handler(context: ServiceContext, request: ListUsersRequest) -> Result<ListUsersResponse, RpcError> {
+  let Ok(users) = context.db
+         .list_users(request.filter_id.as_ref().map(|s| s.as_str()),
+                     request.filter_email.as_ref().map(|s| s.as_str()),
+                     request.offset.unwrap_or_default(),
+                     request.limit.unwrap_or(100))
+         .await else { return internal_error(format!("Failed to list users")) };
+
+  Ok(ListUsersResponse { users: users.iter().map(user_info_from).collect(), })
+}
+
+pub async fn list_apps_handler(context: ServiceContext, request: ListAppsRequest) -> Result<ListAppsResponse, RpcError> {
+  let Ok(apps) = context.db.list_apps(request.filter_id.as_ref().map(|s| s.as_str()),
+                                       request.offset.unwrap_or_default(),
+                                       request.limit.unwrap_or(100))
+                            .await else { return internal_error(format!("Failed to list apps")) };
+
+  Ok(ListAppsResponse { apps: apps.iter().map(app_info_from).collect(), })
+}
+
+pub async fn list_api_keys_handler(context: ServiceContext, request: ListApiKeysRequest) -> Result<ListApiKeysResponse, RpcError> {
+  todo!()
 }
 
 pub fn user_info_from(user: &DbUserData) -> UserInfo {

@@ -16,10 +16,9 @@ use sha2::Sha384;
 
 use api_proto::{AppInfo, GlobalPermission, TaskPermission, UserInfo};
 use domain_db::security::DbApiKeyDataResolveUserApp;
-use domain_db::Db;
+use domain_db::{Db, Timestamp};
 
-use crate::error;
-use crate::error::auth_error;
+use crate::error::{auth_error, internal_error};
 use crate::security::{app_info_from, decode_and_fetch_token, user_info_from};
 
 #[derive(Clone)]
@@ -85,24 +84,51 @@ impl<M> RpcFromRequestParts<M, ServiceContextFactory> for ServiceContext where M
         return auth_error(format!("Token cancelled"));
       }
 
+      check_if_principal_disabled(&principal)?;
+
       return Ok(factory.new_context(principal, claims.permissions, claims.task));
     } else if let Ok(TypedHeader(key)) = BasicAuth::from_request_parts(parts, factory).await {
       let (api_key, hashed_password) = (key.username(), key.password());
-      let Ok(Some(api_key)) = factory.db.get_api_key_by_id(api_key).await else { return error::auth_error(format!("Invalid API key")) };
-      let Ok(hash) = PasswordHash::new(&api_key.hash) else { return error::internal_error(format!("API key hash malformed")) };
-      let Ok(_) = hash.verify_password(&[&Argon2::default()], hashed_password) else { return error::auth_error(format!("API key hash did not match")) };
+      let Ok(Some(api_key)) = factory.db.get_api_key_by_id(api_key).await else { return auth_error(format!("Invalid API key")) };
+      let Ok(hash) = PasswordHash::new(&api_key.hash) else { return internal_error(format!("API key hash malformed")) };
+      let Ok(_) = hash.verify_password(&[&Argon2::default()], hashed_password) else { return auth_error(format!("API key hash did not match")) };
 
       let principal = match (&api_key.user, &api_key.app) {
         | (Some(user), None) => Principal::User(user_info_from(user)),
         | (None, Some(app)) => Principal::App(app_info_from(app)),
-        | _ => return error::internal_error(format!("API key references neither user nor app")),
+        | _ => return internal_error(format!("API key references neither user nor app")),
       };
+
+      check_if_principal_disabled(&principal)?;
 
       return Ok(factory.new_context(principal,
                                     api_key.permissions.iter().cloned().collect(),
                                     TaskContext::from_api_key(&api_key)));
     }
 
-    error::auth_error(format!("Invalid authorization header"))
+    auth_error(format!("Invalid authorization header"))
   }
+}
+
+fn check_if_principal_disabled(p: &Principal) -> Result<(), RpcError> {
+  if match p {
+    | Principal::User(u) => u.disabled_at
+                             .as_ref()
+                             .map(|d| {
+                               let d: Timestamp = d.clone().try_into().unwrap();
+                               d <= Utc::now()
+                             })
+                             .unwrap_or_default(),
+    | Principal::App(a) => a.disabled_at
+                            .as_ref()
+                            .map(|d| {
+                              let d: Timestamp = d.clone().try_into().unwrap();
+                              d <= Utc::now()
+                            })
+                            .unwrap_or_default(),
+  } {
+    return auth_error(format!("User or app disabled"));
+  }
+
+  Ok(())
 }
