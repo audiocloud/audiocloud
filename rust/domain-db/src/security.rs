@@ -111,7 +111,7 @@ impl Db {
     Ok(self.surreal.select(("user", id)).await?)
   }
 
-  pub async fn list_users(&self, filter_id: Option<&str>, filter_email: Option<&str>, limit: u32, offset: u32) -> Result<Vec<DbUserData>> {
+  pub async fn list_users(&self, filter_id: Option<&str>, filter_email: Option<&str>, offset: u32, limit: u32) -> Result<Vec<DbUserData>> {
     let mut conditions = vec!["1=1"];
     if filter_id.is_some() {
       conditions.push("id = $filter_id");
@@ -136,7 +136,7 @@ impl Db {
     Ok(self.surreal.select(("app", id)).await?)
   }
 
-  pub async fn list_apps(&self, filter_id: Option<&str>, limit: u32, offset: u32) -> Result<Vec<DbAppData>> {
+  pub async fn list_apps(&self, filter_id: Option<&str>, offset: u32, limit: u32) -> Result<Vec<DbAppData>> {
     let mut conditions = vec!["1=1"];
     if filter_id.is_some() {
       conditions.push("id = $filter_id");
@@ -147,6 +147,31 @@ impl Db {
     Ok(self.surreal
            .query(format!("select * from app where {conditions} limit $limit start $offset"))
            .bind(("filter_id", filter_id))
+           .bind(("limit", limit))
+           .bind(("offset", offset))
+           .await?
+           .take(0)?)
+  }
+
+  pub async fn list_api_keys(&self,
+                             filter_user_id: Option<&str>,
+                             filter_app_id: Option<&str>,
+                             offset: u32,
+                             limit: u32)
+                             -> Result<Vec<DbApiKeyData>> {
+    let mut conditions = vec!["1=1"];
+    if filter_user_id.is_some() {
+      conditions.push("user = $filter_user_id");
+    }
+    if filter_app_id.is_some() {
+      conditions.push("app = $filter_app_id");
+    }
+
+    let conditions = conditions.join(" AND ");
+    Ok(self.surreal
+           .query(format!("select * from api_key where {conditions} limit $limit start $offset"))
+           .bind(("filter_user_id", filter_user_id.map(|id| Thing::from(("user", id)))))
+           .bind(("filter_app_id", filter_app_id.map(|id| Thing::from(("app", id)))))
            .bind(("limit", limit))
            .bind(("offset", offset))
            .await?

@@ -6,24 +6,24 @@ use axum_connect::pbjson_types;
 use axum_connect::pbjson_types::Empty;
 use axum_connect::prelude::*;
 use chrono::{LocalResult, TimeZone, Utc};
-use jwt::{Header, SignWithKey, Token, VerifyWithKey, VerifyingAlgorithm};
+use jwt::{Header, SignWithKey, Token, VerifyingAlgorithm, VerifyWithKey};
 use password_hash::{PasswordHash, SaltString};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use api_proto::{
-  authorization_token_info, AppInfo, AuthorizationTokenInfo, CreateApiKeyRequest, CreateApiKeyResponse, CreateTokenResponse,
-  DescribeTokenRequest, GlobalPermission, InvalidateApiKeyRequest, InvalidateApiKeyResponse, InvalidateTokenRequest,
+  api_key_info, ApiKeyInfo, AppInfo, authorization_token_info, AuthorizationTokenInfo, CreateApiKeyRequest, CreateApiKeyResponse,
+  CreateTokenResponse, DescribeTokenRequest, GlobalPermission, InvalidateApiKeyRequest, InvalidateApiKeyResponse, InvalidateTokenRequest,
   InvalidateTokenResponse, ListApiKeysRequest, ListApiKeysResponse, ListAppsRequest, ListAppsResponse, ListUsersRequest, ListUsersResponse,
   RegisterAppRequest, RegisterUserRequest, TaskPermission, UpdateAppRequest, UpdateUserRequest, UserInfo, UserLoginRequest,
   UserLoginResponse,
 };
-use domain_db::security::{
-  DbAppData, DbCreateApiKey, DbCreateApp, DbCreateUser, DbPrincipal, DbTokenResolvedData, DbUpdateApiKey, DbUpdateApp, DbUpdateUser,
-  DbUserData,
-};
 use domain_db::{Db, Timestamp};
+use domain_db::security::{
+  DbApiKeyData, DbAppData, DbCreateApiKey, DbCreateApp, DbCreateUser, DbPrincipal, DbTokenResolvedData, DbUpdateApiKey, DbUpdateApp,
+  DbUpdateUser, DbUserData,
+};
 
 use crate::context::{Principal, ServiceContext, ServiceContextFactory, TaskContext};
 use crate::error::{auth_error, internal_error, invalid_argument_error, not_found_error};
@@ -233,8 +233,8 @@ pub async fn list_users_handler(context: ServiceContext, request: ListUsersReque
   let Ok(users) = context.db
          .list_users(request.filter_id.as_ref().map(|s| s.as_str()),
                      request.filter_email.as_ref().map(|s| s.as_str()),
-                     request.offset.unwrap_or_default(),
-                     request.limit.unwrap_or(100))
+                     request.limit.unwrap_or(100),
+                     request.offset.unwrap_or_default())
          .await else { return internal_error(format!("Failed to list users")) };
 
   Ok(ListUsersResponse { users: users.iter().map(user_info_from).collect(), })
@@ -242,15 +242,21 @@ pub async fn list_users_handler(context: ServiceContext, request: ListUsersReque
 
 pub async fn list_apps_handler(context: ServiceContext, request: ListAppsRequest) -> Result<ListAppsResponse, RpcError> {
   let Ok(apps) = context.db.list_apps(request.filter_id.as_ref().map(|s| s.as_str()),
-                                       request.offset.unwrap_or_default(),
-                                       request.limit.unwrap_or(100))
+                                      request.limit.unwrap_or(100),
+                                      request.offset.unwrap_or_default())
                             .await else { return internal_error(format!("Failed to list apps")) };
 
   Ok(ListAppsResponse { apps: apps.iter().map(app_info_from).collect(), })
 }
 
 pub async fn list_api_keys_handler(context: ServiceContext, request: ListApiKeysRequest) -> Result<ListApiKeysResponse, RpcError> {
-  todo!()
+  let Ok(api_keys) = context.db.list_api_keys(request.filter_user_id.as_ref().map(|s| s.as_str()),
+                                              request.filter_app_id.as_ref().map(|s| s.as_str()),
+                                              request.offset.unwrap_or_default(),
+                                              request.limit.unwrap_or(100))
+                               .await else { return internal_error(format!("Failed to list api keys")) };
+
+  Ok(ListApiKeysResponse { api_keys: api_keys.iter().map(api_key_info_from).collect(), })
 }
 
 pub fn user_info_from(user: &DbUserData) -> UserInfo {
@@ -264,6 +270,21 @@ pub fn app_info_from(app: &DbAppData) -> AppInfo {
   AppInfo { id:          app.id.id.to_string(),
             permissions: app.permissions.iter().map(|id| *id as i32).collect(),
             disabled_at: app.disabled_at.clone().map(pbjson_types::Timestamp::from), }
+}
+
+pub fn api_key_info_from(key: &DbApiKeyData) -> ApiKeyInfo {
+  let decoded_principal = match (&key.user, &key.app) {
+    | (Some(user), None) => Some(api_key_info::Principal::UserId(user.id.to_string())),
+    | (None, Some(app)) => Some(api_key_info::Principal::AppId(app.id.to_string())),
+    | _ => None,
+  };
+
+  ApiKeyInfo { id:                 key.id.id.to_string(),
+               task_id:            key.task.as_ref().map(|t| t.id.to_string()),
+               global_permissions: key.permissions.iter().map(|id| *id as i32).collect(),
+               task_permissions:   key.task_permissions.iter().map(|id| *id as i32).collect(),
+               expires_at:         Some(pbjson_types::Timestamp::try_from(key.expires_at).unwrap()),
+               principal:          decoded_principal, }
 }
 
 fn expiration(seconds: u64) -> Timestamp {
