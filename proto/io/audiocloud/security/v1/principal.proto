@@ -12,11 +12,22 @@ message UserInfo {
 }
 
 enum GlobalPermission {
-  CreateTask = 0;
-  DeleteTask = 1;
-  InstanceInputOutput = 2;
-  InstancePower = 3;
-  InstanceMedia = 4;
+  TaskRead = 0;
+  TaskCreate = 1;
+  TaskSetGraph = 2;
+  TaskSetPlayState = 3;
+  TaskSetMedia = 4;
+  TaskSeek = 5;
+  TaskDelete = 6;
+
+  InstanceRead = 10;
+  InstanceReferenceInputOutput = 11;
+  InstanceSetPower = 12;
+  InstanceSetMedia = 13;
+  InstanceSetSpec = 14;
+  InstanceSetParameters = 15;
+  InstanceClaim = 16;
+  InstanceSetMaintenance = 17;
 }
 
 enum TaskPermission {

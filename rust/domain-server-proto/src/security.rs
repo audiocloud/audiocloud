@@ -6,24 +6,24 @@ use axum_connect::pbjson_types;
 use axum_connect::pbjson_types::Empty;
 use axum_connect::prelude::*;
 use chrono::{LocalResult, TimeZone, Utc};
-use jwt::{Header, SignWithKey, Token, VerifyingAlgorithm, VerifyWithKey};
+use jwt::{Header, SignWithKey, Token, VerifyWithKey, VerifyingAlgorithm};
 use password_hash::{PasswordHash, SaltString};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
 use api_proto::{
-  api_key_info, ApiKeyInfo, AppInfo, authorization_token_info, AuthorizationTokenInfo, CreateApiKeyRequest, CreateApiKeyResponse,
+  api_key_info, authorization_token_info, ApiKeyInfo, AppInfo, AuthorizationTokenInfo, CreateApiKeyRequest, CreateApiKeyResponse,
   CreateTokenResponse, DescribeTokenRequest, GlobalPermission, InvalidateApiKeyRequest, InvalidateApiKeyResponse, InvalidateTokenRequest,
   InvalidateTokenResponse, ListApiKeysRequest, ListApiKeysResponse, ListAppsRequest, ListAppsResponse, ListUsersRequest, ListUsersResponse,
   RegisterAppRequest, RegisterUserRequest, TaskPermission, UpdateAppRequest, UpdateUserRequest, UserInfo, UserLoginRequest,
   UserLoginResponse,
 };
-use domain_db::{Db, Timestamp};
 use domain_db::security::{
   DbApiKeyData, DbAppData, DbCreateApiKey, DbCreateApp, DbCreateUser, DbPrincipal, DbTokenResolvedData, DbUpdateApiKey, DbUpdateApp,
   DbUpdateUser, DbUserData,
 };
+use domain_db::{Db, Timestamp};
 
 use crate::context::{Principal, ServiceContext, ServiceContextFactory, TaskContext};
 use crate::error::{auth_error, internal_error, invalid_argument_error, not_found_error};
@@ -230,12 +230,16 @@ pub async fn invalidate_api_key_handler(context: ServiceContext,
 }
 
 pub async fn list_users_handler(context: ServiceContext, request: ListUsersRequest) -> Result<ListUsersResponse, RpcError> {
-  let Ok(users) = context.db
-         .list_users(request.filter_id.as_ref().map(|s| s.as_str()),
-                     request.filter_email.as_ref().map(|s| s.as_str()),
-                     request.limit.unwrap_or(100),
-                     request.offset.unwrap_or_default())
-         .await else { return internal_error(format!("Failed to list users")) };
+  let users = match context.db
+                           .list_users(request.filter_id.as_ref().map(|s| s.as_str()),
+                                       request.filter_email.as_ref().map(|s| s.as_str()),
+                                       request.offset.unwrap_or_default(),
+                                       request.limit.unwrap_or(100))
+                           .await
+  {
+    | Ok(users) => users,
+    | Err(err) => return internal_error(format!("Failed to list users: {err}")),
+  };
 
   Ok(ListUsersResponse { users: users.iter().map(user_info_from).collect(), })
 }
@@ -288,8 +292,8 @@ pub fn api_key_info_from(key: &DbApiKeyData) -> ApiKeyInfo {
 }
 
 fn expiration(seconds: u64) -> Timestamp {
-  chrono::Utc::now().checked_add_signed(chrono::Duration::seconds(seconds as i64))
-                    .expect("valid timestamp")
+  Utc::now().checked_add_signed(chrono::Duration::seconds(seconds as i64))
+            .expect("valid timestamp")
 }
 
 pub async fn decode_and_fetch_token(token: &str,

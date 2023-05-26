@@ -11,19 +11,20 @@ import "google/protobuf/empty.proto";
 
 service DomainInstanceService {
   rpc SetInstanceSpec(SetInstanceSpecRequest) returns (SetInstanceSpecResponse);
+  rpc SetParameter(SetInstanceParameterRequest) returns (SetInstanceParameterResponse);
+  rpc SetInstanceDesiredMediaState(SetInstanceDesiredMediaStateRequest) returns (google.protobuf.Empty);
+  rpc DescribeInstance(DescribeInstanceRequest) returns (DescribeInstanceResponse);
+  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse);
+  rpc ClaimInstance(ClaimInstanceRequest) returns (google.protobuf.Empty);
+  rpc ReleaseInstance(ReleaseInstanceRequest) returns (google.protobuf.Empty);
+  rpc AddInstanceMaintenance(AddInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
+  rpc UpdateInstanceMaintenance(UpdateInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
   rpc SubscribeInstanceEvents(SubscribeInstanceEventsRequest) returns (stream InstanceEvent);
 }
 
 service DomainInstanceDriverService {
   rpc SetParameter(SetInstanceParameterRequest) returns (SetInstanceParameterResponse);
   rpc SubscribeInstanceEvents(SubscribeInstanceEventsRequest) returns (stream InstanceDriverEvent);
-  rpc ListInstances(ListInstancesRequest) returns (ListInstancesResponse);
-  rpc ClaimInstance(ClaimInstanceRequest) returns (google.protobuf.Empty);
-  rpc ReleaseInstance(ReleaseInstanceRequest) returns (google.protobuf.Empty);
-  rpc SetInstanceDesiredMediaState(SetInstanceDesiredMediaStateRequest) returns (google.protobuf.Empty);
-  rpc AddInstanceMaintenance(AddInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
-  rpc UpdateInstanceMaintenance(UpdateInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
-  rpc ListInstanceMaintenance(ListInstanceMaintenanceRequest) returns (ListInstanceMaintenanceResponse);
 }
 
 message SetInstanceSpecRequest {
@@ -126,8 +127,6 @@ message InstanceSummary {
 
   optional InstancePowerState current_power = 10;
   optional InstanceMediaState current_media = 11;
-
-  optional InstanceSpec spec = 20;
 }
 
 message ClaimInstanceRequest {
@@ -168,17 +167,19 @@ message UpdateInstanceMaintenanceRequest {
   bool clear_ends_at = 12;
 }
 
-message ListInstanceMaintenanceRequest {
-  optional string filter_instance_id = 1;
-  optional google.protobuf.Timestamp filter_starts_after = 10;
-  optional google.protobuf.Timestamp filter_ends_before = 11;
-
-  optional uint32 limit = 3;
-  optional uint32 offset = 4;
+message DescribeInstanceRequest {
+  string id = 1;
 }
 
-message ListInstanceMaintenanceResponse {
-  repeated InstanceMaintenanceDetails maintenance = 1;
+message DescribeInstanceResponse {
+  string id = 1;
+  string host = 2;
+  InstanceSpec spec = 3;
+
+  optional InstancePowerState current_power = 10;
+  optional InstanceMediaState current_media = 11;
+
+  repeated InstanceMaintenanceDetails maintenance = 20;
 }
 
 message InstanceMaintenanceDetails {

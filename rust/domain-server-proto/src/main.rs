@@ -1,74 +1,98 @@
 use std::net::SocketAddr;
 
-use argon2::Argon2;
 use axum::Router;
 use axum_connect::prelude::*;
+use clap::Parser;
 use hmac::digest::KeyInit;
 use hmac::Hmac;
-use password_hash::{PasswordHash, SaltString};
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
-use tracing::info;
 use tracing_subscriber::prelude::*;
 
-use api_proto::{DomainSecurityService, GlobalPermission, TaskPermission};
-use domain_db::security::{DbCreateApiKey, DbCreateApp, DbPrincipal};
+use api_proto::{DomainInstanceDriverService, DomainInstanceService, DomainSecurityService};
 use domain_db::Db;
 
 use crate::context::ServiceContextFactory;
 
+pub mod args;
 pub mod context;
+pub mod db_init;
 pub mod error;
+pub mod instance;
+pub mod instance_driver;
+pub mod nats;
 pub mod security;
-
-const LOG_DEFAULTS: &'static str = "info,domain_server_proto=trace,tower_http=debug";
-const DEFAULT_PASSWORD: &'static str = "admin";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| LOG_DEFAULTS.into()))
+  let mut args = args::Opts::parse();
+  if args.verbose && args.log.starts_with("info,") {
+    args.log = format!("debug,{}", &args.log[5..]);
+  }
+
+  tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::from(&args.log))
                                 .with(tracing_subscriber::fmt::layer())
                                 .init();
 
-  let in_mem_db = Db::new_in_mem().await?;
-  in_mem_db.create_app("admin",
-                       DbCreateApp { permissions: vec![GlobalPermission::CreateTask, GlobalPermission::DeleteTask], })
-           .await?;
+  let in_mem_db = Db::new(&args.db_url, args.db_root, &args.db_namespace, &args.db_username, &args.db_password).await?;
 
-  let hashed_password = PasswordHash::generate(Argon2::default(),
-                                               DEFAULT_PASSWORD.as_bytes(),
-                                               &SaltString::generate(rand::thread_rng()))?.to_string();
+  let nats_client = async_nats::connect(&args.nats_url).await?;
 
-  let api_key = in_mem_db.create_api_key(Some("admin".to_owned()),
-                                         DbPrincipal::App("admin".to_owned()),
-                                         DbCreateApiKey { name:             format!("Automatically generated API key"),
-                                                          hash:             hashed_password,
-                                                          task:             Some("task123".to_owned()),
-                                                          permissions:      vec![GlobalPermission::CreateTask],
-                                                          task_permissions: vec![TaskPermission::ReadTask],
-                                                          expires_at:       chrono::Utc::now() + chrono::Duration::days(1), })
-                         .await?;
-
-  info!("built-in admin API key: {}:{}", &api_key.id.id, DEFAULT_PASSWORD);
+  if args.db_init {
+    db_init::run(&in_mem_db).await?;
+  }
 
   let factory = ServiceContextFactory { db:         in_mem_db,
-                                        token_hmac: Hmac::new_from_slice(b"cli1aut1w0000p322bmgj2tos01H165PPBRJH2N308A8XARYTED")?, };
+                                        nats:       nats_client,
+                                        token_hmac: Hmac::new_from_slice(args.token_secret.as_bytes())?, };
 
-  let app = Router::new().rpc(DomainSecurityService::user_login(security::user_login_handler))
-                         .rpc(DomainSecurityService::create_token(security::create_token_handler))
-                         .rpc(DomainSecurityService::invalidate_token(security::invalidate_token_handler))
-                         .rpc(DomainSecurityService::describe_token(security::describe_token_handler))
-                         .rpc(DomainSecurityService::register_user(security::register_user_handler))
-                         .rpc(DomainSecurityService::register_app(security::register_app_handler))
-                         .rpc(DomainSecurityService::update_app(security::update_app_handler))
-                         .rpc(DomainSecurityService::create_api_key(security::create_api_key_handler))
-                         .rpc(DomainSecurityService::invalidate_api_key(security::invalidate_api_key_handler))
-                         .rpc(DomainSecurityService::list_users(security::list_users_handler))
-                         .rpc(DomainSecurityService::list_apps(security::list_apps_handler))
-                         .rpc(DomainSecurityService::list_api_keys(security::list_api_keys_handler))
-                         .layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default().include_headers(true)))
-                         .with_state(factory);
+  let mut app = Router::new();
 
-  let addr = SocketAddr::from(([127, 0, 0, 1], 3030));
+  if args.enable_domain_security_service {
+    app = app.rpc(DomainSecurityService::user_login(security::user_login_handler))
+             .rpc(DomainSecurityService::create_token(security::create_token_handler))
+             .rpc(DomainSecurityService::invalidate_token(security::invalidate_token_handler))
+             .rpc(DomainSecurityService::describe_token(security::describe_token_handler))
+             .rpc(DomainSecurityService::register_user(security::register_user_handler))
+             .rpc(DomainSecurityService::register_app(security::register_app_handler))
+             .rpc(DomainSecurityService::update_app(security::update_app_handler))
+             .rpc(DomainSecurityService::create_api_key(security::create_api_key_handler))
+             .rpc(DomainSecurityService::invalidate_api_key(security::invalidate_api_key_handler))
+             .rpc(DomainSecurityService::list_users(security::list_users_handler))
+             .rpc(DomainSecurityService::list_apps(security::list_apps_handler))
+             .rpc(DomainSecurityService::list_api_keys(security::list_api_keys_handler));
+  }
+
+  if args.enable_domain_instance_service {
+    // TODO: implement
+    app = app.rpc(DomainInstanceService::set_instance_spec(instance::set_instance_spec_handler))
+             .rpc(DomainInstanceService::set_parameter(instance::set_parameter_handler))
+             .rpc(DomainInstanceService::set_instance_desired_media_state(instance::set_instance_desired_media_state_handler))
+             .rpc(DomainInstanceService::list_instances(instance::list_instances_handler))
+             .rpc(DomainInstanceService::describe_instance(instance::describe_instance_handler))
+             .rpc(DomainInstanceService::claim_instance(instance::claim_instance_handler))
+             .rpc(DomainInstanceService::release_instance(instance::release_instance_handler))
+             .rpc(DomainInstanceService::add_instance_maintenance(instance::add_instance_maintenance_handler))
+             .rpc(DomainInstanceService::update_instance_maintenance(instance::update_instance_maintenance_handler))
+             .rpc(DomainInstanceService::subscribe_instance_events(instance::subscribe_instance_events_handler));
+  }
+
+  if args.enable_instance_drivers_service {
+    app = app.rpc(DomainInstanceDriverService::set_parameter(instance_driver::set_parameter_handler))
+             .rpc(DomainInstanceDriverService::subscribe_instance_events(instance_driver::subscribe_instance_events_handler))
+  }
+
+  if args.enable_media_service {
+    // TODO: implement
+  }
+
+  if args.enable_tasks_service {
+    // TODO: implement
+  }
+
+  let app = app.layer(TraceLayer::new_for_http().make_span_with(DefaultMakeSpan::default()))
+               .with_state(factory);
+
+  let addr = SocketAddr::from(([127, 0, 0, 1], args.api_port));
   println!("listening on http://{}", addr);
   axum::Server::bind(&addr).serve(app.into_make_service()).await.unwrap();
 

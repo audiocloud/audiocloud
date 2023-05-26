@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use argon2::Argon2;
+use async_nats::Client;
 use axum::extract::FromRequestParts;
 use axum::headers::authorization::{Basic, Bearer};
 use axum::headers::Authorization;
@@ -24,6 +25,7 @@ use crate::security::{app_info_from, decode_and_fetch_token, user_info_from};
 #[derive(Clone)]
 pub struct ServiceContextFactory {
   pub db:         Db,
+  pub nats:       Client,
   pub token_hmac: Hmac<Sha384>,
 }
 
@@ -57,6 +59,19 @@ pub struct ServiceContext {
   pub permissions: HashSet<GlobalPermission>,
   pub task:        Option<TaskContext>,
   pub token_hmac:  Hmac<Sha384>,
+  pub nats:        Client,
+}
+
+impl ServiceContext {
+  pub fn require_global_permissions(&self, permissions: impl Iterator<Item = GlobalPermission>) -> Result<(), RpcError> {
+    for item in permissions {
+      if !self.permissions.contains(&item) {
+        return auth_error(format!("No permission {item:?}"));
+      }
+    }
+
+    Ok(())
+  }
 }
 
 impl ServiceContextFactory {
@@ -65,7 +80,8 @@ impl ServiceContextFactory {
                      principal,
                      permissions,
                      task,
-                     token_hmac: self.token_hmac.clone() }
+                     token_hmac: self.token_hmac.clone(),
+                     nats: self.nats.clone() }
   }
 }
 
