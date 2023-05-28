@@ -5,6 +5,7 @@ use surrealdb::opt::auth::{Namespace, Root};
 use surrealdb::sql::Thing;
 use surrealdb::Surreal;
 
+pub mod instances;
 pub mod security;
 
 #[derive(Debug, Clone)]

@@ -20,6 +20,7 @@ futures = "0.3"
 async-stream = "0.3"
 async-nats = "0.29"
 lazy_static = "1"
+consulrs = "0.1"
 
 [dependencies.clap]
 version = "4"

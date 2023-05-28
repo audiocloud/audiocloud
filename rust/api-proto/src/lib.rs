@@ -1,3 +1,6 @@
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+
 pub use instances::v1::*;
 pub use media::v1::*;
 pub use models::v1::*;
@@ -32,4 +35,10 @@ pub mod security {
   pub mod v1 {
     include!(concat!(env!("OUT_DIR"), "/io.audiocloud.security.v1.rs"));
   }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone, Serialize, Deserialize)]
+pub struct Timestamped<T> {
+  pub value:     T,
+  pub timestamp: DateTime<Utc>,
 }

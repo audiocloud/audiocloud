@@ -22,6 +22,8 @@ pub async fn set_parameter_handler(context: ServiceContext,
                                    -> RpcResult<SetInstanceParameterResponse> {
   context.require_global_permissions([GlobalPermission::InstanceSetParameters].into_iter())?;
 
+  api_proto::instances::v1::DomainInstanceService::
+
   Ok(SetInstanceParameterResponse {})
 }
 

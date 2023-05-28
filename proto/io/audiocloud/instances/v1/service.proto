@@ -20,6 +20,7 @@ service DomainInstanceService {
   rpc AddInstanceMaintenance(AddInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
   rpc UpdateInstanceMaintenance(UpdateInstanceMaintenanceRequest) returns (InstanceMaintenanceDetails);
   rpc SubscribeInstanceEvents(SubscribeInstanceEventsRequest) returns (stream InstanceEvent);
+  rpc SubscribeInstanceSpecs(SubscribeInstanceSpecsRequest) returns (stream InstanceSpecEvent);
 }
 
 service DomainInstanceDriverService {
@@ -45,6 +46,15 @@ message SetInstanceParameterResponse {
 
 message SubscribeInstanceEventsRequest {
   string instance_id = 1;
+}
+
+message SubscribeInstanceSpecsRequest {
+  string host_id = 1;
+}
+
+message InstanceSpecEvent {
+  string instance_id = 1;
+  InstanceSpec spec = 2;
 }
 
 message InstanceDriverEvent {

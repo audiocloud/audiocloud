@@ -6,6 +6,7 @@ use clap::Parser;
 use hmac::digest::KeyInit;
 use hmac::Hmac;
 use tower_http::trace::{DefaultMakeSpan, TraceLayer};
+use tracing_subscriber::filter::{Directive, LevelFilter};
 use tracing_subscriber::prelude::*;
 
 use api_proto::{DomainInstanceDriverService, DomainInstanceService, DomainSecurityService};
@@ -20,16 +21,19 @@ pub mod error;
 pub mod instance;
 pub mod instance_driver;
 pub mod nats;
+pub mod registry;
 pub mod security;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-  let mut args = args::Opts::parse();
-  if args.verbose && args.log.starts_with("info,") {
-    args.log = format!("debug,{}", &args.log[5..]);
+  let args = args::Opts::parse();
+
+  let filter = tracing_subscriber::EnvFilter::from(&args.log);
+  if args.verbose {
+    filter.add_directive(Directive::from(LevelFilter::DEBUG));
   }
 
-  tracing_subscriber::registry().with(tracing_subscriber::EnvFilter::from(&args.log))
+  tracing_subscriber::registry().with(filter)
                                 .with(tracing_subscriber::fmt::layer())
                                 .init();
 
