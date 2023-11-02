@@ -1,0 +1,1 @@
+- only simple pure functions (always return the same output for the same input)
