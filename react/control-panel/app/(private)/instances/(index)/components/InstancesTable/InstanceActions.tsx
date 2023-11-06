@@ -4,8 +4,8 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { IInstance } from '@/types'
-import NewMaintenance from '../../../shared/Modals/NewMaintenance'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuShortcut, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import NewMaintenanceModal from '../../../shared/Modals/NewMaintenance/NewMaintenanceModal'
 
 type Props = {
   instance: IInstance
@@ -17,7 +17,7 @@ const InstanceActions: React.FC<Props> = ({ instance }) => {
   
   return (
     <>
-      <NewMaintenance instance_id={instance.id} open={newMaintenanceOpen} setOpen={setNewMaintenanceOpen} />
+      <NewMaintenanceModal instance_id={instance.id} isOpen={newMaintenanceOpen} setOpen={setNewMaintenanceOpen} />
 
       <DropdownMenu>
         <DropdownMenuTrigger className='p-1 bg-background hover:bg-secondary hover:text-white border hover:border-slate-600 rounded-md'>

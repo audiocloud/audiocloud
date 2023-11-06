@@ -24,9 +24,9 @@ const AudioEngineActionsBar: React.FC<Props> = ({ engine_id }) => {
   return (
     <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-slate-900/70 border-b'>
 
-      <NewMaintenanceModal engine_id={engine_id} isOpen={newMaintenanceOpen} setOpen={setNewMaintenanceOpen} />
-      <ForceRestartAudioEngineModal engine_id={engine_id} isOpen={forceRestartOpen} setOpen={setForceRestartOpen} />
-      <ForceShutdownAudioEngineModal engine_id={engine_id} isOpen={forceShutdownOpen} setOpen={setForceShutdownOpen} />
+      <NewMaintenanceModal            engine_id={engine_id} isOpen={newMaintenanceOpen} setOpen={setNewMaintenanceOpen} />
+      <ForceRestartAudioEngineModal   engine_id={engine_id} isOpen={forceRestartOpen} setOpen={setForceRestartOpen} />
+      <ForceShutdownAudioEngineModal  engine_id={engine_id} isOpen={forceShutdownOpen} setOpen={setForceShutdownOpen} />
 
       <Button
         variant='objectActionButton'

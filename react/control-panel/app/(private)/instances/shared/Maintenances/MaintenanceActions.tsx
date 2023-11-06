@@ -22,7 +22,7 @@ const MaintenanceActions: React.FC<Props> = ({ maintenance }) => {
 
   return (
     <>
-      <div className='hidden group-hover/row:flex flex-col xl:flex-row justify-center items-end gap-2'>
+      <div className='hidden group-hover/row:flex flex-col xl:flex-row justify-end items-end gap-2'>
 
         <Button size='sm' variant='tableButton' onClick={() => setEditModal(true)}>Edit</Button>
 

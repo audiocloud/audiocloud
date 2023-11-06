@@ -4,7 +4,10 @@ import React, { useState } from 'react'
 import { PlusCircleIcon, ArrowPathIcon, ExclamationTriangleIcon, BoltIcon, QuestionMarkCircleIcon, SignalIcon, SignalSlashIcon } from '@heroicons/react/20/solid'
 import { Button } from '@/components/ui/button'
 import { InstancePowerState } from '@/services/domainClient/types'
-import NewMaintenance from '../../shared/Modals/NewMaintenance'
+import NewMaintenanceModal from '../../shared/Modals/NewMaintenance/NewMaintenanceModal'
+import RestartInstanceDriverModal from '../../shared/Modals/RestartInstanceDriverModal'
+import RestartInstanceModal from '../../shared/Modals/RestartInstanceModal'
+import ForceShutdownInstanceModal from '../../shared/Modals/ForceShutdownInstanceModal'
 
 type Props = {
   instance_id: string | undefined,
@@ -16,16 +19,24 @@ const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePo
 
   if (!instance_id) return undefined
 
-  const [newMaintenance, setNewMaintenance] = useState(false)
+  const [newMaintenanceOpen, setNewMaintenanceOpen] = useState(false)
+  const [driverRestartOpen, setDriverRestartOpen] = useState(false)
+  const [forceRestartOpen, setForceRestartOpen] = useState(false)
+  const [forceShutdownOpen, setForceShutdownOpen] = useState(false)
   
   // TO-DO: implement action response status
   
   return (
     <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-slate-900/70 border-b'>
 
+      <NewMaintenanceModal        instance_id={instance_id} isOpen={newMaintenanceOpen} setOpen={setNewMaintenanceOpen} />
+      <RestartInstanceDriverModal instance_id={instance_id} isOpen={driverRestartOpen} setOpen={setDriverRestartOpen} />
+      <RestartInstanceModal       instance_id={instance_id} isOpen={forceRestartOpen} setOpen={setForceRestartOpen} />
+      <ForceShutdownInstanceModal instance_id={instance_id} isOpen={forceShutdownOpen} setOpen={setForceShutdownOpen} handlePower={handlePower} />
+
       <Button
         variant='objectActionButton'
-        onClick={() => setNewMaintenance(true)}
+        onClick={() => setNewMaintenanceOpen(true)}
       >
         <PlusCircleIcon className="h-4 w-4 mr-2" aria-hidden="false" />
         <span>New Maintenance</span>
@@ -33,7 +44,7 @@ const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePo
 
       <Button
         variant='objectActionButton'
-        onClick={() => alert('Restart driver clicked!')}
+        onClick={() => setDriverRestartOpen(true)}
       >
         <ArrowPathIcon className="h-4 w-4 mr-2" aria-hidden="false" />
         <span>Restart Driver</span>
@@ -41,16 +52,16 @@ const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePo
 
       <Button
         variant='objectActionButton'
-        onClick={() => alert('Restart instance clicked!')}
+        onClick={() => setForceRestartOpen(true)}
       >
         <ArrowPathIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-        <span>Restart Instance</span>
+        <span>Force Restart</span>
       </Button>
       
       { powerState === 'on' && (
         <Button
           variant='objectActionButton'
-          onClick={() => handlePower(false)}
+          onClick={() => setForceShutdownOpen(true)}
         >
           <ExclamationTriangleIcon className="h-4 w-4 mr-2" aria-hidden="false" />
           <span>Force Shutdown</span>
@@ -77,8 +88,6 @@ const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePo
           <span>Power state unknown</span>
         </Button>
       )}
-
-      <NewMaintenance instance_id={instance_id} open={newMaintenance} setOpen={setNewMaintenance} />
         
     </div>
   )
