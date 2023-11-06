@@ -3,7 +3,9 @@
 import React, { useState } from 'react'
 import { PlusCircleIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/20/solid'
 import { Button } from '@/components/ui/button'
-import NewMaintenance from '../../shared/Modals/NewMaintenance/NewMaintenanceModal'
+import NewMaintenanceModal from '../../shared/Modals/NewMaintenance/NewMaintenanceModal'
+import ForceRestartAudioEngineModal from '../../shared/Modals/ForceRestartAudioEngineModal'
+import ForceShutdownAudioEngineModal from '../../shared/Modals/ForceShutdownAudioEngineModal'
 
 type Props = {
   engine_id: string | undefined
@@ -13,18 +15,22 @@ const AudioEngineActionsBar: React.FC<Props> = ({ engine_id }) => {
 
   if (!engine_id) return undefined
 
-  const [newMaintenance, setNewMaintenance] = useState(false)
-  // const [restartModal, setRestartModal] = useState(false) // TO-DO: implement
-  // const [shutdownModal, setShutdownModal] = useState(false) // TO-DO: implement
+  const [newMaintenanceOpen, setNewMaintenanceOpen] = useState(false)
+  const [forceRestartOpen, setForceRestartOpen] = useState(false)
+  const [forceShutdownOpen, setForceShutdownOpen] = useState(false)
 
   // TO-DO: implement action response status
 
   return (
     <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-slate-900/70 border-b'>
 
+      <NewMaintenanceModal engine_id={engine_id} isOpen={newMaintenanceOpen} setOpen={setNewMaintenanceOpen} />
+      <ForceRestartAudioEngineModal engine_id={engine_id} isOpen={forceRestartOpen} setOpen={setForceRestartOpen} />
+      <ForceShutdownAudioEngineModal engine_id={engine_id} isOpen={forceShutdownOpen} setOpen={setForceShutdownOpen} />
+
       <Button
         variant='objectActionButton'
-        onClick={() => setNewMaintenance(true)}
+        onClick={() => setNewMaintenanceOpen(true)}
       >
         <PlusCircleIcon className="h-4 w-4 mr-2" aria-hidden="false" />
         <span>New Maintenance</span>
@@ -32,7 +38,7 @@ const AudioEngineActionsBar: React.FC<Props> = ({ engine_id }) => {
 
       <Button
         variant='objectActionButton'
-        onClick={() => alert('Force restart!')}
+        onClick={() => setForceRestartOpen(true)}
       >
         <ArrowPathIcon className="h-4 w-4 mr-2" aria-hidden="false" />
         <span>Force Restart</span>
@@ -40,15 +46,11 @@ const AudioEngineActionsBar: React.FC<Props> = ({ engine_id }) => {
 
       <Button
         variant='objectActionButton'
-        onClick={() => alert('Force shutdown!')}
+        onClick={() => setForceShutdownOpen(true)}
       >
         <ExclamationTriangleIcon className="h-4 w-4 mr-2" aria-hidden="false" />
         <span>Force Shutdown</span>
       </Button>
-
-      <NewMaintenance engine_id={engine_id} open={newMaintenance} setOpen={setNewMaintenance} />
-      {/* <RestartModal engine_id={engine_id} open={restartModal} setOpen={setRestartModal} />
-      <ShutdownModal engine_id={engine_id} open={shutdownModal} setOpen={setShutdownModal} /> */}
 
     </div>
   )

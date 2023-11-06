@@ -21,8 +21,7 @@ const MaintenanceTableRow: React.FC<Props> = ({ maintenance }) => {
       <TableCell><MaintenanceTimestamp value={maintenance.data.start}/></TableCell>
       <TableCell><MaintenanceTimestamp value={maintenance.data.end}/></TableCell>
       <TableCell className='hidden 2xl:table-cell'><MaintenanceDescription content={maintenance.data.body}/></TableCell>
-      <TableCell className='text-right w-fit xl:w-56'><MaintenanceActions maintenance={maintenance} /></TableCell>
-      
+      <TableCell className='text-right w-fit xl:w-64'><MaintenanceActions maintenance={maintenance} /></TableCell>
     </TableRow>
   )
 }
