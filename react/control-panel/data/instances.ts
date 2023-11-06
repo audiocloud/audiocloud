@@ -218,85 +218,85 @@ export const instances: Record<string, IInstance> = {
     maintenance: [
       {
         start: '2023-01-26T10:21:00.001Z',
-        header: 'Weekly checkup #01',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.002Z',
-        header: 'Weekly checkup #02',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.003Z',
-        header: 'Weekly checkup #03',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.004Z',
-        header: 'Weekly checkup #04',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.005Z',
-        header: 'Weekly checkup #05',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.006Z',
-        header: 'Weekly checkup #06',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.007Z',
-        header: 'Weekly checkup #07',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.008Z',
-        header: 'Weekly checkup #08',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.009Z',
-        header: 'Weekly checkup #09',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.010Z',
-        header: 'Weekly checkup #10',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.011Z',
-        header: 'Weekly checkup #11',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.012Z',
-        header: 'Weekly checkup #12',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.013Z',
-        header: 'Weekly checkup #13',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       },
       {
         start: '2023-01-26T10:21:00.014Z',
-        header: 'Weekly checkup #14',
+        header: 'Weekly checkup',
         body: 'Description of maintenance. This can be markdown text.',
         updated_at: '2023-01-24T12:51:00.000Z'
       }
