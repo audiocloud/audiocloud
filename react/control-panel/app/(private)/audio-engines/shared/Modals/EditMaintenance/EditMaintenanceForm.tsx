@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { PencilSquareIcon } from '@heroicons/react/24/outline'
-import { isAfter } from 'date-fns'
+import { isBefore } from 'date-fns'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -96,8 +96,7 @@ const EditMaintenanceForm: React.FC<Props> = ({ maintenance, setOpen }) => {
               <FormItem>
                 <FormLabel>Start</FormLabel>
                 <FormControl>
-                  {/* TO-DO: check if this disable works */}
-                  <Input type='datetime-local' {...field} disabled={isAfter(new Date(field.value), new Date())}/>
+                  <Input type='datetime-local' {...field} disabled={isBefore(new Date(field.value), new Date())}/>
                 </FormControl>
                 <FormMessage />
               </FormItem>
