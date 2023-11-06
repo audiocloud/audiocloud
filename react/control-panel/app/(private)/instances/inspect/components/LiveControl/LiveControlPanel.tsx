@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import debounce from 'lodash.debounce'
 import { defaultStates } from './Faceplates/data/defaultStates'
-import { SetInstanceParameter } from '@/utils/domainClient/types'
-import { InstanceReports } from '@/types'
-import { InstanceParameters, ParameterId } from '@audiocloud/api'
+import { InstancePlayState, SetInstanceParameter } from '@/services/domainClient/types'
+import { InstanceReportsType } from '@/types'
+import { InstanceParameters, InstanceReports, ParameterId } from '@audiocloud/api'
 import { ConversionRules, convertToNumber } from './Faceplates/valueConverters'
 import clonedeep from 'lodash.clonedeep'
 import Btrmkr_ML_Faceplate from './Faceplates/Btrmkr_ML_Faceplate/Btrmkr_ML_Faceplate'
@@ -26,13 +26,15 @@ import Tierra_Gravity_Faceplate from './Faceplates/Tierra_Gravity_Faceplate/Tier
 
 type Props = {
   instance_id: string,
-  connectionStatus: boolean,
-  setInstanceParameters: (instanceId: string, changes: Array<SetInstanceParameter>) => void,
-  reports: InstanceReports
+  liveControlEnabled: boolean,
+  playState: InstancePlayState | 'unknown',
+  reports: InstanceReportsType
 }
 
-const LiveControlPanel: React.FC<Props> = ({ instance_id, connectionStatus, setInstanceParameters, reports }) => {
-  
+const LiveControlPanel: React.FC<Props> = ({ instance_id, liveControlEnabled, playState, reports }) => {
+
+  if (!instance_id) return <div>No instance found.</div>
+
   const [channelIds, setChannelIds] = useState<string[]>(clonedeep(defaultStates[instance_id].channel_ids))
   const [parameters, setParameters] = useState<InstanceParameters>(clonedeep(defaultStates[instance_id].parameters))
   const [wet, setWet] = useState(defaultStates[instance_id].wet)
@@ -59,7 +61,7 @@ const LiveControlPanel: React.FC<Props> = ({ instance_id, connectionStatus, setI
     }
     
     setParameters({...updatedParameters})
-    webSocketParametersHandler(changes)
+    // webSocketParametersHandler(changes)
   }, 100)
 
   // INSTANCE WIDE HANDLER
@@ -70,7 +72,7 @@ const LiveControlPanel: React.FC<Props> = ({ instance_id, connectionStatus, setI
     updatedParameters[parameter][0] = convertToNumber(value, parameter, conversionRules)
     setParameters({...updatedParameters})
 
-    webSocketParametersHandler([{ value: convertToNumber(value, parameter, conversionRules), channel: 0, parameter }])
+    // webSocketParametersHandler([{ value: convertToNumber(value, parameter, conversionRules), channel: 0, parameter }])
   }, 100)
 
   // UI PARAM HANDLER
@@ -99,31 +101,31 @@ const LiveControlPanel: React.FC<Props> = ({ instance_id, connectionStatus, setI
       })
     })
 
-    webSocketParametersHandler([...changes])
+    // webSocketParametersHandler([...changes])
   }
 
   // PURE WEBSOCKET HANDLER
 
-  const webSocketParametersHandler = async (changes: { value: number, channel: number, parameter: string }[]) => {
-    if (connectionStatus) {
-      console.log('WS parameter handler:', changes)
-      setInstanceParameters(instance_id, changes)
-    } else {
-      console.log('WS parameter handler: connection', connectionStatus)
-    }
-  }
+  // const webSocketParametersHandler = async (changes: { value: number, channel: number, parameter: string }[]) => {
+  //   if (connectionStatus) {
+  //     console.log('WS parameter handler:', changes)
+  //     setInstanceParameters(instance_id, changes)
+  //   } else {
+  //     console.log('WS parameter handler: connection', connectionStatus)
+  //   }
+  // }
 
   if (!facePlateDataReady()) return null
 
   return (
-    <div className='bg-gray-100 border-b border-slate-300'>
+    <div className='m-4 border'>
       
       {/* TITLE */}
-      <div className='p-4 text-slate-600 text-sm text-center'>Live Control Panel (Status: {connectionStatus ? 'connected' : 'disconnected'})</div>
+      {/* <div className='p-4 text-slate-600 text-sm text-center'>Live Control Panel (Status: {connectionStatus ? 'connected' : 'disconnected'})</div> */}
 
       {/* FACEPLATE */}
       <div className='px-2 pb-4'>
-        { instance_id === 'btrmkr_ml_1' &&          <Btrmkr_ML_Faceplate        parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
+        {/* { instance_id === 'btrmkr_ml_1' &&          <Btrmkr_ML_Faceplate        parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
         { instance_id === 'distopik_1176_1' &&      <D1176_ADG_Faceplate        parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
         { instance_id === 'distopik_adu_1' &&       <DADU_Faceplate             parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
         { instance_id === 'distopik_bwl_1' &&       <DBWL_Faceplate             parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
@@ -139,7 +141,7 @@ const LiveControlPanel: React.FC<Props> = ({ instance_id, connectionStatus, setI
         { instance_id === 'elysia_xpressor_1' &&    <Elysia_xpressor_Faceplate  parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
         { instance_id === 'gyraf_g24_1' &&          <Gyraf_G24_Faceplate        parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
         { instance_id === 'tierra_gravity_1' &&     <Tierra_Gravity_Faceplate   parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
-        { instance_id === 'neve_1084_1' &&          <Neve_1084_Faceplate        parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> }
+        { instance_id === 'neve_1084_1' &&          <Neve_1084_Faceplate        parameters={parameters} channelIds={channelIds} wet={wet} reports={reports} webSocketDefaultParametersSetter={webSocketDefaultParametersSetter} channelParameterHandler={channelParameterHandler} instanceParameterHandler={instanceParameterHandler} interfaceParameterHandler={interfaceParameterHandler} /> } */}
       </div>
 
       {/*

@@ -5,13 +5,10 @@ import Configuration from './Configuration/Configuration'
 import ObjectNotFoundWarning from '@/components/general/ObjectNotFoundWarning'
 
 type Props = {
-  instance: IInstance | undefined,
-  powerState: "off" | "coolingDown" | "on" | "warmingUp" | "unknown",
-  handlePower: (newPowerState: boolean) => void,
-  className: string
+  instance: IInstance | undefined
 }
 
-const InstanceTab: React.FC<Props> = ({ instance, powerState, handlePower, className }) => {
+const InstanceTab: React.FC<Props> = ({ instance }) => {
   return (
     <div className='p-4 flex flex-wrap gap-4'>
       { instance ? (<>

@@ -9,12 +9,10 @@ import NewMaintenance from '../../shared/Modals/NewMaintenance'
 type Props = {
   instance_id: string | undefined,
   powerState: InstancePowerState | 'unknown',
-  handlePower: (value: boolean) => void,
-  liveControlEnabled: boolean,
-  setLiveControlEnabled: React.Dispatch<React.SetStateAction<boolean>>
+  handlePower: (value: boolean) => void
 }
 
-const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePower, liveControlEnabled, setLiveControlEnabled }) => {
+const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePower }) => {
 
   if (!instance_id) return undefined
 
@@ -76,26 +74,7 @@ const InstanceActionsBar: React.FC<Props> = ({ instance_id, powerState, handlePo
           disabled={true}
         >
           <QuestionMarkCircleIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-          <span>Power state unknow</span>
-        </Button>
-      )}
-
-      { liveControlEnabled ? (
-        <Button
-          variant='objectActionButton'
-          onClick={() => setLiveControlEnabled(false)}
-        >
-          <SignalSlashIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-          <span>Disable live control</span>
-        </Button>
-      ) : (
-        <Button
-          variant='objectActionButton'
-          onClick={() => setLiveControlEnabled(true)}
-          disabled={powerState === 'on'}
-        >
-          <SignalIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-          <span>Enable live control</span>
+          <span>Power state unknown</span>
         </Button>
       )}
 

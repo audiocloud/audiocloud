@@ -1,17 +1,17 @@
-import { useState, useEffect, useMemo } from "react"
-import { createWebSocketClient } from "@/utils/domainClient"
-import { InstanceReports } from "@/types"
-import { InstancePlayState, InstancePowerState, InstanceSpec } from "@/utils/domainClient/types"
-import { ReceiveEvents } from "@/utils/domainClient/shared_socket"
-import { useCookies } from "react-cookie"
+import { useState, useEffect, useMemo } from 'react'
+import { useCookies } from 'react-cookie'
+import { addSeconds } from 'date-fns'
+import { createWebSocketClient } from '@/services/domainClient'
+import { InstanceReportsType } from '@/types'
+import { InstancePlayState, InstancePowerState, InstanceSpec } from '@/services/domainClient/types'
+import { ReceiveEvents } from '@/services/domainClient/shared_socket'
+import { defaultReports } from './LiveControl/Faceplates/data/defaultReports'
 
-export const useWebsocketClient = (
-  ip: string,
-  instance_id: string,
-  setPowerState: React.Dispatch<React.SetStateAction<InstancePowerState | 'unknown'>>,
-  setPlayState: React.Dispatch<React.SetStateAction<InstancePlayState | 'unknown'>>,
-  setReports: React.Dispatch<React.SetStateAction<InstanceReports>>
-) => {
+export const useWebsocketClient = (ip: string, instance_id: string | null) => {
+
+  const [powerState, setPowerState] = useState<InstancePowerState | 'unknown'>('unknown')
+  const [playState, setPlayState] = useState<InstancePlayState | 'unknown'>('unknown')
+  const [reports, setReports] = useState<InstanceReportsType>({})
 
   const [connectionStatus, setConnectionStatus] = useState(false)
   const [cookies, setCookie, removeCookie] = useCookies(['token'])
@@ -56,9 +56,9 @@ export const useWebsocketClient = (
   }, [ip])
 
   useEffect(() => {
-    if (connectionStatus) ws.sendEvents.subscribeToInstanceEvents(instance_id)
+    if (connectionStatus && instance_id) ws.sendEvents.subscribeToInstanceEvents(instance_id)
     return () => {
-      if (connectionStatus) ws.sendEvents.unsubscribeFromInstanceEvents(instance_id)
+      if (connectionStatus && instance_id) ws.sendEvents.unsubscribeFromInstanceEvents(instance_id)
     }
   }, [connectionStatus])
 
@@ -69,5 +69,47 @@ export const useWebsocketClient = (
     }
   }, [ws])
 
-  return { connectionStatus, ws }
+  useEffect(() => {
+    if (connectionStatus && instance_id) {
+      setPowerState('unknown')
+      setPlayState('unknown')
+      setReports({...defaultReports[instance_id]})
+    }
+  }, [connectionStatus])
+
+  const handlePower = (newPowerState: boolean) => {
+    if (instance_id) {
+      if (newPowerState)  setPowerState('on')
+      else                setPowerState('off')
+  
+      console.log(`Setting ${instance_id} power to: ${newPowerState}`)
+      
+      ws.sendEvents.setInstancePowerControl(
+        instance_id,
+        {
+          desired: newPowerState ? 'on' : 'off',
+          until: addSeconds(new Date(), 10)
+        }
+      )
+    }
+  }
+
+  const handlePlay = (newPlayState: boolean) => {
+    if (instance_id) {
+      if (newPlayState) setPlayState({ playing: { duration: 10, play_id: 123 }})
+      else              setPlayState('idle')
+  
+      console.log(`Setting ${instance_id} play to: ${newPlayState}`)
+  
+      ws.sendEvents.setInstancePlayControl(
+        instance_id,
+        {
+          desired: newPlayState ? { play: { duration: 10, play_id: 123 }} : 'stop',
+          until: addSeconds(new Date(), 10)
+        }
+      )
+    }
+  }
+
+  return { connectionStatus, ws, powerState, handlePower, playState, handlePlay, reports }
 }

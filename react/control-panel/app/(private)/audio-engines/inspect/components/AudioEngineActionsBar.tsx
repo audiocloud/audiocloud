@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { PlusCircleIcon, ArrowPathIcon, ExclamationTriangleIcon } from '@heroicons/react/20/solid'
 import { Button } from '@/components/ui/button'
-import NewMaintenance from '../../shared/Modals/NewMaintenance'
+import NewMaintenance from '../../shared/Modals/NewMaintenance/NewMaintenanceModal'
 
 type Props = {
   engine_id: string | undefined

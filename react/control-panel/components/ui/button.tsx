@@ -9,19 +9,26 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        default:
+          "bg-primary text-primary-foreground hover:bg-primary/90",
+        emerald:
+          "bg-emerald-800 text-white hover:bg-emerald-800/80 active:bg-emerald-800/60",
+        warning:
+          "bg-yellow-700 text-white hover:bg-yellow-700/80 active:bg-yellow-700/60",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
         outline:
           "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-        tableButton: "bg-background hover:bg-secondary text-slate-300 hover:text-white tracking-wide border border-transparent group-hover/row:border-slate-600",
-        // objectActionButton: "bg-primary-foreground hover:bg-secondary text-slate-300 hover:text-white tracking-wide border border-slate-800 hover:border-slate-600",
-        // objectActionButton: "bg-background hover:bg-secondary text-slate-300 hover:text-white tracking-wide border border-slate-800 hover:border-slate-600",
-        objectActionButton: "bg-secondary hover:bg-secondary/50 text-slate-300 hover:text-white tracking-wide",
+        ghost:
+          "hover:bg-accent hover:text-accent-foreground",
+        link:
+          "text-primary underline-offset-4 hover:underline",
+        tableButton:
+          "bg-background hover:bg-secondary text-slate-300 hover:text-white tracking-wide border border-transparent group-hover/row:border-slate-600",
+        objectActionButton:
+          "bg-secondary hover:bg-secondary/50 text-slate-300 hover:text-white tracking-wide",
       },
       size: {
         default: "h-10 px-4 py-2",

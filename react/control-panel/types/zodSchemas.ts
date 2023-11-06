@@ -14,3 +14,24 @@ export const LoginFormSchema = z.object({
   id: LoginIDSchema,
   password: LoginPasswordSchema
 }).strict()
+
+export const NewAudioEngineMaintenanceSchema = z.object({
+  engine_id: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1)
+}).strict()
+
+export const ExtendMaintenanceSchema = z.object({
+  engine_id: z.string().min(1),
+  endTime: z.string().min(1)
+}).strict()
+
+export const NewInstanceMaintenanceSchema = z.object({
+  instance_id: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string().min(1),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1)
+}).strict()

@@ -1,14 +1,11 @@
-'use client'
-
-import React, { useState } from 'react'
+import React from 'react'
 import { TableCell, TableRow } from '@/components/ui/table'
 import MaintenanceTypePill from './MaintenanceTypePill'
+import AudioEngineButtonLink from '@/components/general/AudioEngineButtonLink'
 import MaintenanceTimestamp from './MaintenanceTimestamp'
 import MaintenanceDescription from './MaintenanceDescription'
 import MaintenanceActions from './MaintenanceActions'
 import { IAudioEngineMaintenance } from '@/types'
-import EditMaintenance from '../Modals/EditMaintenance'
-import AudioEngineButtonLink from '@/components/general/AudioEngineButtonLink'
 
 type Props = {
   maintenance: IAudioEngineMaintenance
@@ -16,7 +13,6 @@ type Props = {
 
 const MaintenanceTableRow: React.FC<Props> = ({ maintenance }) => {
 
-  const [editModal, setEditModal] = useState(false)
   
   return (
     <TableRow className='group/row'>
@@ -25,13 +21,8 @@ const MaintenanceTableRow: React.FC<Props> = ({ maintenance }) => {
       <TableCell><MaintenanceTimestamp value={maintenance.data.start}/></TableCell>
       <TableCell><MaintenanceTimestamp value={maintenance.data.end}/></TableCell>
       <TableCell className='hidden 2xl:table-cell'><MaintenanceDescription content={maintenance.data.body}/></TableCell>
-      <TableCell className='text-right w-fit xl:w-56'><MaintenanceActions setEditModal={setEditModal} /></TableCell>
+      <TableCell className='text-right w-fit xl:w-56'><MaintenanceActions maintenance={maintenance} /></TableCell>
       
-      <EditMaintenance
-        maintenance={maintenance}
-        open={editModal}
-        setOpen={setEditModal}
-      />
     </TableRow>
   )
 }
