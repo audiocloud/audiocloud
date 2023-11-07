@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import TopBar from '@/components/layout/page/TopBar/TopBar'
 import PageContent from '@/components/layout/page/PageContent'
-import Statistics from './components/Statistics/Statistics'
 import MediaTable from './components/MediaTable/MediaTable'
+import Statistics from './components/Statistics/Statistics'
 
 const MediaPage: React.FC = () => {
 

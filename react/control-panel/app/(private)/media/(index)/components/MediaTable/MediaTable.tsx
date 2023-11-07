@@ -3,7 +3,7 @@ import { media } from '@/data/media'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import MediaButtonLink from '@/components/general/MediaButtonLink'
 import MediaDownloadStatus from '../../../shared/MediaDownloadStatus'
-import MediaUploadStatus from '../../../shared/MediaUploadStatus '
+import MediaUploadStatus from '../../../shared/MediaUploadStatus'
 import MediaActions from './MediaActions'
 import { getDownloadStatus, getUploadStatus } from '../../../shared/getMediaStatuses'
 
@@ -14,7 +14,7 @@ const MediaTable: React.FC = () => {
   return (
     <Table>
         
-      { !mediaList.length && <TableCaption>No audio engines found.</TableCaption> }
+      { !mediaList.length && <TableCaption>No media objects found.</TableCaption> }
 
       <TableHeader>
         <TableRow>
@@ -36,7 +36,7 @@ const MediaTable: React.FC = () => {
         { mediaList.map((media) => (
           <TableRow className='group/row' key={media.id}>
             <TableCell><MediaDownloadStatus status={getDownloadStatus(media.download)} /></TableCell>
-            <TableCell><MediaUploadStatus status={getUploadStatus(media.upload)} /></TableCell> 
+            <TableCell><MediaUploadStatus status={getUploadStatus(media.upload)} /></TableCell>
             <TableCell><MediaButtonLink media_id={media.id}/></TableCell>
             <TableCell>{ media.app_id }</TableCell>
             <TableCell>{ media.metadata?.channels ?? '' }</TableCell>
