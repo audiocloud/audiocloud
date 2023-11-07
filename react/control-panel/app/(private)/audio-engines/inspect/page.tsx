@@ -7,13 +7,13 @@ import TopBar from '@/components/layout/page/TopBar/TopBar'
 import PageContent from '@/components/layout/page/PageContent'
 import AudioEngineActionsBar from './components/AudioEngineActionsBar'
 import EngineTab from './components/EngineTab/EngineTab'
+import AudioEngineTasksTable from './components/AudioEngineTasksTable/AudioEngineTasksTable'
 import AudioEnginesMaintenancesTable from '../shared/Maintenances/AudioEngineMaintenancesTable'
 import Statistics from './components/Statistics/Statistics'
 
 // TO-DO: real data
 import { audio_engines } from '@/data/audio-engines'
 import maintenances from '../shared/Maintenances/maintenances' 
-import AudioEngineTasksTable from './components/AudioEngineTasksTable/AudioEngineTasksTable'
 
 const AudioEnginePage: React.FC = () => {
 

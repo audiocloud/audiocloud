@@ -3,18 +3,18 @@ import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 
 type Props = {
-  engine_id: string
+  media_id: string
 }
 
-const AudioEngineButtonLink: React.FC<Props> = ({ engine_id }) => {
+const MediaButtonLink: React.FC<Props> = ({ media_id }) => {
   return (
     <Link
-      href={`/audio-engines/inspect?engine_id=${engine_id}&tab=engine`}
+      href={`/media/inspect?media_id=${media_id}&tab=media`}
       className={buttonVariants({ variant: 'tableButton', size: 'sm'})}
     >
-      { engine_id }
+      { media_id }
     </Link>
   )
 }
 
-export default AudioEngineButtonLink
+export default MediaButtonLink

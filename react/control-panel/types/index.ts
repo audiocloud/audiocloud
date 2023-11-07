@@ -71,6 +71,8 @@ export interface IMediaMetadata {
   channels: number,
   sample_rate: number,
   bit_depth: number,
+  size: number,
+  format: 'flac' | 'wav' | 'mp3'
 }
 
 export interface IMediaDownload {
@@ -89,6 +91,20 @@ export interface IMediaUpload {
   attempts: number,
   error?: string,
   progress: number,
+}
+
+export type MediaDownloadUploadStatusType = {
+  id: 'undefined',
+  label: 'Idle'
+} | {
+  id: 'error',
+  label: 'Failed'
+} | {
+  id: 'in-progress',
+  label: 'In-progress'
+} | {
+  id: 'complete',
+  label: 'Complete'
 }
 
 export interface ITasksService {

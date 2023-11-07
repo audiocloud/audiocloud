@@ -8,7 +8,9 @@ export const media: Record<string, IMedia> = {
       length: 60,
       channels: 2,
       sample_rate: 48000,
-      bit_depth: 24
+      bit_depth: 24,
+      size: 22000000,
+      format: 'wav'
     },
     upload: {
       url: 'some_upload_url_that_is_really_really_long_longer_the_longest_wow_this_is_actually_long_now_huh',
@@ -25,7 +27,9 @@ export const media: Record<string, IMedia> = {
       length: 60,
       channels: 2,
       sample_rate: 48000,
-      bit_depth: 24
+      bit_depth: 24,
+      size: 22000000,
+      format: 'wav'
     },
     upload: {
       url: 'some_upload_url_that_is_really_really_long_longer_the_longest_wow_this_is_actually_long_now_huh',
@@ -43,7 +47,9 @@ export const media: Record<string, IMedia> = {
       length: 60,
       channels: 2,
       sample_rate: 48000,
-      bit_depth: 24
+      bit_depth: 24,
+      size: 22000000,
+      format: 'wav'
     },
     download: {
       url: 'some_download_url_that_is_really_really_long_longer_the_longest_wow_this_is_actually_long_now_huh',
