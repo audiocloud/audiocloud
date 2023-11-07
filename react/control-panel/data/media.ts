@@ -10,7 +10,8 @@ export const media: Record<string, IMedia> = {
       sample_rate: 48000,
       bit_depth: 24,
       size: 22000000,
-      format: 'wav'
+      format: 'wav',
+      codec: 'pcm_s24le'
     },
     upload: {
       url: 'some_upload_url_that_is_really_really_long_longer_the_longest_wow_this_is_actually_long_now_huh',
@@ -29,7 +30,8 @@ export const media: Record<string, IMedia> = {
       sample_rate: 48000,
       bit_depth: 24,
       size: 22000000,
-      format: 'wav'
+      format: 'wav',
+      codec: 'pcm_s24le'
     },
     upload: {
       url: 'some_upload_url_that_is_really_really_long_longer_the_longest_wow_this_is_actually_long_now_huh',
@@ -49,7 +51,8 @@ export const media: Record<string, IMedia> = {
       sample_rate: 48000,
       bit_depth: 24,
       size: 22000000,
-      format: 'wav'
+      format: 'wav',
+      codec: 'pcm_s24le'
     },
     download: {
       url: 'some_download_url_that_is_really_really_long_longer_the_longest_wow_this_is_actually_long_now_huh',

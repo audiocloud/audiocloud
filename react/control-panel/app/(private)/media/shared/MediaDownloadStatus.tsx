@@ -6,7 +6,7 @@ type Props = {
   status: MediaDownloadUploadStatusType
 }
 
-const MediaUploadStatus: React.FC<Props> = ({ status }) => {
+const MediaDownloadStatus: React.FC<Props> = ({ status }) => {
   return (
     <div className='flex items-center gap-3'>
       <div className={cn(
@@ -17,9 +17,10 @@ const MediaUploadStatus: React.FC<Props> = ({ status }) => {
         status.id === 'complete' && 'bg-green-800'
       )}/>
 
-      <span>{ status.label }</span>
+      <span className='whitespace-nowrap'>{ status.label }</span>
     </div>
   )
 }
 
-export default MediaUploadStatus
+export default MediaDownloadStatus
+

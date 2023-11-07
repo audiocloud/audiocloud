@@ -41,7 +41,7 @@ const MediaObjectPage: React.FC = () => {
       <PageContent>
         <MediaObjectActionsBar media_id={media_object?.id} />
 
-        <TabsContent className='mt-0' value='object'>
+        <TabsContent className='mt-0' value='media'>
           <MediaObjectTab media={media_object} />
         </TabsContent>
 

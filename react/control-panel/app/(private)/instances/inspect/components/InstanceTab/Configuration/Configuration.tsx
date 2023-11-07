@@ -1,7 +1,7 @@
 import React from 'react'
 import { IInstance } from '@/types'
 import CustomCard from '@/components/general/Card/CustomCard'
-import NumberInput from './NumberInput'
+import NumberInput from '@/components/general/Card/NumberInput'
 import CardLine from '@/components/general/Card/CardLine'
 import MediaConfigModal from './MediaConfigModal'
 

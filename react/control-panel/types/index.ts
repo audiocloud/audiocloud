@@ -72,7 +72,8 @@ export interface IMediaMetadata {
   sample_rate: number,
   bit_depth: number,
   size: number,
-  format: 'flac' | 'wav' | 'mp3'
+  format: 'flac' | 'wav' | 'mp3',
+  codec: 'flac' | 'pcm_s16le' | 'pcm_s16be' | 'pcm_s24le' | 'pcm_s32le' | 'pcm_f32le' | 'mp3',
 }
 
 export interface IMediaDownload {
@@ -101,7 +102,7 @@ export type MediaDownloadUploadStatusType = {
   label: 'Failed'
 } | {
   id: 'in-progress',
-  label: 'In-progress'
+  label: 'In progress'
 } | {
   id: 'complete',
   label: 'Complete'

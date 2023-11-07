@@ -1,23 +1,26 @@
+'use client'
+
 import React, { useState } from 'react'
 import { CheckIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 type Props = {
-  value: number
+  value: string
 }
 
-const NumberInput: React.FC<Props> = (props) => {
+const TextInput: React.FC<Props> = (props) => {
 
   const [value, setValue] = useState(props.value)
 
   return (
-    <div className='flex justify-center items-center gap-2'>
+    <div className='flex justify-center items-center gap-0.5'>
       { props.value !== value && (
         <>
           <Button
             type='button'
             variant='objectActionButton'
+            className='rounded-r-none'
             size='smallIcon'
             onClick={() => alert('Updating!')}
           >
@@ -26,6 +29,7 @@ const NumberInput: React.FC<Props> = (props) => {
           <Button
             type='button'
             variant='objectActionButton'
+            className='rounded-l-none'
             size='smallIcon'
             onClick={() => setValue(props.value)}
           >
@@ -34,10 +38,10 @@ const NumberInput: React.FC<Props> = (props) => {
         </>
       )}
       <Input
-        type='number'
-        className='w-24'
+        type='text'
+        className='ml-1 w-44'
         value={value}
-        onChange={(e) => setValue(parseInt(e.target.value))}
+        onChange={(e) => setValue(e.target.value)}
         // TO-DO: disable this while updating
         disabled={false}
       />
@@ -45,4 +49,4 @@ const NumberInput: React.FC<Props> = (props) => {
   )
 }
 
-export default NumberInput
+export default TextInput
