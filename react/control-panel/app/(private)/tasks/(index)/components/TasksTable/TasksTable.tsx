@@ -3,7 +3,7 @@ import { tasks } from '@/data/tasks'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import TaskButtonLink from '@/components/general/ButtonLinks/TaskButtonLink'
 import TaskActions from './TaskActions'
-import TaskStatus from './TaskStatus'
+import TaskStatus from '../../../shared/TaskStatus'
 
 const TasksTable: React.FC = () => {
 

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ExclamationTriangleIcon, TrashIcon, PencilSquareIcon } from '@heroicons/react/20/solid'
+import { TrashIcon, PencilSquareIcon, PlayIcon, StopIcon, ArrowPathIcon } from '@heroicons/react/20/solid'
 import { Button } from '@/components/ui/button'
 import ManageTaskAPIKeyModal from '../../shared/Modals/ManageTaskAPIKeyModal'
 import RestartTaskModal from '../../shared/Modals/RestartTaskModal'
@@ -30,6 +30,22 @@ const TasksActionsBar: React.FC<Props> = ({ task_id }) => {
 
       <Button
         variant='objectActionButton'
+        onClick={() => alert('Force play!')}
+      >
+        <PlayIcon className="h-4 w-4 mr-2" aria-hidden="false" />
+        <span>Force Play</span>
+      </Button>
+
+      <Button
+        variant='objectActionButton'
+        onClick={() => alert('Force stop!')}
+      >
+        <StopIcon className="h-4 w-4 mr-2" aria-hidden="false" />
+        <span>Force Stop</span>
+      </Button>
+
+      <Button
+        variant='objectActionButton'
         onClick={() => setManageAPIKeysOpen(true)}
       >
         <PencilSquareIcon className="h-4 w-4 mr-2" aria-hidden="false" />
@@ -40,8 +56,8 @@ const TasksActionsBar: React.FC<Props> = ({ task_id }) => {
         variant='objectActionButton'
         onClick={() => setRestartTaskOpen(true)}
       >
-        <ExclamationTriangleIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-        <span>Force Restart</span>
+        <ArrowPathIcon className="h-4 w-4 mr-2" aria-hidden="false" />
+        <span>Restart</span>
       </Button>
 
       <Button
@@ -49,7 +65,7 @@ const TasksActionsBar: React.FC<Props> = ({ task_id }) => {
         onClick={() => setDeleteTaskOpen(true)}
       >
         <TrashIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-        <span>Force Delete</span>
+        <span>Delete</span>
       </Button>
         
     </div>
