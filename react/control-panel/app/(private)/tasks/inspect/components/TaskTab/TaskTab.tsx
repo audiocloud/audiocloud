@@ -1,8 +1,11 @@
 import React from 'react'
+import { ITask } from '@/types'
 
-type Props = {}
+type Props = {
+  task: ITask | undefined
+}
 
-const TaskTab: React.FC = (props: Props) => {
+const TaskTab: React.FC<Props> = ({ task }) => {
   return (
     <div>TaskTab</div>
   )

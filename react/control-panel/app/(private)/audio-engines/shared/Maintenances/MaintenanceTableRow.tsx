@@ -1,7 +1,7 @@
 import React from 'react'
 import { TableCell, TableRow } from '@/components/ui/table'
 import MaintenanceTypePill from './MaintenanceTypePill'
-import AudioEngineButtonLink from '@/components/general/AudioEngineButtonLink'
+import AudioEngineButtonLink from '@/components/general/ButtonLinks/AudioEngineButtonLink'
 import MaintenanceTimestamp from './MaintenanceTimestamp'
 import MaintenanceDescription from './MaintenanceDescription'
 import MaintenanceActions from './MaintenanceActions'

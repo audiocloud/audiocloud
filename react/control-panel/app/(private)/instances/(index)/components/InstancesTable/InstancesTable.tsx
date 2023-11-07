@@ -2,7 +2,7 @@ import React from 'react'
 import { instances } from '@/data/instances'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import InstanceStatus from './InstanceStatus'
-import InstanceButtonLink from '@/components/general/InstanceButtonLink'
+import InstanceButtonLink from '@/components/general/ButtonLinks/InstanceButtonLink'
 import InstanceActions from './InstanceActions'
 
 const InstancesTable: React.FC = () => {

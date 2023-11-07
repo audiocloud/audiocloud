@@ -1,16 +1,12 @@
 import React from 'react'
-import { Task } from '@/types'
+import { ITask } from '@/types'
 import classnames from 'classnames'
-import capitalize from 'lodash.capitalize'
-import { format } from 'date-fns'
-import Widget from '@/components/General/Widgets/Widget'
 
 type Props = {
-  task: Task,
-  className: string
+  task: ITask
 }
 
-const Info: React.FC<Props> = ({ task, className }) => {
+const Info: React.FC<Props> = ({ task }) => {
   return (
     <Widget title={'Info'} className={`${className} text-slate-600 text-sm`}>
 

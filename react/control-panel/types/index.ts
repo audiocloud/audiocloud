@@ -125,7 +125,7 @@ export interface ITask {
   tracks: TaskTrackType[],
 }
 
-export type TaskStatusType = string
+export type TaskStatusType = 'queued' | 'running' | 'complete' | 'error'
 export type TaskNodeType = { id: string }
 export type TaskMixerType = { id: string }
 export type TaskTrackType = { id: string }

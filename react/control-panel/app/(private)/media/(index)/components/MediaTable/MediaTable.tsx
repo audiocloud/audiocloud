@@ -1,7 +1,7 @@
 import React from 'react'
 import { media } from '@/data/media'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import MediaButtonLink from '@/components/general/MediaButtonLink'
+import MediaButtonLink from '@/components/general/ButtonLinks/MediaButtonLink'
 import MediaDownloadStatus from '../../../shared/MediaDownloadStatus'
 import MediaUploadStatus from '../../../shared/MediaUploadStatus'
 import MediaActions from './MediaActions'

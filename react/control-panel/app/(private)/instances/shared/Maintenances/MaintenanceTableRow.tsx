@@ -1,7 +1,7 @@
 import React from 'react'
 import { TableCell, TableRow } from '@/components/ui/table'
 import MaintenanceTypePill from './MaintenanceTypePill'
-import InstanceButtonLink from '@/components/general/InstanceButtonLink'
+import InstanceButtonLink from '@/components/general/ButtonLinks/InstanceButtonLink'
 import MaintenanceTimestamp from './MaintenanceTimestamp'
 import MaintenanceDescription from './MaintenanceDescription'
 import MaintenanceActions from './MaintenanceActions'

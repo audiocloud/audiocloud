@@ -6,7 +6,7 @@ export const tasks: Record<string, ITask> = {
     app_id: 'tape_cloud',
     start: '2011-01-24T19:45:00.000Z',
     end: '2011-01-24T19:48:00.000Z',
-    status: 'some_status',
+    status: 'queued',
     nodes: [
       { id: 'node-id-0' }
     ],
@@ -22,7 +22,7 @@ export const tasks: Record<string, ITask> = {
     app_id: 'tape_cloud',
     start: '2011-01-24T19:49:00.000Z',
     end: '2011-01-24T19:51:00.000Z',
-    status: 'some_status',
+    status: 'running',
     nodes: [
       { id: 'node-id-1' }
     ],

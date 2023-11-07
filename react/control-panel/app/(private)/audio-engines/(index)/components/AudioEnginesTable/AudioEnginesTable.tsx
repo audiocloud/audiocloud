@@ -2,7 +2,7 @@ import React from 'react'
 import { audio_engines } from '@/data/audio-engines'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import AudioEngineStatus from './AudioEngineStatus'
-import AudioEngineButtonLink from '@/components/general/AudioEngineButtonLink'
+import AudioEngineButtonLink from '@/components/general/ButtonLinks/AudioEngineButtonLink'
 import AudioEngineActions from './AudioEngineActions'
 
 const AudioEnginesTable: React.FC = () => {
