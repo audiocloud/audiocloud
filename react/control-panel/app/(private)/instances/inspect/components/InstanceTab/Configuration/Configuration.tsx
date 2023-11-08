@@ -4,6 +4,7 @@ import CustomCard from '@/components/general/Card/CustomCard'
 import NumberInput from '@/components/general/Card/NumberInput'
 import CardLine from '@/components/general/Card/CardLine'
 import MediaConfigModal from './MediaConfigModal'
+import ConfigDropdown from '@/components/general/Card/ConfigDropdown'
 
 type Props = {
   instance: IInstance
@@ -49,6 +50,15 @@ const ConfigurationContent: React.FC<Props> = ({ instance }) => {
         <CardLine
           label='Driver attachment'
           item={instance.driver_attachment_url || 'no attachment'}
+        />
+
+        <CardLine
+          label='Config Dropdown Test'
+          item={<ConfigDropdown label='Select' options={[
+            { label: 'Option 1', value: '1' },
+            { label: 'Option 2', value: '2' },
+            { label: 'Option 3', value: '3' }
+          ]}/>}
         />
 
       </div>
