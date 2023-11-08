@@ -120,15 +120,24 @@ export interface ITask {
   id: string,
   user_id?: string,
   status: TaskStatusType,
-  nodes: TaskNodeType[],
-  mixers: TaskMixerType[],
-  tracks: TaskTrackType[],
+  nodes: ITaskNode[],
+  mixers: ITaskMixer[],
+  tracks: ITaskTrack[],
 }
 
 export type TaskStatusType = 'queued' | 'running' | 'complete' | 'error'
-export type TaskNodeType = { id: string }
-export type TaskMixerType = { id: string }
-export type TaskTrackType = { id: string }
+
+export interface ITaskNode {
+  id: string
+}
+
+export interface ITaskMixer {
+  id: string
+}
+
+export interface ITaskTrack {
+  id: string
+}
 
 export type InstanceStatusType = 'online' | 'offline'
 

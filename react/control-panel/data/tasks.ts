@@ -8,13 +8,19 @@ export const tasks: Record<string, ITask> = {
     end: '2011-01-24T19:48:00.000Z',
     status: 'queued',
     nodes: [
-      { id: 'node-id-0' }
+      {
+        id: 'node-id-0'
+      }
     ],
     mixers: [
-      { id: 'mixer-id-0' }
+      {
+        id: 'mixer-id-0'
+      }
     ],
     tracks: [
-      { id: 'track-id-0' }
+      {
+        id: 'track-id-0'
+      }
     ],
   },
   '1': {
@@ -24,13 +30,19 @@ export const tasks: Record<string, ITask> = {
     end: '2011-01-24T19:51:00.000Z',
     status: 'running',
     nodes: [
-      { id: 'node-id-1' }
+      {
+        id: 'node-id-1'
+      }
     ],
     mixers: [
-      { id: 'mixer-id-1' }
+      {
+        id: 'mixer-id-1'
+      }
     ],
     tracks: [
-      { id: 'track-id-1' }
+      {
+        id: 'track-id-1'
+      }
     ],
   },
   '2': {
@@ -40,13 +52,19 @@ export const tasks: Record<string, ITask> = {
     end: '2011-01-24T19:53:00.000Z',
     status: 'error',
     nodes: [
-      { id: 'node-id-2' }
+      {
+        id: 'node-id-2'
+      }
     ],
     mixers: [
-      { id: 'mixer-id-2' }
+      {
+        id: 'mixer-id-2'
+      }
     ],
     tracks: [
-      { id: 'track-id-2' }
+      {
+        id: 'track-id-2'
+      }
     ],
   }
 }

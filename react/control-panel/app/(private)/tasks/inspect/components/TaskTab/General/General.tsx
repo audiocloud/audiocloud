@@ -8,7 +8,7 @@ type Props = {
   task: ITask
 }
 
-const Info: React.FC<Props> = ({ task }) => {
+const General: React.FC<Props> = ({ task }) => {
   return (
     <CustomCard label='General' className='w-[400px]'>
       <CardLine label='Status'      item={<TaskStatus status={task.status}/>}/>
@@ -20,4 +20,4 @@ const Info: React.FC<Props> = ({ task }) => {
   )
 }
 
-export default Info
+export default General

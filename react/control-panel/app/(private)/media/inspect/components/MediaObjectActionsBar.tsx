@@ -39,7 +39,7 @@ const MediaObjectActionsBar: React.FC<Props> = ({ media_id }) => {
         onClick={() => setRetryUploadOpen(true)}
       >
         <ArrowUpTrayIcon className="h-4 w-4 mr-2" aria-hidden="false" />
-        <span>Retry Upload (S3) Restart</span>
+        <span>Retry Upload (S3)</span>
       </Button>
 
       <Button
