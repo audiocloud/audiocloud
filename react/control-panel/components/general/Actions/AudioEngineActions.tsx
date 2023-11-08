@@ -5,9 +5,9 @@ import Link from 'next/link'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import { IAudioEngine } from '@/types'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import NewMaintenance from '../../../shared/Modals/NewMaintenance/NewMaintenanceModal'
-import ForceRestartAudioEngineModal from '../../../shared/Modals/ForceRestartAudioEngineModal'
-import ForceShutdownAudioEngineModal from '../../../shared/Modals/ForceShutdownAudioEngineModal'
+import NewMaintenance from '../../../app/(private)/audio-engines/shared/Modals/NewMaintenance/NewMaintenanceModal'
+import ForceRestartAudioEngineModal from '../../../app/(private)/audio-engines/shared/Modals/ForceRestartAudioEngineModal'
+import ForceShutdownAudioEngineModal from '../../../app/(private)/audio-engines/shared/Modals/ForceShutdownAudioEngineModal'
 
 type Props = {
   audio_engine: IAudioEngine
