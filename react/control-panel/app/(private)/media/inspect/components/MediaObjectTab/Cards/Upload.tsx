@@ -14,8 +14,8 @@ type Props = {
 const Upload: React.FC<Props> = ({ upload }) => {
   return (
     <CustomCard label='Upload' className='w-[400px]'>
-      
       <div className='w-full flex flex-col justify-center items-center gap-2'>
+
         <CardLine label='Status' item={<MediaDownloadStatus status={getUploadStatus(upload)} />} />
 
         { upload && (
@@ -28,8 +28,8 @@ const Upload: React.FC<Props> = ({ upload }) => {
             <CardLine label='Context'         item={<UploadContextModal originalContext={JSON.stringify(upload.context) ?? ''}/>} />
           </>
         )}
+        
       </div>
-
     </CustomCard>
   )
 }

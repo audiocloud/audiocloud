@@ -13,8 +13,8 @@ const ConfigurationContent: React.FC<Props> = ({ instance }) => {
 
   return (
     <CustomCard label='Configuration' className='w-[400px]'>
-
       <div className='w-full flex flex-col justify-center items-center gap-2'>
+        
         { instance.media_config !== undefined && (
           <CardLine
             label='Media configuration'
@@ -52,7 +52,6 @@ const ConfigurationContent: React.FC<Props> = ({ instance }) => {
         />
 
       </div>
-
     </CustomCard>
   )
 }

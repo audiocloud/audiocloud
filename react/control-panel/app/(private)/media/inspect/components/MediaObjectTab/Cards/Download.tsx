@@ -14,8 +14,8 @@ type Props = {
 const Download: React.FC<Props> = ({ download }) => {
   return (
     <CustomCard label='Download' className='w-[400px]'>
+      <div className='w-full flex flex-col justify-start items-center gap-2'>
 
-      <div className='w-full flex flex-col justify-center items-center gap-2'>
         <CardLine label='Status' item={<MediaDownloadStatus status={getDownloadStatus(download)} />} />
 
         { download && (
@@ -28,8 +28,8 @@ const Download: React.FC<Props> = ({ download }) => {
             <CardLine label='Context'     item={<DownloadContextModal originalContext={JSON.stringify(download.context) ?? ''}/>} />
           </>
         )}
-      </div>
 
+      </div>
     </CustomCard>
   )
 }
