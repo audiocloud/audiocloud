@@ -5,7 +5,7 @@ export interface Domain {
   audio_engines: IAudioEngine[],
   media_service: IMediaService,
   tasks_service: ITasksService,
-  instances: IInstance[],
+  devices: IDevice[],
   drivers: string[],
 }
 
@@ -139,14 +139,14 @@ export interface ITaskTrack {
   id: string
 }
 
-export type InstanceStatusType = 'online' | 'offline'
+export type DeviceStatusType = 'online' | 'offline'
 
-export interface IInstance {
+export interface IDevice {
   id: string,
   model_id: string,
   engine_id: string,
   driver_id: string,
-  status: InstanceStatusType,
+  status: DeviceStatusType,
   last_seen: string,
   engine_input_at: number,
   engine_output_at: number,
@@ -156,18 +156,18 @@ export interface IInstance {
   maintenance: IMaintenanceInfo[],
 }
 
-export interface IInstanceParametersConfig {
+export interface IDeviceParametersConfig {
   channel_ids: string[],
   parameters: InstanceParameters,
   wet: number
 }
 
-export type InstanceReportsType = Record<string, (string | number | boolean)[]>
+export type DeviceReportsType = Record<string, (string | number | boolean)[]>
 
 export interface IPowerConfig {
   warm_up_delay_ms: number, // how long to wait after powering on before considered fully warmed up
   cool_down_delay_ms: number, // how long to wait after shutting down before considered fully powered off (do not power on before cooldown is complete!)
-  idle_shutdown_timeout_ms: number, // after what time of no tasks using this instance will the instance automatically power off
+  idle_shutdown_timeout_ms: number, // after what time of no tasks using this device will the device automatically power off
 }
 
 export interface IMaintenanceInfo {
@@ -184,9 +184,9 @@ export interface IAudioEngineMaintenance {
   data: IMaintenanceInfo
 }
 
-export interface IInstanceMaintenance {
+export interface IDeviceMaintenance {
   key: string,
-  instance_id: string,
+  device_id: string,
   data: IMaintenanceInfo
 }
 

@@ -28,8 +28,8 @@ export const ExtendMaintenanceSchema = z.object({
   endTime: z.string().min(1)
 }).strict()
 
-export const NewInstanceMaintenanceSchema = z.object({
-  instance_id: z.string().min(1),
+export const NewDeviceMaintenanceSchema = z.object({
+  device_id: z.string().min(1),
   title: z.string().min(1),
   description: z.string().min(1),
   startTime: z.string().min(1),

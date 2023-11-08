@@ -9,7 +9,7 @@ import {
 export const pages = [
   { name: 'Dashboard',      href: '/',              icon: HomeIcon },
   { name: 'Audio Engines',  href: '/audio-engines', icon: Cog6ToothIcon },
-  { name: 'Instances',      href: '/instances',     icon: ServerStackIcon },
+  { name: 'Devices',        href: '/devices',       icon: ServerStackIcon },
   { name: 'Media',          href: '/media',         icon: CircleStackIcon },
   { name: 'Tasks',          href: '/tasks',         icon: QueueListIcon },
 ]

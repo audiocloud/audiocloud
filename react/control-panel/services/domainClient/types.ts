@@ -12,10 +12,10 @@ export type BusSpec = z.infer<ReturnType<typeof BusSpec>>;
 export const Clamp = memoizeOne(() => z.object({max: z.number(), min: z.number(), }));
 export type Clamp = z.infer<ReturnType<typeof Clamp>>;
 
-export const CreateTaskRequest = memoizeOne(() => z.object({appId: z.string(), from: z.coerce.date(), instances: z.record(z.lazy(InstanceAllocationRequest)), taskId: z.union([z.string(), z.null(), ]), to: z.coerce.date(), }));
+export const CreateTaskRequest = memoizeOne(() => z.object({appId: z.string(), from: z.coerce.date(), devices: z.record(z.lazy(InstanceAllocationRequest)), taskId: z.union([z.string(), z.null(), ]), to: z.coerce.date(), }));
 export type CreateTaskRequest = z.infer<ReturnType<typeof CreateTaskRequest>>;
 
-export const CreateTaskResponse = memoizeOne(() => z.discriminatedUnion('type', [z.object({app_id: z.string(), task_id: z.string(), type: z.literal("success"), }), z.object({type: z.literal("overlappingTask"), }), z.object({instance_id: z.string(), type: z.literal("noSuchInstance"), }), ]));
+export const CreateTaskResponse = memoizeOne(() => z.discriminatedUnion('type', [z.object({app_id: z.string(), task_id: z.string(), type: z.literal("success"), }), z.object({type: z.literal("overlappingTask"), }), z.object({device_id: z.string(), type: z.literal("noSuchInstance"), }), ]));
 export type CreateTaskResponse = z.infer<ReturnType<typeof CreateTaskResponse>>;
 
 export const CreateUserRequest = memoizeOne(() => z.object({password: z.string(), }));
@@ -60,7 +60,7 @@ export type HttpDriverReport = z.infer<ReturnType<typeof HttpDriverReport>>;
 export const HttpMethod = memoizeOne(() => z.enum(["GET", "PUT", "POST", ]));
 export type HttpMethod = z.infer<ReturnType<typeof HttpMethod>>;
 
-export const InstanceAllocationRequest = memoizeOne(() => z.discriminatedUnion('type', [z.object({instance_id: z.string(), type: z.literal("fixed"), }), z.object({model_id: z.string(), type: z.literal("dynamic"), }), ]));
+export const InstanceAllocationRequest = memoizeOne(() => z.discriminatedUnion('type', [z.object({device_id: z.string(), type: z.literal("fixed"), }), z.object({model_id: z.string(), type: z.literal("dynamic"), }), ]));
 export type InstanceAllocationRequest = z.infer<ReturnType<typeof InstanceAllocationRequest>>;
 
 export const InstanceAttachment = memoizeOne(() => z.object({device: z.string(), inputs: z.array(z.number().int()), outputs: z.array(z.number().int()), }));
@@ -213,7 +213,7 @@ export type SourceSpec = z.infer<ReturnType<typeof SourceSpec>>;
 export const TaskEvent = memoizeOne(() => z.object({instanceEvents: z.array(z.lazy(InstanceDriverEvent)), playId: z.union([z.string(), z.null(), ]), playerEvents: z.array(z.lazy(GraphPlayerEvent)), }));
 export type TaskEvent = z.infer<ReturnType<typeof TaskEvent>>;
 
-export const TaskSpec = memoizeOne(() => z.object({app_id: z.string(), from: z.coerce.date(), graph_spec: z.lazy(AudioGraphSpec), host_id: z.string(), instances: z.record(z.string()), requests: z.record(z.lazy(InstanceAllocationRequest)), to: z.coerce.date(), }));
+export const TaskSpec = memoizeOne(() => z.object({app_id: z.string(), from: z.coerce.date(), graph_spec: z.lazy(AudioGraphSpec), host_id: z.string(), devices: z.record(z.string()), requests: z.record(z.lazy(InstanceAllocationRequest)), to: z.coerce.date(), }));
 export type TaskSpec = z.infer<ReturnType<typeof TaskSpec>>;
 
 export const UsbHidParameterConfig = memoizeOne(() => z.object({clamp: z.union([z.lazy(Clamp), z.null(), ]), packing: z.lazy(ValuePacking), page: z.number().int(), position: z.lazy(BinaryPosition), remap: z.union([z.lazy(Remap), z.null(), ]), rescale: z.union([z.lazy(Rescale), z.null(), ]), transform: z.union([z.string(), z.null(), ]), }));

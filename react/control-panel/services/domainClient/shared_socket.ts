@@ -17,7 +17,7 @@ export interface ReceiveEvents {
   connectionChanged(connected: boolean): any;
 
   instanceReport(
-    instance: string,
+    device: string,
     name: string,
     channel: number,
     value: number
@@ -70,34 +70,34 @@ export function sendEventsHandler(
       close();
     },
     setInstanceParameters(
-      instance: string,
+      device: string,
       changes: Array<SetInstanceParameter>
     ) {
       send({
         requestId: nanoid(),
         command: {
           type: "setInstanceParameters",
-          instanceId: instance,
+          instanceId: device,
           changes,
         },
       });
     },
-    setInstancePowerControl(instance: string, power: InstancePowerControl) {
+    setInstancePowerControl(device: string, power: InstancePowerControl) {
       send({
         requestId: nanoid(),
         command: {
           type: "setInstancePowerControl",
-          instanceId: instance,
+          instanceId: device,
           power,
         },
       });
     },
-    setInstancePlayControl(instance: string, play: InstancePlayControl) {
+    setInstancePlayControl(device: string, play: InstancePlayControl) {
       send({
         requestId: nanoid(),
         command: {
           type: "setInstancePlayControl",
-          instanceId: instance,
+          instanceId: device,
           play: play,
         },
       });
@@ -148,24 +148,24 @@ export function createMessageHandler(
       })
       .with({ type: "setInstancePowerControl" }, ({ requestId, success }) => {
         console.log(
-          "instance power request",
+          "device power request",
           requestId,
           success ? "success" : "failure"
         );
       })
       .with({ type: "setInstancePlayControl" }, ({ requestId, success }) => {
         console.log(
-          "instance play request",
+          "device play request",
           requestId,
           success ? "success" : "failure"
         );
       })
       .with({ type: "setInstanceParameters" }, ({ requestId, response }) => {
-        console.log("instance play request", requestId, response);
+        console.log("device play request", requestId, response);
       })
       .with({ type: "subscribeToInstanceEvents" }, ({ requestId, success }) => {
         console.log(
-          "instance subscribe to events request",
+          "device subscribe to events request",
           requestId,
           success ? "success" : "failure"
         );
@@ -174,7 +174,7 @@ export function createMessageHandler(
         { type: "unsubscribeFromInstanceEvents" },
         ({ requestId, success }) => {
           console.log(
-            "instance unsubscribe to events request",
+            "device unsubscribe to events request",
             requestId,
             success ? "success" : "failure"
           );

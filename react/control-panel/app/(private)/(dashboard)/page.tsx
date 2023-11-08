@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import TopBar from '@/components/layout/page/TopBar/TopBar'
 import WidgetsContainerBig from '@/components/layout/page/widgets/WidgetsContainerBig'
 import AudioEnginesWidget from './components/Widgets/AudioEngines/AudioEnginesWidget'
-import InstancesWidget from './components/Widgets/Instances/InstancesWidget'
+import DevicesWidget from './components/Widgets/Devices/DevicesWidget'
 import MediaWidget from './components/Widgets/Media/MediaWidget'
 import TasksWidget from './components/Widgets/Tasks/TasksWidget'
 
@@ -30,7 +30,7 @@ const DashboardPage: React.FC = () => {
       <TabsContent className='mt-0' value='status'>
         <WidgetsContainerBig>
           <AudioEnginesWidget />
-          <InstancesWidget />
+          <DevicesWidget />
           <MediaWidget />
           <TasksWidget />
         </WidgetsContainerBig>
