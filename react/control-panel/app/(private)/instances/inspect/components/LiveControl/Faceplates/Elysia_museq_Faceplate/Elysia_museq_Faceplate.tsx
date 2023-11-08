@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { InstanceReports } from '@/types'
+import { InstanceReportsType } from '@/types'
 import { Container, ToggleButton, HorizontalDivider } from '@moonlight-neon-ui'
 import { ConversionRules } from '../valueConverters'
 import { InstanceParameters, ParameterId } from '@audiocloud/api'
@@ -9,7 +9,7 @@ type Props = {
   channelIds: string[],
   parameters: InstanceParameters,
   wet: number,
-  reports: InstanceReports,
+  reports: InstanceReportsType,
   webSocketDefaultParametersSetter: (interfaceOnlyParams: ParameterId[], conversionRules: ConversionRules) => void,
   channelParameterHandler: (value: string | number | boolean, channel: number, parameter: string, conversionRules: ConversionRules) => void,
   instanceParameterHandler: (value: string | number | boolean, parameter: string, conversionRules: ConversionRules) => void,

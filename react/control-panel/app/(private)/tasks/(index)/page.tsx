@@ -17,7 +17,7 @@ const TasksPage: React.FC = () => {
   return (
     <Tabs defaultValue='list' value={tab ?? undefined} onValueChange={(e) => router.push(`?tab=${e}`)} className='w-full'>
 
-      <TopBar title='Tasks' subtitle='<domain>'>
+      <TopBar title='Tasks' subtitle='<domain>' backButton={true}>
         <TabsList>
           <TabsTrigger value='list'>Index</TabsTrigger>
           <TabsTrigger value='statistics'>Statistics</TabsTrigger>

@@ -1,6 +1,6 @@
-import { InstanceReports } from "@/types"
+import { InstanceReportsType } from "@/types"
 
-export const defaultReports: Record<string, InstanceReports> = {
+export const defaultReports: Record<string, InstanceReportsType> = {
   'btrmkr_ml_1': {
     clip:                   [60, 60],
     gainReduction:          [40, 40],

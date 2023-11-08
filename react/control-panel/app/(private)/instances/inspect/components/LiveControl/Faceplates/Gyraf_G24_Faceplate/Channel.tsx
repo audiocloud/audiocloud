@@ -2,7 +2,7 @@ import React from 'react'
 import { InstanceParameters } from '@audiocloud/api'
 import { ContinuousKnob, Header2 } from '@moonlight-neon-ui'
 import { convertToNumber, ConversionRules } from '../valueConverters'
-import { InstanceReports } from '@/types'
+import { InstanceReportsType } from '@/types'
 
 type Props = {
   channelIndex: number
@@ -10,7 +10,7 @@ type Props = {
   parameters: InstanceParameters,
   channelParameterHandler: (value: string | number | boolean, channel: number, parameter: string) => void,
   conversionRules: ConversionRules,
-  reports: InstanceReports
+  reports: InstanceReportsType
 }
 
 const Channel: React.FC<Props> = ({ channelIndex, link, parameters, channelParameterHandler, conversionRules, reports }) => {

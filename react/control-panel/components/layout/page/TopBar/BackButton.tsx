@@ -13,6 +13,7 @@ const BackButton: React.FC = () => {
   const newPathname = () => {
     const pathParts = pathname.split('/')
     pathParts.pop()
+    if (pathParts.length === 1) return '/'
     return pathParts.join('/')
   }
 
