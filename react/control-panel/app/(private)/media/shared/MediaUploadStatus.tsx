@@ -8,16 +8,15 @@ type Props = {
 
 const MediaUploadStatus: React.FC<Props> = ({ status }) => {
   return (
-    <div className='flex items-center gap-3'>
+    <div className='flex items-center gap-3 text-foreground-secondary'>
       <div className={cn(
-        'flex-shrink-0 w-3 h-3 rounded-full',
+        'w-3 h-3 rounded-full',
         status.id === 'undefined' && 'bg-slate-500',
-        status.id === 'error' && 'bg-red-800',
+        status.id === 'error' && 'bg-red-700',
         status.id === 'in-progress' && 'bg-yellow-700',
-        status.id === 'complete' && 'bg-green-800'
+        status.id === 'complete' && 'bg-green-700'
       )}/>
-
-      <span className='whitespace-nowrap'>{ status.label }</span>
+      <div className='whitespace-nowrap'>{ status.label }</div>
     </div>
   )
 }

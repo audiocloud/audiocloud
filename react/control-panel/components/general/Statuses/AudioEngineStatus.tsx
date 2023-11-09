@@ -1,4 +1,5 @@
 import React from 'react'
+import capitalize from 'lodash.capitalize'
 import { cn } from '@/lib/utils'
 import { AudioEngineStatusType } from '@/types'
 
@@ -8,14 +9,14 @@ type Props = {
 
 const AudioEngineStatus: React.FC<Props> = ({ status }) => {
   return (
-    <div className='flex items-center gap-3'>
+    <div className='flex items-center gap-3 text-foreground-secondary'>
       <div className={cn(
-        'flex-shrink-0 w-3 h-3 rounded-full',
-        status === 'online' && 'bg-green-800',
-        status === 'offline' && 'bg-red-800',
+        'w-3 h-3 rounded-full',
+        status === 'online' && 'bg-green-700',
+        status === 'offline' && 'bg-red-700',
         // status === 'unknown' && 'bg-slate-500'
       )}/>
-      <span>({ status })</span>
+      <div>{ capitalize(status) }</div>
     </div>
   )
 }
