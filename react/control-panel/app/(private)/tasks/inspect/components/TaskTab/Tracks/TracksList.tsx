@@ -7,9 +7,9 @@ type Props = {
 
 const TracksList: React.FC<Props> = ({ tracks }) => {
   return (
-    <ul role='list' className='flex flex-col gap-1 text-primary'>
+    <ul role='list' className='flex flex-col gap-1 text-foreground'>
       { tracks.map((track) => <li key={track.id}>{ track.id }</li>) }
-      { !tracks.length && <div className='text-primary'>- none -</div> }
+      { !tracks.length && <div className='text-foreground'>- none -</div> }
     </ul>
   )
 }

@@ -30,7 +30,7 @@ const AudioEnginesTable: React.FC = () => {
           <TableHead className='text-right'>Actions</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody className='text-slate-400'>
+      <TableBody className='text-foreground-secondary'>
         { audioEnginesList.map((audio_engine) => (
           <TableRow className='group/row' key={audio_engine.id}>
             <TableCell><AudioEngineStatus status={audio_engine.status} /></TableCell>

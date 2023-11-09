@@ -9,7 +9,7 @@ const LogoHeader: React.FC = () => {
       <div className='relative w-12 h-12'>
         <Image fill src={LogoSVG} alt="AudioCloud Domain Control Panel"/>
       </div>
-      <div>Domain Control Panel</div>
+      <div className='text-foreground'>Domain Control Panel</div>
     </Link>
   )
 }

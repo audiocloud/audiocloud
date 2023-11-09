@@ -37,8 +37,8 @@ const MediaContents: React.FC = () => {
     <WidgetBig title='Media' href='/media' titleRowItems={
       <>
         <div className='flex justify-center items-end gap-3'>
-          <span className='text-slate-500'>Storage Utilization</span>
-          <span className='text-5xl font-semibold'>28%</span>
+          <span className='text-foreground-secondary'>Storage Utilization</span>
+          <span className='text-foreground text-5xl font-semibold'>28%</span>
         </div>
       </>
     }>

@@ -32,7 +32,7 @@ const MediaTable: React.FC = () => {
           <TableHead className='text-right'>Actions</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody className='text-slate-400'>
+      <TableBody className='text-foreground-secondary'>
         { mediaList.map((media) => (
           <TableRow className='group/row' key={media.id}>
             <TableCell><MediaDownloadStatus status={getDownloadStatus(media.download)} /></TableCell>

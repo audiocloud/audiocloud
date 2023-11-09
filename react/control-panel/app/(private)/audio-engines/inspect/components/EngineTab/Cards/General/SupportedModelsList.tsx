@@ -6,9 +6,9 @@ type Props = {
 
 const SupportedModelsList: React.FC<Props> = ({ models }) => {
   return (
-    <ul role='list' className='flex flex-col gap-1 text-primary'>
+    <ul role='list' className='flex flex-col gap-1 text-foreground'>
       { models.map((model) => <li key={model}>{ model }</li>) }
-      { !models.length && <div className='text-primary'>- none -</div> }
+      { !models.length && <div className='text-foreground'>- none -</div> }
     </ul>
   )
 }

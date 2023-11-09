@@ -10,8 +10,8 @@ const DevicesContents: React.FC = () => {
     <WidgetBig title='Devices' href='/devices' titleRowItems={
       <>
         <div className='flex justify-center items-end gap-3'>
-          <span className='text-slate-500'>Online</span>
-          <span className='text-5xl font-semibold'>18/22</span>
+          <span className='text-foreground-secondary'>Online</span>
+          <span className='text-foreground text-5xl font-semibold'>18/22</span>
         </div>
       </>
     }>

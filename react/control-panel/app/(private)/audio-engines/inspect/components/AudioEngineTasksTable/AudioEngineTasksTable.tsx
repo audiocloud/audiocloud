@@ -33,7 +33,7 @@ const AudioEngineTasksTable: React.FC<Props> = ({ tasks }) => {
         </TableRow>
       </TableHeader>
 
-      <TableBody className='text-slate-400'>
+      <TableBody className='text-foreground-secondary'>
         { tasks.map((task, task_index) => (
           // TO-DO: task index might not be the best thing to use here, they will change when they tasks are completed and get off the list
           <Fragment key={task_index}>

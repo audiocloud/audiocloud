@@ -36,8 +36,8 @@ const AudioEnginesContents: React.FC = () => {
     <WidgetBig title='Audio Engines' href='/audio-engines' titleRowItems={
       <>
         <div className='flex justify-center items-end gap-3'>
-          <span className='text-slate-500'>Online</span>
-          <span className='text-5xl font-semibold'>4/4</span>
+          <span className='text-foreground-secondary'>Online</span>
+          <span className='text-foreground text-5xl font-semibold'>4/4</span>
         </div>
       </>
     }>

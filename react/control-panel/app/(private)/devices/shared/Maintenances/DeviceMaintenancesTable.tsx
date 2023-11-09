@@ -28,7 +28,7 @@ const DeviceMaintenancesTable: React.FC<Props> = ({ maintenances }) => {
         </TableRow>
       </TableHeader>
 
-      <TableBody className='text-slate-400'>
+      <TableBody className='text-foreground-secondary'>
         { maintenances.map((maintenance, index) => <MaintenanceTableRow key={index} maintenance={maintenance} />) }
       </TableBody>
 

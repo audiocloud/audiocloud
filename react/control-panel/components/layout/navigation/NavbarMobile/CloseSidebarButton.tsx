@@ -15,7 +15,7 @@ const CloseSidebarButton: React.FC<Props> = ({ setSidebarOpen }) => {
       onClick={() => setSidebarOpen(false)}
     >
       <span className="sr-only">Close sidebar</span>
-      <XMarkIcon className="h-6 w-6 text-white" aria-hidden="false" />
+      <XMarkIcon className="h-6 w-6 text-foreground" aria-hidden="false" />
     </button>
   )
 }

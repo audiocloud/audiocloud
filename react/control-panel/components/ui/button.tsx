@@ -26,9 +26,9 @@ const buttonVariants = cva(
         link:
           "text-primary underline-offset-4 hover:underline",
         tableButton:
-          "bg-background hover:bg-secondary text-slate-300 hover:text-white tracking-wide border border-transparent group-hover/row:border-slate-600",
+          "bg-background hover:bg-secondary text-foreground tracking-wide border border-transparent group-hover/row:border-foreground-secondary/50",
         objectActionButton:
-          "bg-secondary hover:bg-secondary/50 text-slate-300 hover:text-white tracking-wide",
+          "bg-secondary hover:bg-secondary/50 text-foreground tracking-wide",
       },
       size: {
         default: "h-10 px-4 py-2",

@@ -26,7 +26,7 @@ const MediaActions: React.FC<Props> = ({ media }) => {
       <ForceDeleteMediaModal media_id={media.id} isOpen={forceDeleteOpen} setOpen={setForceDeleteOpen} />
       
       <DropdownMenu>
-        <DropdownMenuTrigger className='p-1 bg-background hover:bg-secondary hover:text-white border hover:border-slate-600 rounded-md'>
+        <DropdownMenuTrigger className='p-1 bg-background hover:bg-accent hover:text-foreground border border-border group-hover/row:border-foreground-secondary/50 rounded-md'>
           <ChevronDownIcon className='h-6 w-6' aria-hidden="false" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>

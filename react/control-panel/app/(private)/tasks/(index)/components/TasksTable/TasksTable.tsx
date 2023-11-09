@@ -27,7 +27,7 @@ const TasksTable: React.FC = () => {
           <TableHead className='text-right'>Actions</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody className='text-slate-400'>
+      <TableBody className='text-foreground-secondary'>
         { tasksList.map((task) => (
           <TableRow className='group/row' key={task.id}>
             <TableCell><TaskStatus status={task.status}/></TableCell>

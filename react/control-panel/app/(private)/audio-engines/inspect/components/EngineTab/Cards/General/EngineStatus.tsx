@@ -9,7 +9,7 @@ type Props = {
 
 const EngineStatus: React.FC<Props> = ({ status }) => {
   return (
-    <span className='flex items-center gap-2 text-primary'>
+    <span className='flex items-center gap-2 text-foreground'>
       <span className={cn(
         'w-2.5 h-2.5 rounded-full',
         status === 'online' && 'bg-green-700',

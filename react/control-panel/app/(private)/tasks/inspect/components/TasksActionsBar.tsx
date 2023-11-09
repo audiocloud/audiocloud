@@ -22,7 +22,7 @@ const TasksActionsBar: React.FC<Props> = ({ task_id }) => {
   // TO-DO: implement action response status
   
   return (
-    <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-slate-900/70 border-b'>
+    <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-midground/90 border-b'>
 
       <ManageTaskAPIKeyModal task_id={task_id} isOpen={manageAPIKeysOpen} setOpen={setManageAPIKeysOpen} current_api_key={'some-key'} />
       <RestartTaskModal task_id={task_id} isOpen={restartTaskOpen} setOpen={setRestartTaskOpen} />

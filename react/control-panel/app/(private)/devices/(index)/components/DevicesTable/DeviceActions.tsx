@@ -30,7 +30,7 @@ const DeviceActions: React.FC<Props> = ({ device }) => {
       <ForceShutdownDeviceModal device_id={device.id} isOpen={forceShutdownOpen} setOpen={setForceShutdownOpen} handlePower={() => alert('Missing handlerPower, till websocket update.')} />
 
       <DropdownMenu>
-        <DropdownMenuTrigger className='p-1 bg-background hover:bg-secondary hover:text-white border hover:border-slate-600 rounded-md'>
+        <DropdownMenuTrigger className='p-1 bg-background hover:bg-accent hover:text-foreground border border-border group-hover/row:border-foreground-secondary/50 rounded-md'>
           <ChevronDownIcon className='h-6 w-6' aria-hidden="false" />
         </DropdownMenuTrigger>
         <DropdownMenuContent>

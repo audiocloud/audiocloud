@@ -10,23 +10,23 @@ const TasksContents: React.FC = () => {
     <WidgetBig title='Tasks' href='/tasks' titleRowItems={
       <>
         <div className='flex flex-col justify-center items-center'>
-          <span className='text-2xl font-bold'>6</span>
-          <span className='text-slate-500 text-sm'>Queued</span>
+          <span className='text-foreground text-2xl font-bold'>6</span>
+          <span className='text-foreground-secondary text-sm'>Queued</span>
         </div>
 
         <div className='flex flex-col justify-center items-center'>
-          <span className='text-2xl font-bold'>6</span>
-          <span className='text-slate-500 text-sm'>Running</span>
+          <span className='text-foreground text-2xl font-bold'>6</span>
+          <span className='text-foreground-secondary text-sm'>Running</span>
         </div>
 
         <div className='flex flex-col justify-center items-center'>
-          <span className='text-2xl font-bold'>456</span>
-          <span className='text-slate-500 text-sm'>Completed (last 24h)</span>
+          <span className='text-foreground text-2xl font-bold'>456</span>
+          <span className='text-foreground-secondary text-sm'>Completed (last 24h)</span>
         </div>
 
         <div className='flex flex-col justify-center items-center'>
-          <span className='text-2xl font-bold'>12</span>
-          <span className='text-slate-500 text-sm'>Errors (last 24h)</span>
+          <span className='text-foreground text-2xl font-bold'>12</span>
+          <span className='text-foreground-secondary text-sm'>Errors (last 24h)</span>
         </div>
       </>
     }>

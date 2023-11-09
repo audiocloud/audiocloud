@@ -20,7 +20,7 @@ const MediaObjectActionsBar: React.FC<Props> = ({ media_id }) => {
   const [forceDeleteOpen, setForceDeleteOpen] = useState(false)
 
   return (
-    <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-slate-900/70 border-b'>
+    <div className='w-full px-4 py-3 flex justify-start items-center gap-2 bg-midground/90 border-b'>
 
       <RetryDownloadModal media_id={media_id} isOpen={retryDownload} setOpen={setRetryDownloadOpen} />
       <RetryUploadModal media_id={media_id} isOpen={retryUpload} setOpen={setRetryUploadOpen} />

@@ -10,7 +10,7 @@ type Props = {
 
 const AudioEngineTasksRow: React.FC<Props> = ({ node, task_index }) => {
   return (
-    <TableRow className='group/row h-20 text-base'>
+    <TableRow className='group/row h-20'>
       <TableCell><div className="flex items-center space-x-3 truncate">Task { task_index } / { node.id }</div></TableCell>
       <TableCell>{ node.model_id }</TableCell>
       <TableCell>{ node.resources.cpu } MHz</TableCell>

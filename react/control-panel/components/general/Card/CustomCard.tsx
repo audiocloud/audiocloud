@@ -11,7 +11,7 @@ type Props = {
 
 const CustomCard: React.FC<Props> = ({ label, className, children, contentPadding = true }) => {
   return (
-    <Card className={cn('bg-primary-foreground', className)}>
+    <Card className={cn(className)}>
       <CardHeader className='px-3 pt-3 pb-2 font-bold border-b'>{ label }</CardHeader>
       <CardContent className={cn(contentPadding ? 'p-3' : 'p-0')}>
         { children }

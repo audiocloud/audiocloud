@@ -6,7 +6,7 @@ type Props = {
 
 const MaintenanceTimestamp: React.FC<Props> = ({ value }) => {
   return (
-    <div className='text-white text-base whitespace-nowrap'>
+    <div className='text-foreground whitespace-nowrap'>
       { value ? new Date(value).toLocaleString(undefined, {
         day: 'numeric',
         month: 'short',

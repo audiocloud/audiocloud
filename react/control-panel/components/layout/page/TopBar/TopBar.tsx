@@ -13,7 +13,7 @@ type Props = {
 const TopBar: React.FC<Props> = ({ title, subtitle, children, backButton = false }) => {
 
   return (
-    <div className='w-full h-16 px-4 flex justify-between items-center bg-primary-foreground border-b border-border'>
+    <div className='w-full h-16 px-4 flex justify-between items-center bg-midground border-b border-border'>
 
       <div className='flex justify-start items-center gap-4'>
 

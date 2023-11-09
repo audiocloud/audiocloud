@@ -27,7 +27,7 @@ const DevicesTable: React.FC = () => {
           <TableHead className='text-right'>Actions</TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody className='text-slate-400'>
+      <TableBody className='text-foreground-secondary'>
         { devicesList.map((device) => (
           <TableRow className='group/row' key={device.id}>
             <TableCell><DeviceStatus status={device.status} /></TableCell>

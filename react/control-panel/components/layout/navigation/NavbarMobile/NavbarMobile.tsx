@@ -8,6 +8,7 @@ import Search from './Search'
 import UserAccountDropDown from './UserAccountDropDown'
 import OpenSidebarButton from './OpenSidebarButton'
 import CloseSidebarButton from './CloseSidebarButton'
+import { ThemeDropdown } from '@/components/theme/ThemeDropdown'
 
 const NavbarMobile: React.FC = () => {
 
@@ -16,11 +17,11 @@ const NavbarMobile: React.FC = () => {
   return (
     <>
       {/* Sticky Top */}
-      <div className="sticky lg:hidden top-0 z-10 flex h-16 flex-shrink-0 bg-primary-foreground border-b border-border">
+      <div className="sticky lg:hidden top-0 z-10 h-16 flex items-center flex-shrink-0 bg-midground border-b border-border">
 
         <OpenSidebarButton setSidebarOpen={setSidebarOpen} />
 
-        <div className="flex flex-1 justify-between px-4 sm:px-6 lg:px-8">
+        <div className="px-3 flex flex-1 justify-between items-center gap-2">
           <Search/>
           <UserAccountDropDown/>
         </div>
@@ -39,7 +40,7 @@ const NavbarMobile: React.FC = () => {
             leaveFrom="opacity-100"
             leaveTo="opacity-0"
           >
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-75" />
+            <div className="fixed inset-0 bg-background/50" />
           </Transition.Child>
 
           <div className="fixed inset-0 z-40 flex">
@@ -52,7 +53,7 @@ const NavbarMobile: React.FC = () => {
               leaveFrom="translate-x-0"
               leaveTo="-translate-x-full"
             >
-              <Dialog.Panel className="relative flex w-full max-w-xs flex-1 flex-col bg-white pt-5 pb-4">
+              <Dialog.Panel className="relative w-full max-w-xs pt-5 pb-3 px-3 flex flex-1 flex-col gap-3 bg-midground border-r border-border">
                 <Transition.Child
                   as={Fragment}
                   enter="ease-in-out duration-300"
@@ -69,6 +70,9 @@ const NavbarMobile: React.FC = () => {
 
                 <LogoHeader/>
                 <PagesMenu/>
+                <div className='w-full mt-0 pt-2 border-t border-border'>
+                  <ThemeDropdown />
+                </div>
 
               </Dialog.Panel>
             </Transition.Child>

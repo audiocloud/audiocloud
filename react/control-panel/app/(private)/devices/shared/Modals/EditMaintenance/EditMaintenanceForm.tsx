@@ -117,7 +117,7 @@ const EditMaintenanceForm: React.FC<Props> = ({ maintenance, setOpen }) => {
           />
         </div>
 
-        <div className='text-gray-500 text-sm'>Last edit: { new Date(maintenance.data.updated_at).toLocaleString() }</div>
+        <div className='text-foreground-secondary text-sm'>Last edit: { new Date(maintenance.data.updated_at).toLocaleString() }</div>
 
         <div className='pt-3 flex justify-center items-center gap-4'>
 

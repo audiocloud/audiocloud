@@ -11,11 +11,11 @@ const OpenSidebarButton: React.FC<Props> = ({ setSidebarOpen }) => {
   return (
     <button
       type="button"
-      className="lg:hidden px-4 border-r border-border"
+      className="lg:hidden h-full px-4 hover:bg-accent border-r border-border"
       onClick={() => setSidebarOpen(true)}
     >
       <span className="sr-only">Open sidebar</span>
-      <Bars3CenterLeftIcon className="h-6 w-6" aria-hidden="false" />
+      <Bars3CenterLeftIcon className="h-6 w-6 text-foreground" aria-hidden="false" />
     </button>
   )
 }
