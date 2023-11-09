@@ -68,7 +68,7 @@ const SignInForm: React.FC = () => {
         </FormDescription>
 
         <div className='pt-3 w-full text-center'>
-          <Button type='submit' size='lg'>Login</Button>
+          <Button type='submit' size='lg' variant='outline'>Login</Button>
         </div>
         
       </form>
