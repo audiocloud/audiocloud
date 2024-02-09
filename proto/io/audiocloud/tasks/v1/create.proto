@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package io.audiocloud.tasks.v1;
+
+import "io/audiocloud/tasks/v1/input.proto";
+import "io/audiocloud/tasks/v1/sink.proto";
+
+message CreatePlaylistInput {
+  map<string, PlaylistItem> playlist = 1;
+
+  uint32 channels = 2;
+}
+
+message PlaylistItem {
+  string media_id = 1;
+  double start_time = 2;
+  optional double end_time = 3;
+}
+
+message CreateDeviceInput {
+  string device = 1;
+
+  repeated uint32 channels = 2;
+}
+
+message CreateStreamingInput {
+  string remote_api_base_url = 1;
+  string remote_api_key = 2;
+  string remote_task_id = 3;
+
+  repeated CreateInput remote_input_ports = 10;
+}
+
+message CreateBus {
+  uint32 input_count = 1;
+  uint32 output_count = 2;
+
+  repeated CreateInput input_ports = 10;
+}
+
+message CreateInstance {
+  string instance_allocation_id = 1;
+
+  repeated CreateInput input_ports = 10;
+}
+
+message CreateComponent {
+  oneof component {
+    CreatePlaylistInput playlist_input = 1;
+    CreateDeviceInput device_input = 2;
+    CreateStreamingInput streaming_input = 3;
+    CreateBus bus = 4;
+    CreateInstance instance = 5;
+  }
+}

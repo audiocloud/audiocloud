@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package io.audiocloud.tasks.v1;
+
+message ComponentId {
+  ComponentType component = 1;
+  string id = 2;
+}
+
+message ComponentInputId {
+  ComponentId node = 1;
+  uint32 port = 2;
+}
+
+message ComponentOutputId {
+  ComponentId node = 1;
+  uint32 port = 2;
+}
+
+enum ComponentType {
+  PlaylistInput = 0;
+  DeviceInput = 1;
+  StreamingInput = 2;
+  Bus = 3;
+  Instance = 4;
+  DeviceSink = 10;
+  MediaSink = 11;
+  StreamingSink = 12;
+}

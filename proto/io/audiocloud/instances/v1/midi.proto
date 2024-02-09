@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+message MidiInstanceDriverSpec {
+}

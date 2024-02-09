@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package io.audiocloud.media.v1;
+
+message DownloadProgressEvent {
+  string media_id = 1;
+  string upload_id = 2;
+  double progress = 3;
+  uint32 retry_number = 4;
+  bool finished = 5;
+  optional string last_error = 6;
+}

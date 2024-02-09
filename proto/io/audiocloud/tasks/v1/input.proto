@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package io.audiocloud.tasks.v1;
+
+import "io/audiocloud/tasks/v1/component.proto";
+
+message CreateInput {
+  repeated ComponentInputId inputs = 1;
+}

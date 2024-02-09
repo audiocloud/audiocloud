@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package io.audiocloud.media.v1;
+
+message MediaSummary {
+  string app_id = 1;
+  string media_id = 2;
+  string sha_256 = 3;
+  uint64 length = 4;
+  optional double download_progress = 5;
+}

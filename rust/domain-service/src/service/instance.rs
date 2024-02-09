@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use api::auth::Auth;
 use api::instance::control::{instance_play_control_key, instance_power_control_key, InstancePlayControl, InstancePowerControl};
 use api::instance::driver::events::{instance_driver_events, InstanceDriverEvent};
 use api::instance::driver::requests::{set_instance_parameters_request, SetInstanceParameter, SetInstanceParameterResponse};
@@ -12,7 +13,7 @@ use crate::nats::{EventStream, RequestStream, WatchStream};
 use super::{Result, Service};
 
 impl Service {
-  pub async fn list_instances(&self, filter: String) -> Result<HashMap<String, InstanceSpec>> {
+  pub async fn list_instances(&self, auth: Auth, filter: String) -> Result<HashMap<String, InstanceSpec>> {
     Ok(self.nats.instance_spec.scan(filter.as_str()).await?)
   }
 
@@ -32,7 +33,7 @@ impl Service {
     self.nats.instance_spec.watch_all()
   }
 
-  pub async fn set_instance_spec(&self, instance_id: &str, spec: InstanceSpec) -> Result {
+  pub async fn set_instance_spec(&self, auth: Auth, instance_id: String, spec: InstanceSpec) -> Result {
     self.nats.instance_spec.put(instance_spec_key(&instance_id), spec).await?;
 
     Ok(())

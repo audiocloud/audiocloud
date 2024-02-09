@@ -1,0 +1,22 @@
+[package]
+name = "api-proto"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+prost = "0.11"
+axum = "0.6"
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
+
+[dependencies.chrono]
+version = "0.4"
+features = ["serde"]
+
+[dependencies.axum-connect]
+version = "0.1.7"
+
+[build-dependencies.axum-connect-build]
+git = "https://github.com/audiocloud/axum-connect"

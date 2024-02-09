@@ -1,0 +1,253 @@
+syntax = "proto3";
+
+package io.audiocloud.tasks.v1;
+
+import "io/audiocloud/models/v1/model.proto";
+import "io/audiocloud/tasks/v1/component.proto";
+import "io/audiocloud/tasks/v1/create.proto";
+import "io/audiocloud/tasks/v1/modify.proto";
+import "io/audiocloud/tasks/v1/sink.proto";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+service DomainTaskService {
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+  rpc SetTaskGraph(SetTaskGraphRequest) returns (google.protobuf.Empty);
+  rpc ModifyTaskStructure(ModifyTaskStructureRequest) returns (google.protobuf.Empty);
+  rpc ModifyTaskParameters(ModifyTaskParametersRequest) returns (google.protobuf.Empty);
+  rpc Stream(stream TaskPlayerRequest) returns (stream TaskPlayerEvent);
+  rpc Execute(ExecuteTaskRequest) returns (ExecuteTaskResponse);
+  rpc GetTaskState(GetTaskStateRequest) returns (GetTaskStateResponse);
+  rpc SetTaskTime(SetTaskTimeRequest) returns (google.protobuf.Empty);
+  rpc DeleteTask(DeleteTaskRequest) returns (google.protobuf.Empty);
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+}
+
+message CreateTaskRequest {
+  optional string app_id = 1;
+  optional string task_id = 2;
+  optional string host_id = 3;
+
+  google.protobuf.Timestamp start_time = 10;
+  google.protobuf.Timestamp end_time = 11;
+  map<string, TaskAllocationRequest> allocation_requests = 12;
+}
+
+message TaskAllocationRequest {
+  oneof request {
+    FixedInstanceAllocationRequest fixed_instance = 1;
+    DynamicInstanceAllocationRequest dynamic_instance = 2;
+  }
+}
+
+message FixedInstanceAllocationRequest {
+  string instance_id = 1;
+}
+
+message DynamicInstanceAllocationRequest {
+  string model_id = 1;
+}
+
+message CreateTaskResponse {
+  string app_id = 1;
+  string task_id = 2;
+  optional string host_id = 3;
+
+  google.protobuf.Timestamp start_time = 10;
+  google.protobuf.Timestamp end_time = 11;
+
+  map<string, TaskAllocationRequest> allocation_requests = 20;
+
+  map<string, string> instance_allocations = 30;
+}
+
+message SetTaskGraphRequest {
+  string app_id = 1;
+  string task_id = 2;
+
+  repeated CreateComponent structure = 10;
+  repeated SetTaskParameter parameters = 20;
+}
+
+message ModifyTaskStructureRequest {
+  string app_id = 1;
+  string task_id = 2;
+
+  repeated ModifyTaskStructure modifications = 10;
+}
+
+message SetTaskTimeRequest {
+  string app_id = 1;
+  string task_id = 2;
+
+  google.protobuf.Timestamp start_time = 10;
+  google.protobuf.Timestamp end_time = 11;
+}
+
+message DeleteTaskRequest {
+  string app_id = 1;
+  string task_id = 2;
+}
+
+message ListTasksRequest {
+  optional string filter_app_id = 1;
+  optional string filter_task_id = 2;
+  optional google.protobuf.Timestamp filter_start_time = 3;
+  optional google.protobuf.Timestamp filter_end_time = 4;
+
+  optional uint32 limit = 5;
+  optional uint32 offset = 6;
+}
+
+message ListTasksResponse {
+  repeated TaskSummary tasks = 1;
+}
+
+message TaskSummary {
+  string app_id = 1;
+  string task_id = 2;
+  optional string host_id = 3;
+
+  google.protobuf.Timestamp start_time = 10;
+  google.protobuf.Timestamp end_time = 11;
+}
+
+message ModifyTaskParametersRequest {
+  string app_id = 1;
+  string task_id = 2;
+  uint32 revision = 3;
+
+  repeated SetTaskParameter parameters = 10;
+}
+
+message SetTaskParameter {
+  string component_id = 1;
+  string parameter_id = 2;
+  uint32 channel = 3;
+  double value = 4;
+}
+
+message ModifyTaskParametersResponse {
+  string app_id = 1;
+  string task_id = 2;
+  uint32 revision = 3;
+}
+
+message TaskPlayerRequest {
+  string app_id = 1;
+  string task_id = 2;
+  string player_id = 3;
+
+  oneof request {
+    PlayerStart start = 10;
+    PlayerStop stop = 11;
+    PlayerSeek seek = 12;
+    PlayerSetPlayRegion set_play_region = 13;
+  }
+}
+
+message ExecuteTaskRequest {
+  string app_id = 1;
+  string task_id = 2;
+  string play_id = 3;
+
+  map<string, CreateMediaSink> media_sinks = 10;
+
+  PlayerSetPlayRegion region = 20;
+  PlayerSeek seek = 21;
+}
+
+message ExecuteTaskResponse {
+  string app_id = 1;
+  string task_id = 2;
+  string play_id = 3;
+}
+
+message GetTaskStateRequest {
+  string app_id = 1;
+  string task_id = 2;
+}
+
+message GetTaskStateResponse {
+  string app_id = 1;
+  string task_id = 2;
+  optional string host_id = 3;
+  optional string play_id = 4;
+
+  repeated string nodes_preparing_to_play = 10;
+  repeated string instances_powering_on = 20;
+  repeated string media_downloading = 30;
+
+  optional double progress = 40;
+}
+
+message PlayerStart {
+  string play_id = 1;
+
+  map<string, CreateStreamingSink> streaming_sinks = 10;
+  map<string, CreateDeviceSink> device_sinks = 11;
+  map<string, CreateMediaSink> media_sinks = 12;
+
+  PlayerSetPlayRegion region = 20;
+  PlayerSeek seek = 21;
+}
+
+message PlayerStop {
+}
+
+message PlayerSeek {
+  double seek_to = 1;
+}
+
+message PlayerSetPlayRegion {
+  double start_time = 1;
+  double end_time = 2;
+}
+
+message TaskPlayerEvent {
+  oneof event {
+    PlayerPreparingToPlayEvent preparing_to_play = 1;
+    PlayerPacketEvent packet = 2;
+    PlayerNodeModelsEvent nodes_initialized = 3;
+  }
+}
+
+message PlayerNodeModelsEvent {
+  map<string, io.audiocloud.models.v1.ModelSpec> node_models = 1;
+}
+
+message PlayerPreparingToPlayEvent {
+  string app_id = 1;
+  string task_id = 2;
+  string play_id = 3;
+
+  repeated string nodes_preparing_to_play = 10;
+  repeated string instances_powering_on = 20;
+  repeated string media_downloading = 30;
+}
+
+message PlayerPacketEvent {
+  string play_id = 1;
+  string app_id = 2;
+  string task_id = 3;
+  uint64 position = 4;
+  google.protobuf.Timestamp timestamp = 5;
+
+  map<string, bytes> streaming_sinks = 10;
+  repeated NodeEvent node_events = 11;
+}
+
+message NodeEvent {
+  ComponentId component_id = 1;
+  uint32 timestamp_offset_us = 2;
+
+  oneof event {
+    NodeMeteringEvent metering = 10;
+  }
+}
+
+message NodeMeteringEvent {
+  string meter_id = 1;
+  double value = 2;
+}

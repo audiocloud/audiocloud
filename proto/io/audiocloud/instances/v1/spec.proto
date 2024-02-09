@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+import "io/audiocloud/models/v1/model.proto";
+import "io/audiocloud/instances/v1/binary.proto";
+import "io/audiocloud/instances/v1/text.proto";
+import "io/audiocloud/instances/v1/midi.proto";
+import "io/audiocloud/instances/v1/osc.proto";
+import "io/audiocloud/instances/v1/http.proto";
+import "io/audiocloud/instances/v1/general.proto";
+
+message InstanceSpec {
+  io.audiocloud.models.v1.ModelId model_id = 1;
+  optional InstancePowerSpec power = 10;
+  optional InstanceMediaSpec media = 20;
+  optional InstanceAttachment attachment = 30;
+  optional GeneralDriverSpec general = 100;
+  optional BinaryInstanceDriverSpec binary = 110;
+  optional TextInstanceDriverSpec text = 120;
+  optional OscInstanceDriverSpec osc = 130;
+  optional MidiInstanceDriverSpec midi = 140;
+  optional HttpInstanceDriverSpec http = 150;
+}
+
+message InstancePowerSpec {
+  string power_controller = 1;
+  SetParameterCommand power_on = 2;
+  SetParameterCommand power_off = 3;
+  uint32 warm_up_ms = 4;
+  uint32 cool_down_ms = 5;
+  uint32 idle_ms = 6;
+  bool driver_needs_power = 7;
+}
+
+message SetParameterCommand {
+  string parameter = 1;
+  uint32 channel = 2;
+  double value = 3;
+}
+
+message InstanceAttachment {
+  string host = 1;
+  string device = 2;
+  repeated uint32 inputs = 10;
+  repeated uint32 outputs = 11;
+}
+
+message InstanceMediaSpec {
+  uint32 duration_ms = 1;
+  string position_report = 2;
+  repeated PlayStateReportTrigger play_state_triggers = 3;
+  optional SetParameterCommand play = 4;
+  optional SetParameterCommand stop = 5;
+  optional SetParameterCommand rewind = 6;
+}
+
+message PlayStateReportTrigger {
+  string report = 1;
+  PlayStateTransition transition = 2;
+
+  oneof comparison {
+    double equals = 10;
+    double greater_than = 11;
+    double less_than = 12;
+  }
+}
+
+enum PlayStateTransition {
+  SetIdle = 0;
+  SetBusy = 1;
+  SetRewinding = 2;
+  SetPlaying = 3;
+}

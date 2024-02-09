@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package io.audiocloud.instances.v1;
+
+message GeneralDriverSpec {
+  map<string, Transform> parameter_transforms = 1;
+  map<string, Transform> report_transforms = 2;
+}
+
+message Transform {
+  optional string script = 1;
+  optional Rescale rescale = 10;
+  oneof Remap {
+    LinearRemap linear_remap = 20;
+    PairsRemap pairs_remap = 21;
+  }
+  optional Clamp clamp = 4;
+}
+
+message LinearRemap {
+  repeated double values = 1;
+}
+
+message PairsRemap {
+  repeated PairRemap pairs = 1;
+}
+
+message PairRemap {
+  double from = 1;
+  double to = 2;
+}
+
+message Rescale {
+  double from_low = 1;
+  double from_high = 2;
+  double to_low = 3;
+  double to_high = 4;
+}
+
+message Clamp {
+  double min = 1;
+  double max = 2;
+}
